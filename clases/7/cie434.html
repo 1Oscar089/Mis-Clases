@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunidades Terrestres y Acuáticas</title>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-primary: #2980b9;
+            --color-secondary: #d4efdf;
+            --color-accent: #a9dfbf;
+            --color-text: #2c3e50;
+            --color-text-light: #555555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--color-primary);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--color-primary);
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        h2 {
+            color: var(--color-primary);
+            border-left: 5px solid var(--color-accent);
+            padding-left: 10px;
+            margin-top: 35px;
+        }
+
+        p, li {
+            color: var(--color-text-light);
+        }
+
+        .teoria-box {
+            background-color: var(--color-secondary);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .highlight {
+            background-color: #fff;
+            padding: 10px;
+            border-left: 4px solid var(--color-primary);
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .dato-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 0.95rem;
+        }
+
+        .dato-box strong {
+            color: #856404;
+        }
+
+        .zona-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .zona-item {
+            background-color: #fff;
+            border: 1px solid var(--color-accent);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .zona-item strong {
+            color: var(--color-primary);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Estilos para el Quiz */
+        #quiz-container {
+            margin-top: 20px;
+        }
+
+        .question-block {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .question-block p {
+            font-weight: bold;
+            color: var(--color-text);
+            margin-top: 0;
+        }
+
+        .options label {
+            display: block;
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #f4f4f4;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .options label:hover {
+            background-color: var(--color-secondary);
+        }
+
+        .options input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .btn {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 10px 5px 10px 0;
+        }
+
+        .btn:hover {
+            background-color: #1f618d;
+        }
+
+        .btn-secondary {
+            background-color: var(--color-accent);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover {
+            background-color: #7dcea0;
+        }
+
+        #quiz-result {
+            margin-top: 20px;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .correct { background-color: #d4efdf; color: #1e8449; }
+        .incorrect { background-color: #fadbd8; color: #922b21; }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.5rem; }
+            .zona-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Comunidades Terrestres y Acuáticas</h1>
+    </header>
+
+    <h2>¿Por qué son importantes?</h2>
+    <p>Conocer las comunidades que ocupan los diversos ecosistemas es necesario para alcanzar un desarrollo sostenible, ya que brinda información de la capacidad de los recursos naturales de un territorio y promueve la conservación de especies de importancia ecológica, médica, económica y científica.</p>
+
+    <h2>Comunidades Acuáticas</h2>
+    <p>Las <strong>comunidades acuáticas</strong> son aquellas que se desarrollan en los cuerpos de agua: mares, océanos, estuarios, pantanos, ríos y lagos, entre otros.</p>
+
+    <div class="teoria-box">
+        <h3>Los Océanos</h3>
+        <p>Los océanos cumplen funciones vitales para el planeta:</p>
+        <ul>
+            <li>Regulan la temperatura global y crean las corrientes oceánicas y atmosféricas.</li>
+            <li>Sus organismos fotosintéticos producen la mayor parte del oxígeno en la Tierra.</li>
+            <li>Absorben una gran cantidad de dióxido de carbono, que se expulsa a la atmósfera.</li>
+        </ul>
+    </div>
+
+    <div class="teoria-box">
+        <h3>Sistemas de Aguas Continentales</h3>
+        <p>Además de los océanos, existen los sistemas de aguas continentales, que tienen una relación directa con los suelos y componentes abióticos que rodean al cuerpo de agua dulce. Por ello, están expuestos a las condiciones físico-químicas locales y se ven afectados por estas. Las aguas continentales están física y químicamente estratificadas en forma vertical y horizontal.</p>
+    </div>
+
+    <h3>Zonificación de un Lago</h3>
+    <p>Los cuerpos de agua continental poseen varias zonas en común con las aguas oceánicas. En la <strong>zona fótica</strong> es donde se encuentra la mayor variedad de especies acuáticas.</p>
+
+    <div class="zona-grid">
+        <div class="zona-item">
+            <strong>Zona Litoral</strong>
+            Zona cercana a la orilla
+        </div>
+        <div class="zona-item">
+            <strong>Zona Limnética</strong>
+            Zona de aguas abiertas iluminadas
+        </div>
+        <div class="zona-item">
+            <strong>Zona Fótica</strong>
+            Zona con luz, mayor variedad de especies
+        </div>
+        <div class="zona-item">
+            <strong>Zona Bentónica</strong>
+            Zona del fondo del cuerpo de agua
+        </div>
+        <div class="zona-item">
+            <strong>Zona Pelágica</strong>
+            Zona de mar abierto
+        </div>
+        <div class="zona-item">
+            <strong>Zona Afótica</strong>
+            Zona sin luz solar
+        </div>
+    </div>
+
+    <div class="dato-box">
+        <strong>💡 Ojo al dato:</strong> Las comunidades terrestres están presentes en tierra seca, continentes e islas. Hay diversos tipos, de acuerdo con la zona terrestre que pueblan, que va desde la costa hasta las zonas montañosas y la atmósfera.
+    </div>
+
+    <h2>Ecosistemas de Agua Dulce</h2>
+    <p>Los ecosistemas de agua dulce ocupan una porción relativamente pequeña en la superficie terrestre, sin embargo tienen una importante participación en el ciclo hidrológico: ayudan a reciclar la precipitación, que fluye como drenaje superficial hacia el océano.</p>
+
+    <h2>Comunidades Terrestres</h2>
+    <p>Para las <strong>comunidades terrestres</strong>, el suelo es el componente abiótico constante. A diferencia de los océanos, son fragmentadas en continentes e islas, rodeados por los mismos océanos, que son una barrera inaccesible para gran cantidad de animales y plantas.</p>
+
+    <h2>Evalúa tu comprensión</h2>
+    <p>Responde las siguientes 3 preguntas. Cada vez que inicies un nuevo cuestionario, las preguntas se seleccionarán al azar de un banco de 20.</p>
+
+    <button class="btn" onclick="generarQuiz()">Iniciar / Nuevo Cuestionario</button>
+    
+    <div id="quiz-container"></div>
+    
+    <button class="btn btn-secondary" id="btn-check" onclick="calificarQuiz()" style="display:none;">Calificar Respuestas</button>
+    
+    <div id="quiz-result"></div>
+
+</div>
+
+<script>
+    const bancoPreguntas = [
+        { q: "¿Qué son las comunidades acuáticas?", options: ["Comunidades que viven en tierra", "Comunidades que se desarrollan en cuerpos de agua", "Comunidades que viven en el aire", "Comunidades que viven en el subsuelo"], correct: 1 },
+        { q: "¿Cuál de los siguientes NO es un cuerpo de agua donde se desarrollan comunidades acuáticas?", options: ["Océanos", "Estuarios", "Desiertos", "Lagos"], correct: 2 },
+        { q: "¿Qué función cumplen los océanos respecto a la temperatura global?", options: ["La aumentan", "La disminuyen", "La regulan", "No tienen efecto"], correct: 2 },
+        { q: "¿Qué producen los organismos fotosintéticos oceánicos?", options: ["La mayor parte del dióxido de carbono", "La mayor parte del oxígeno en la Tierra", "La mayor parte del nitrógeno", "La mayor parte del hidrógeno"], correct: 1 },
+        { q: "¿Qué gas absorben los océanos en gran cantidad?", options: ["Oxígeno", "Nitrógeno", "Dióxido de carbono", "Helio"], correct: 2 },
+        { q: "¿Con qué tienen relación directa los sistemas de aguas continentales?", options: ["Con el aire", "Con los suelos y componentes abióticos", "Con el espacio", "Con el magma"], correct: 1 },
+        { q: "¿Cómo están estratificadas las aguas continentales?", options: ["Solo verticalmente", "Solo horizontalmente", "En forma vertical y horizontal", "No están estratificadas"], correct: 2 },
+        { q: "¿En qué zona de un lago se encuentra la mayor variedad de especies acuáticas?", options: ["Zona afótica", "Zona bentónica", "Zona fótica", "Zona pelágica"], correct: 2 },
+        { q: "¿Qué es la zona litoral?", options: ["La zona del fondo", "La zona cercana a la orilla", "La zona sin luz", "La zona de mar abierto"], correct: 1 },
+        { q: "¿Qué es la zona bentónica?", options: ["La zona del fondo del cuerpo de agua", "La zona de la superficie", "La zona con más luz", "La zona más cálida"], correct: 0 },
+        { q: "¿Qué caracteriza a la zona afótica?", options: ["Tiene mucha luz", "No tiene luz solar", "Tiene muchas plantas", "Es la más cálida"], correct: 1 },
+        { q: "¿Qué porcentaje de la superficie terrestre ocupan los ecosistemas de agua dulce?", options: ["Una porción grande", "Una porción relativamente pequeña", "La mitad", "Tres cuartas partes"], correct: 1 },
+        { q: "¿En qué ciclo participan activamente los ecosistemas de agua dulce?", options: ["Ciclo del nitrógeno", "Ciclo del carbono", "Ciclo hidrológico", "Ciclo del fósforo"], correct: 2 },
+        { q: "¿Cuál es el componente abiótico constante en las comunidades terrestres?", options: ["El agua", "El aire", "El suelo", "La luz"], correct: 2 },
+        { q: "¿Cómo son las comunidades terrestres a diferencia de los océanos?", options: ["Continuas", "Fragmentadas en continentes e islas", "Uniformes", "Homogéneas"], correct: 1 },
+        { q: "¿Qué son los océanos para gran cantidad de animales y plantas terrestres?", options: ["Un hogar", "Una barrera inaccesible", "Un puente", "Un recurso"], correct: 1 },
+        { q: "¿Dónde están presentes las comunidades terrestres?", options: ["Solo en continentes", "Solo en islas", "En tierra seca, continentes e islas", "Solo en montañas"], correct: 2 },
+        { q: "¿Qué promueve el conocimiento de las comunidades ecosistémicas?", options: ["La destrucción de especies", "La conservación de especies", "La contaminación", "La urbanización"], correct: 1 },
+        { q: "¿Qué tipo de importancia tiene el conocimiento de las comunidades?", options: ["Solo ecológica", "Solo económica", "Ecológica, médica, económica y científica", "Solo científica"], correct: 2 },
+        { q: "¿Qué zona de un lago corresponde a las aguas abiertas iluminadas?", options: ["Zona litoral", "Zona limnética", "Zona bentónica", "Zona afótica"], correct: 1 }
+    ];
+
+    let preguntasActuales = [];
+
+    function mezclarArray(array) {
+        let arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function generarQuiz() {
+        const mezcladas = mezclarArray(bancoPreguntas);
+        preguntasActuales = mezcladas.slice(0, 3);
+        
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = '';
+        document.getElementById('quiz-result').style.display = 'none';
+        document.getElementById('btn-check').style.display = 'inline-block';
+
+        preguntasActuales.forEach((pregunta, index) => {
+            let html = `
+                <div class="question-block">
+                    <p>${index + 1}. ${pregunta.q}</p>
+                    <div class="options">
+            `;
+            pregunta.options.forEach((opt, optIndex) => {
+                html += `
+                    <label>
+                        <input type="radio" name="q${index}" value="${optIndex}">
+                        ${opt}
+                    </label>
+                `;
+            });
+            html += `</div></div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function calificarQuiz() {
+        let puntaje = 0;
+        preguntasActuales.forEach((pregunta, index) => {
+            const seleccion = document.querySelector(`input[name="q${index}"]:checked`);
+            if (seleccion && parseInt(seleccion.value) === pregunta.correct) {
+                puntaje++;
+            }
+        });
+
+        const resultDiv = document.getElementById('quiz-result');
+        resultDiv.style.display = 'block';
+        resultDiv.className = puntaje === 3 ? 'correct' : 'incorrect';
+        
+        let mensaje = `Obtuviste ${puntaje} de 3 respuestas correctas. `;
+        if (puntaje === 3) mensaje += "¡Excelente trabajo!";
+        else if (puntaje === 2) mensaje += "¡Buen trabajo! Repasa los errores.";
+        else mensaje += "Te sugiero repasar la teoría e intentarlo de nuevo.";
+        
+        resultDiv.innerText = mensaje;
+        document.getElementById('btn-check').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
