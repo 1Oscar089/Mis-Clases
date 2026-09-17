@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dinámica de Ecosistemas y Ciclos Biogeoquímicos</title>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-primary: #2980b9;
+            --color-secondary: #d4efdf;
+            --color-accent: #a9dfbf;
+            --color-text: #2c3e50;
+            --color-text-light: #555555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--color-primary);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--color-primary);
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        h2 {
+            color: var(--color-primary);
+            border-left: 5px solid var(--color-accent);
+            padding-left: 10px;
+            margin-top: 35px;
+        }
+
+        h3 {
+            color: var(--color-text);
+            margin-bottom: 5px;
+        }
+
+        p, li {
+            color: var(--color-text-light);
+        }
+
+        .teoria-box {
+            background-color: var(--color-secondary);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .highlight {
+            background-color: #fff;
+            padding: 10px;
+            border-left: 4px solid var(--color-primary);
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .cadena-alimenticia {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .nivel-trofico {
+            background-color: var(--color-secondary);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+            max-width: 150px;
+        }
+
+        .nivel-trofico strong {
+            display: block;
+            color: var(--color-primary);
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .nivel-trofico span {
+            font-size: 0.85rem;
+            color: var(--color-text-light);
+        }
+
+        .flecha {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            color: var(--color-primary);
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            max-width: 100%;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .transcripcion {
+            background-color: #f9f9f9;
+            border: 1px solid var(--color-accent);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .transcripcion h4 {
+            color: var(--color-primary);
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        .transcripcion h4:first-child {
+            margin-top: 0;
+        }
+
+        .transcripcion p {
+            margin: 10px 0;
+            font-size: 0.95rem;
+        }
+
+        .transcripcion strong {
+            color: var(--color-text);
+        }
+
+        /* Estilos para el Quiz */
+        #quiz-container {
+            margin-top: 20px;
+        }
+
+        .question-block {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .question-block p {
+            font-weight: bold;
+            color: var(--color-text);
+            margin-top: 0;
+        }
+
+        .options label {
+            display: block;
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #f4f4f4;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .options label:hover {
+            background-color: var(--color-secondary);
+        }
+
+        .options input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .btn {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 10px 5px 10px 0;
+        }
+
+        .btn:hover {
+            background-color: #1f618d;
+        }
+
+        .btn-secondary {
+            background-color: var(--color-accent);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover {
+            background-color: #7dcea0;
+        }
+
+        #quiz-result {
+            margin-top: 20px;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .correct { background-color: #d4efdf; color: #1e8449; }
+        .incorrect { background-color: #fadbd8; color: #922b21; }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.5rem; }
+            .cadena-alimenticia { flex-direction: column; align-items: center; }
+            .flecha { transform: rotate(90deg); margin: 5px 0; }
+            .nivel-trofico { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Dinámica de Ecosistemas y Ciclos Biogeoquímicos</h1>
+    </header>
+
+    <h2>Flujo de Energía en los Ecosistemas</h2>
+    <p>Independientemente de su tamaño, la dinámica de los ecosistemas envuelve dos procesos fundamentales: el <strong>flujo de energía</strong> y los <strong>ciclos de la materia</strong>. Tanto la energía como la materia se transforman en los ecosistemas mediante la fotosíntesis y las relaciones de alimentación.</p>
+
+    <div class="teoria-box">
+        <h3>Cadenas Alimenticias</h3>
+        <p>El flujo de la energía en los ecosistemas ocurre por medio de las cadenas alimenticias. La energía, principalmente proveniente del Sol, entra a los ecosistemas por medio de los <strong>productores primarios</strong>, los cuales capturan la energía solar por medio de la fotosíntesis. Dentro de los productores primarios se encuentran las plantas, las algas y las cianobacterias.</p>
+    </div>
+
+    <div class="teoria-box">
+        <h3>Consumidores</h3>
+        <p>Los organismos que se alimentan de los productos primarios reciben el nombre de <strong>consumidores</strong>; esto incluye animales herbívoros, como los roedores en los ecosistemas terrestres o como el zooplancton en los ecosistemas acuáticos. Los consumidores se clasifican como:</p>
+        <ul>
+            <li><strong>Primarios:</strong> cuando se alimentan directamente de los productores</li>
+            <li><strong>Secundarios:</strong> cuando se alimentan de los consumidores primarios</li>
+            <li><strong>Terciarios:</strong> cuando se alimentan de los consumidores secundarios</li>
+        </ul>
+    </div>
+
+    <div class="teoria-box">
+        <h3>Descomponedores</h3>
+        <p>Los <strong>descomponedores</strong> o saprótrofos son organismos microscópicos de los ecosistemas que se encargan de descomponer las moléculas de los restos de todos los organismos de la cadena alimentaria; de esta forma se abastecen de energía y nutrientes. Los descomponedores son principalmente hongos y bacterias.</p>
+    </div>
+
+    <h3>Ejemplo de Cadena Alimenticia</h3>
+    <div class="cadena-alimenticia">
+        <div class="nivel-trofico">
+            <strong>Primer nivel</strong>
+            <span>Productores</span>
+        </div>
+        <div class="flecha">→</div>
+        <div class="nivel-trofico">
+            <strong>Segundo nivel</strong>
+            <span>Consumidores primarios</span>
+        </div>
+        <div class="flecha">→</div>
+        <div class="nivel-trofico">
+            <strong>Tercer nivel</strong>
+            <span>Consumidores secundarios</span>
+        </div>
+        <div class="flecha">→</div>
+        <div class="nivel-trofico">
+            <strong>Cuarto nivel</strong>
+            <span>Consumidores terciarios</span>
+        </div>
+        <div class="flecha">→</div>
+        <div class="nivel-trofico">
+            <strong>Final</strong>
+            <span>Descomponedores</span>
+        </div>
+    </div>
+
+    <h2>Ciclos de la Materia</h2>
+    <p>Los ciclos de la materia se refieren al movimiento que tiene la materia desde un organismo a otro, y desde los organismos al ambiente abiótico y viceversa. Este movimiento es cíclico e implica interacciones biológicas, geológicas y químicas, por lo que reciben el nombre de <strong>ciclos biogeoquímicos</strong>.</p>
+
+    <p>En estos ciclos, los elementos químicos, como el carbono y el nitrógeno, circulan entre componentes bióticos y abióticos del ecosistema. Los organismos que hacen fotosíntesis asimilan estos elementos químicos a partir del suelo, el aire y el agua y los incorporan a sus propios cuerpos. Luego estos elementos son devueltos al ambiente por medio de los procesos metabólicos internos de plantas y animales, y por medio de la función de los organismos descomponedores.</p>
+
+    <h2>Video: Ciclos Biogeoquímicos</h2>
+    <p>En el siguiente video puedes conocer un poco más sobre los ciclos biogeoquímicos:</p>
+
+    <div class="video-container">
+        <iframe src="https://www.youtube.com/embed/_Kmlr3V10SU" title="Ciclos Biogeoquímicos" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+
+    <h3>Resumen del Video</h3>
+    <div class="transcripcion">
+        <h4>Introducción</h4>
+        <p>Los ciclos biogeoquímicos son procesos naturales esenciales para la vida en la Tierra, permitiendo la transformación de recursos como el oxígeno, el agua, el nitrógeno y el fósforo. Se basan en la <strong>ley de conservación de la materia</strong>: la energía no se crea ni se destruye, solo se transforma.</p>
+
+        <h4>Ejemplo del árbol</h4>
+        <p>Las hojas caídas se descomponen mediante procesos microbiológicos, enriqueciendo el suelo y alimentando al mismo árbol, demostrando la recirculación natural de recursos.</p>
+
+        <h4>Ciclo del agua</h4>
+        <p>El agua cubre el <strong>70% de la superficie terrestre</strong>. Pasa por estados de transformación en la atmósfera (nubes) y se precipita (lluvia, granizo, neblina). Es captada por seres vivos y vuelve a la atmósfera por evaporación o evapotranspiración. El ser humano debe gestionar este recurso de forma racional y eficiente.</p>
+
+        <h4>Ciclo del carbono</h4>
+        <p>Es esencial para la generación de oxígeno y el crecimiento de las plantas. Existe en forma <strong>inorgánica</strong> (rocas, manto terrestre) y <strong>orgánica</strong> (seres vivos). Las plantas fijan el CO₂ atmosférico mediante la fotosíntesis y liberan oxígeno. El carbono regresa al ambiente por respiración o descomposición, aunque actividades humanas (combustibles fósiles, deforestación) pueden alterar este equilibrio.</p>
+
+        <h4>Conclusión</h4>
+        <p>Todos los ciclos representan la circularidad de la materia y energía, principio que busca implementar la <strong>economía circular</strong>.</p>
+    </div>
+
+    <h2>Evalúa tu comprensión</h2>
+    <p>Responde las siguientes 5 preguntas. Cada vez que inicies un nuevo cuestionario, las preguntas se seleccionarán al azar de un banco de 20.</p>
+
+    <button class="btn" onclick="generarQuiz()">Iniciar / Nuevo Cuestionario</button>
+    
+    <div id="quiz-container"></div>
+    
+    <button class="btn btn-secondary" id="btn-check" onclick="calificarQuiz()" style="display:none;">Calificar Respuestas</button>
+    
+    <div id="quiz-result"></div>
+
+</div>
+
+<script>
+    const bancoPreguntas = [
+        { q: "¿Cuáles son los dos procesos fundamentales en la dinámica de los ecosistemas?", options: ["Fotosíntesis y respiración", "Flujo de energía y ciclos de la materia", "Evaporación y condensación", "Producción y consumo"], correct: 1 },
+        { q: "¿De dónde proviene principalmente la energía en los ecosistemas?", options: ["Del suelo", "Del agua", "Del Sol", "Del aire"], correct: 2 },
+        { q: "¿Qué organismos capturan la energía solar mediante la fotosíntesis?", options: ["Consumidores", "Descomponedores", "Productores primarios", "Herbívoros"], correct: 2 },
+        { q: "¿Cuáles de los siguientes son productores primarios?", options: ["Animales herbívoros", "Hongos y bacterias", "Plantas, algas y cianobacterias", "Roedores"], correct: 2 },
+        { q: "¿Qué son los consumidores primarios?", options: ["Organismos que se alimentan de otros consumidores", "Organismos que se alimentan directamente de los productores", "Organismos que descomponen materia orgánica", "Organismos que hacen fotosíntesis"], correct: 1 },
+        { q: "¿Qué incluye a los consumidores?", options: ["Solo animales herbívoros", "Solo animales carnívoros", "Animales herbívoros y zooplancton", "Solo organismos terrestres"], correct: 2 },
+        { q: "¿Qué son los descomponedores o saprótrofos?", options: ["Organismos que producen energía", "Organismos microscópicos que descomponen restos de organismos", "Organismos que hacen fotosíntesis", "Organismos que consumen productores"], correct: 1 },
+        { q: "¿Cuáles son principalmente los descomponedores?", options: ["Plantas y algas", "Animales herbívoros", "Hongos y bacterias", "Cianobacterias"], correct: 2 },
+        { q: "¿Qué reciben el nombre de ciclos biogeoquímicos?", options: ["Los ciclos de energía", "Los ciclos de la materia", "Los ciclos del agua", "Los ciclos del carbono"], correct: 1 },
+        { q: "¿Qué implican los ciclos biogeoquímicos?", options: ["Solo interacciones biológicas", "Solo interacciones químicas", "Interacciones biológicas, geológicas y químicas", "Solo interacciones geológicas"], correct: 2 },
+        { q: "¿Qué elementos químicos circulan en los ciclos biogeoquímicos?", options: ["Solo oxígeno", "Solo carbono", "Carbono y nitrógeno, entre otros", "Solo nitrógeno"], correct: 2 },
+        { q: "¿De dónde asimilan los elementos químicos los organismos que hacen fotosíntesis?", options: ["Solo del suelo", "Solo del aire", "Del suelo, el aire y el agua", "Solo del agua"], correct: 2 },
+        { q: "¿Qué porcentaje de la superficie terrestre cubre el agua?", options: ["50%", "60%", "70%", "80%"], correct: 2 },
+        { q: "¿Cómo vuelve el agua a la atmósfera?", options: ["Solo por evaporación", "Solo por transpiración", "Por evaporación o evapotranspiración", "Por condensación"], correct: 2 },
+        { q: "¿En qué formas existe el carbono?", options: ["Solo orgánica", "Solo inorgánica", "Inorgánica y orgánica", "Solo gaseosa"], correct: 2 },
+        { q: "¿Qué fijan las plantas mediante la fotosíntesis?", options: ["Oxígeno", "Nitrógeno", "CO₂ atmosférico", "Agua"], correct: 2 },
+        { q: "¿Cómo regresa el carbono al ambiente?", options: ["Solo por fotosíntesis", "Por respiración o descomposición", "Solo por evaporación", "Por condensación"], correct: 1 },
+        { q: "¿Qué actividades humanas pueden alterar el ciclo del carbono?", options: ["Agricultura sostenible", "Combustibles fósiles y deforestación", "Reciclaje", "Energía solar"], correct: 1 },
+        { q: "¿Qué principio busca implementar la economía circular?", options: ["La linealidad de recursos", "La circularidad de la materia y energía", "El consumo masivo", "La producción industrial"], correct: 1 },
+        { q: "¿En qué se basan los ciclos biogeoquímicos?", options: ["Ley de la gravedad", "Ley de conservación de la materia", "Ley de Newton", "Ley de termodinámica"], correct: 1 }
+    ];
+
+    let preguntasActuales = [];
+
+    function mezclarArray(array) {
+        let arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function generarQuiz() {
+        const mezcladas = mezclarArray(bancoPreguntas);
+        preguntasActuales = mezcladas.slice(0, 5);
+        
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = '';
+        document.getElementById('quiz-result').style.display = 'none';
+        document.getElementById('btn-check').style.display = 'inline-block';
+
+        preguntasActuales.forEach((pregunta, index) => {
+            let html = `
+                <div class="question-block">
+                    <p>${index + 1}. ${pregunta.q}</p>
+                    <div class="options">
+            `;
+            pregunta.options.forEach((opt, optIndex) => {
+                html += `
+                    <label>
+                        <input type="radio" name="q${index}" value="${optIndex}">
+                        ${opt}
+                    </label>
+                `;
+            });
+            html += `</div></div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function calificarQuiz() {
+        let puntaje = 0;
+        preguntasActuales.forEach((pregunta, index) => {
+            const seleccion = document.querySelector(`input[name="q${index}"]:checked`);
+            if (seleccion && parseInt(seleccion.value) === pregunta.correct) {
+                puntaje++;
+            }
+        });
+
+        const resultDiv = document.getElementById('quiz-result');
+        resultDiv.style.display = 'block';
+        resultDiv.className = puntaje >= 3 ? 'correct' : 'incorrect';
+        
+        let mensaje = `Obtuviste ${puntaje} de 5 respuestas correctas. `;
+        if (puntaje === 5) mensaje += "¡Excelente trabajo!";
+        else if (puntaje >= 3) mensaje += "¡Buen trabajo! Repasa los errores.";
+        else mensaje += "Te sugiero repasar la teoría e intentarlo de nuevo.";
+        
+        resultDiv.innerText = mensaje;
+        document.getElementById('btn-check').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
