@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Class - Days of the Week</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #8e24aa;
+        }
+
+        .section h2 {
+            color: #6a1b9a;
+            margin-bottom: 20px;
+            font-size: 2em;
+            border-bottom: 2px solid #e1bee7;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #7b1fa2;
+            margin: 20px 0 10px 0;
+        }
+
+        .theory-content {
+            background: #f3e5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .vocabulary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .vocab-card {
+            background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+
+        .vocab-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .vocab-card strong {
+            font-size: 1.3em;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .example-box {
+            background: #ede7f6;
+            border-left: 4px solid #6a1b9a;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .example-box em {
+            color: #6a1b9a;
+            font-style: italic;
+        }
+
+        .exercise {
+            background: #fafafa;
+            border: 2px solid #e1bee7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .exercise h4 {
+            color: #6a1b9a;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .exercise input, .exercise select {
+            padding: 10px;
+            border: 2px solid #ce93d8;
+            border-radius: 5px;
+            margin: 5px;
+            font-size: 1em;
+            width: 200px;
+        }
+
+        .exercise input:focus, .exercise select:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .btn {
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-check {
+            background: #43a047;
+        }
+
+        .btn-check:hover {
+            background: #2e7d32;
+        }
+
+        .feedback {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .feedback.correct {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 1px solid #43a047;
+        }
+
+        .feedback.incorrect {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 1px solid #e53935;
+        }
+
+        .quiz-container {
+            background: #f3e5f5;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .quiz-question {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 2px solid #ce93d8;
+        }
+
+        .quiz-question p {
+            font-weight: bold;
+            color: #6a1b9a;
+            margin-bottom: 15px;
+        }
+
+        .quiz-options label {
+            display: block;
+            padding: 10px;
+            margin: 8px 0;
+            background: #ede7f6;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quiz-options label:hover {
+            background: #e1bee7;
+        }
+
+        .quiz-options input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .score-display {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.5em;
+            display: none;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 30px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #8e24aa 0%, #6a1b9a 100%);
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            
+            .section {
+                padding: 20px;
+            }
+            
+            .vocabulary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📚 English Class</h1>
+        <p>Days of the Week - Learn English</p>
+    </header>
+
+    <div class="container">
+        <!-- Theory Section -->
+        <div class="section" id="theory">
+            <h2>📖 Theory</h2>
+            <div class="theory-content">
+                <h3>What are the Days of the Week?</h3>
+                <p>In English, the week consists of <strong>seven days</strong>. These days are used to organize our time and schedule activities.</p>
+                
+                <h3>Important Rules:</h3>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Days of the week are always capitalized in English (Monday, Tuesday, etc.)</li>
+                    <li>We use the preposition <strong>"on"</strong> with days: "on Monday", "on Friday"</li>
+                    <li>The week starts on <strong>Sunday</strong> or <strong>Monday</strong> depending on the country</li>
+                    <li>Weekdays: Monday to Friday (work/school days)</li>
+                    <li>Weekend: Saturday and Sunday (rest days)</li>
+                </ul>
+
+                <h3>Abbreviations:</h3>
+                <p>Days can be abbreviated: Mon, Tue, Wed, Thu, Fri, Sat, Sun</p>
+            </div>
+        </div>
+
+        <!-- Vocabulary Section -->
+        <div class="section" id="vocabulary">
+            <h2> Vocabulary</h2>
+            <div class="vocabulary-grid">
+                <div class="vocab-card">
+                    <strong>Monday</strong>
+                    <span>First weekday</span>
+                </div>
+                <div class="vocab-card">
+                    <strong>Tuesday</strong>
+                    <span>Second weekday</span>
+                </div>
+                <div class="vocab-card">
+                    <strong>Wednesday</strong>
+                    <span>Middle of week</span>
+                </div>
+                <div class="vocab-card">
+                    <strong>Thursday</strong>
+                    <span>Fourth weekday</span>
+                </div>
+                <div class="vocab-card">
+                    <strong>Friday</strong>
+                    <span>Last weekday</span>
+                </div>
+                <div class="vocab-card">
+                    <strong>Saturday</strong>
+                    <span>First weekend day</span>
+                </div>
+                <div class="vocab-card">
+                    <strong>Sunday</strong>
+                    <span>Last day of week</span>
+                </div>
+            </div>
+            
+            <h3>Related Words:</h3>
+            <div class="theory-content">
+                <p><strong>Weekday</strong> - Monday to Friday</p>
+                <p><strong>Weekend</strong> - Saturday and Sunday</p>
+                <p><strong>Today</strong> - The current day</p>
+                <p><strong>Tomorrow</strong> - The next day</p>
+                <p><strong>Yesterday</strong> - The previous day</p>
+            </div>
+        </div>
+
+        <!-- Examples Section -->
+        <div class="section" id="examples">
+            <h2>💡 Examples</h2>
+            
+            <div class="example-box">
+                <p><strong>1.</strong> <em>Today is Monday.</em></p>
+                <p>Hoy es lunes.</p>
+            </div>
+
+            <div class="example-box">
+                <p><strong>2.</strong> <em>I go to school on Tuesday and Thursday.</em></p>
+                <p>Voy a la escuela los martes y jueves.</p>
+            </div>
+
+            <div class="example-box">
+                <p><strong>3.</strong> <em>What day is tomorrow?</em></p>
+                <p>¿Qué día es mañana?</p>
+            </div>
+
+            <div class="example-box">
+                <p><strong>4.</strong> <em>We don't work on weekends.</em></p>
+                <p>No trabajamos los fines de semana.</p>
+            </div>
+
+            <div class="example-box">
+                <p><strong>5.</strong> <em>My birthday is on Friday.</em></p>
+                <p>Mi cumpleaños es el viernes.</p>
+            </div>
+
+            <div class="example-box">
+                <p><strong>6.</strong> <em>Wednesday is the middle of the week.</em></p>
+                <p>El miércoles es la mitad de la semana.</p>
+            </div>
+        </div>
+
+        <!-- Exercises Section -->
+        <div class="section" id="exercises">
+            <h2>✏️ Exercises</h2>
+            
+            <!-- Exercise 1 -->
+            <div class="exercise" id="exercise1">
+                <h4>Exercise 1: Fill in the blank</h4>
+                <p>Complete: Today is ______ (lunes)</p>
+                <input type="text" id="ex1-input" placeholder="Type your answer">
+                <button class="btn btn-check" onclick="checkExercise1()">Check</button>
+                <div id="ex1-feedback" class="feedback"></div>
+            </div>
+
+            <!-- Exercise 2 -->
+            <div class="exercise" id="exercise2">
+                <h4>Exercise 2: Unscramble the day</h4>
+                <p>Unscramble: y-a-d-s-e-u-T</p>
+                <input type="text" id="ex2-input" placeholder="Type the correct day">
+                <button class="btn btn-check" onclick="checkExercise2()">Check</button>
+                <div id="ex2-feedback" class="feedback"></div>
+            </div>
+
+            <!-- Exercise 3 -->
+            <div class="exercise" id="exercise3">
+                <h4>Exercise 3: Multiple choice</h4>
+                <p>What day comes after Wednesday?</p>
+                <select id="ex3-select">
+                    <option value="">Select an option</option>
+                    <option value="tuesday">Tuesday</option>
+                    <option value="thursday">Thursday</option>
+                    <option value="friday">Friday</option>
+                </select>
+                <button class="btn btn-check" onclick="checkExercise3()">Check</button>
+                <div id="ex3-feedback" class="feedback"></div>
+            </div>
+
+            <!-- Exercise 4 -->
+            <div class="exercise" id="exercise4">
+                <h4>Exercise 4: Translation</h4>
+                <p>Translate to English: "El sábado es fin de semana"</p>
+                <input type="text" id="ex4-input" placeholder="Type your translation" style="width: 100%; max-width: 500px;">
+                <button class="btn btn-check" onclick="checkExercise4()">Check</button>
+                <div id="ex4-feedback" class="feedback"></div>
+            </div>
+
+            <!-- Exercise 5 -->
+            <div class="exercise" id="exercise5">
+                <h4>Exercise 5: True or False</h4>
+                <p>Days of the week are written in lowercase in English.</p>
+                <select id="ex5-select">
+                    <option value="">Select True or False</option>
+                    <option value="true">True</option>
+                    <option value="false">False</option>
+                </select>
+                <button class="btn btn-check" onclick="checkExercise5()">Check</button>
+                <div id="ex5-feedback" class="feedback"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div class="section" id="quiz">
+            <h2>🎯 Quiz</h2>
+            <p>Test your knowledge! You'll get 3 random questions from a bank of 20.</p>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar">0%</div>
+            </div>
+
+            <div class="quiz-container" id="quizContainer">
+                <div id="quizQuestions"></div>
+                <button class="btn" onclick="generateQuiz()">Generate New Quiz</button>
+                <button class="btn btn-check" onclick="checkQuiz()">Submit Answers</button>
+            </div>
+
+            <div class="score-display" id="scoreDisplay"></div>
+        </div>
+    </div>
+
+    <script>
+        // Quiz Bank - 20 Questions
+        const quizBank = [
+            {
+                question: "What is the first day of the week?",
+                options: ["Monday", "Sunday", "Saturday", "Tuesday"],
+                correct: 1
+            },
+            {
+                question: "Which day comes after Friday?",
+                options: ["Thursday", "Saturday", "Sunday", "Monday"],
+                correct: 1
+            },
+            {
+                question: "How do you say 'miércoles' in English?",
+                options: ["Tuesday", "Thursday", "Wednesday", "Friday"],
+                correct: 2
+            },
+            {
+                question: "What day is the weekend?",
+                options: ["Monday and Tuesday", "Wednesday and Thursday", "Saturday and Sunday", "Friday and Saturday"],
+                correct: 2
+            },
+            {
+                question: "Which preposition do we use with days?",
+                options: ["in", "at", "on", "by"],
+                correct: 2
+            },
+            {
+                question: "What is the abbreviation for Thursday?",
+                options: ["Tu", "Th", "Thur", "Thu"],
+                correct: 3
+            },
+            {
+                question: "How many days are in a week?",
+                options: ["5", "6", "7", "8"],
+                correct: 2
+            },
+            {
+                question: "What day comes before Monday?",
+                options: ["Sunday", "Tuesday", "Saturday", "Friday"],
+                correct: 0
+            },
+            {
+                question: "Which is a weekday?",
+                options: ["Saturday", "Sunday", "Wednesday", "Both A and B"],
+                correct: 2
+            },
+            {
+                question: "What is the last day of the week?",
+                options: ["Friday", "Saturday", "Sunday", "Monday"],
+                correct: 2
+            },
+            {
+                question: "Translate: 'Hoy es martes'",
+                options: ["Today is Monday", "Today is Tuesday", "Today is Thursday", "Today is Wednesday"],
+                correct: 1
+            },
+            {
+                question: "Which day is in the middle of the week?",
+                options: ["Tuesday", "Wednesday", "Thursday", "Friday"],
+                correct: 1
+            },
+            {
+                question: "What do we call Saturday and Sunday together?",
+                options: ["Weekdays", "Workdays", "Weekend", "Holidays"],
+                correct: 2
+            },
+            {
+                question: "Are days of the week capitalized in English?",
+                options: ["Yes, always", "No, never", "Only sometimes", "Only Monday"],
+                correct: 0
+            },
+            {
+                question: "What day comes after Sunday?",
+                options: ["Saturday", "Monday", "Tuesday", "Friday"],
+                correct: 1
+            },
+            {
+                question: "Which is the correct spelling?",
+                options: ["Wensday", "Wendsday", "Wednesday", "Wednsday"],
+                correct: 2
+            },
+            {
+                question: "What is the third day of the week?",
+                options: ["Monday", "Tuesday", "Wednesday", "Thursday"],
+                correct: 2
+            },
+            {
+                question: "Complete: I work ___ Monday ___ Friday",
+                options: ["from / to", "on / on", "in / to", "at / until"],
+                correct: 0
+            },
+            {
+                question: "What is tomorrow if today is Thursday?",
+                options: ["Wednesday", "Thursday", "Friday", "Saturday"],
+                correct: 2
+            },
+            {
+                question: "Which day is NOT a weekday?",
+                options: ["Monday", "Friday", "Sunday", "Wednesday"],
+                correct: 2
+            }
+        ];
+
+        let currentQuiz = [];
+
+        // Exercise Validation Functions
+        function checkExercise1() {
+            const input = document.getElementById('ex1-input').value.toLowerCase().trim();
+            const feedback = document.getElementById('ex1-feedback');
+            const validAnswers = ['monday', 'lunes'];
+            
+            if (validAnswers.includes(input)) {
+                feedback.textContent = '✅ Correct! "Monday" is the English word for "lunes"';
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = '❌ Incorrect. The answer is "Monday"';
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function checkExercise2() {
+            const input = document.getElementById('ex2-input').value.toLowerCase().trim();
+            const feedback = document.getElementById('ex2-feedback');
+            
+            if (input === 'tuesday') {
+                feedback.textContent = '✅ Correct! Tuesday is the unscrambled word.';
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = '❌ Incorrect. The answer is "Tuesday"';
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function checkExercise3() {
+            const select = document.getElementById('ex3-select');
+            const feedback = document.getElementById('ex3-feedback');
+            
+            if (select.value === 'thursday') {
+                feedback.textContent = '✅ Correct! Thursday comes after Wednesday.';
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = '❌ Incorrect. Thursday comes after Wednesday.';
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function checkExercise4() {
+            const input = document.getElementById('ex4-input').value.toLowerCase().trim();
+            const feedback = document.getElementById('ex4-feedback');
+            const validAnswers = ['saturday is weekend', 'saturday is the weekend', 'saturday is a weekend day', 'saturday is the weekend day'];
+            
+            if (validAnswers.some(ans => input.includes(ans.replace(/\s/g, '')))) {
+                feedback.textContent = '✅ Correct! Good translation.';
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = '❌ Incorrect. Try: "Saturday is weekend" or "Saturday is the weekend"';
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function checkExercise5() {
+            const select = document.getElementById('ex5-select');
+            const feedback = document.getElementById('ex5-feedback');
+            
+            if (select.value === 'false') {
+                feedback.textContent = '✅ Correct! Days of the week are ALWAYS capitalized in English.';
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = '❌ Incorrect. Days of the week are ALWAYS capitalized in English (Monday, Tuesday, etc.)';
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        // Quiz Functions
+        function generateQuiz() {
+            // Shuffle and select 3 random questions
+            const shuffled = [...quizBank].sort(() => 0.5 - Math.random());
+            currentQuiz = shuffled.slice(0, 3);
+            
+            const container = document.getElementById('quizQuestions');
+            container.innerHTML = '';
+            
+            currentQuiz.forEach((q, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'quiz-question';
+                
+                let optionsHtml = '';
+                q.options.forEach((opt, optIndex) => {
+                    optionsHtml += `
+                        <label>
+                            <input type="radio" name="q${index}" value="${optIndex}">
+                            ${opt}
+                        </label>
+                    `;
+                });
+                
+                questionDiv.innerHTML = `
+                    <p>${index + 1}. ${q.question}</p>
+                    <div class="quiz-options">
+                        ${optionsHtml}
+                    </div>
+                    <div id="q${index}-feedback" class="feedback"></div>
+                `;
+                
+                container.appendChild(questionDiv);
+            });
+            
+            // Hide score display
+            document.getElementById('scoreDisplay').style.display = 'none';
+            updateProgress(0);
+        }
+
+        function checkQuiz() {
+            let score = 0;
+            let answered = 0;
+            
+            currentQuiz.forEach((q, index) => {
+                const selected = document.querySelector(`input[name="q${index}"]:checked`);
+                const feedback = document.getElementById(`q${index}-feedback`);
+                
+                if (selected) {
+                    answered++;
+                    if (parseInt(selected.value) === q.correct) {
+                        score++;
+                        feedback.textContent = '✅ Correct!';
+                        feedback.className = 'feedback correct';
+                    } else {
+                        feedback.textContent = ` Incorrect. The correct answer is: ${q.options[q.correct]}`;
+                        feedback.className = 'feedback incorrect';
+                    }
+                } else {
+                    feedback.textContent = '⚠️ Please answer this question';
+                    feedback.className = 'feedback incorrect';
+                }
+                feedback.style.display = 'block';
+            });
+            
+            // Update progress
+            const progress = (answered / 3) * 100;
+            updateProgress(progress);
+            
+            // Display score
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            scoreDisplay.textContent = `Your Score: ${score} out of 3 (${Math.round((score/3)*100)}%)`;
+            scoreDisplay.style.display = 'block';
+            
+            if (score === 3) {
+                scoreDisplay.style.background = 'linear-gradient(135deg, #43a047 0%, #66bb6a 100%)';
+            } else if (score === 2) {
+                scoreDisplay.style.background = 'linear-gradient(135deg, #ffa000 0%, #ffca28 100%)';
+            } else {
+                scoreDisplay.style.background = 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)';
+            }
+        }
+
+        function updateProgress(percent) {
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = Math.round(percent) + '%';
+        }
+
+        // Generate quiz on page load
+        window.onload = function() {
+            generateQuiz();
+        };
+    </script>
+</body>
+</html>
