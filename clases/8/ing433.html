@@ -120,14 +120,6 @@
             word-break: break-all;
         }
 
-        .translator-panel .google-translate-embed {
-            background: white;
-            border-radius: 10px;
-            padding: 10px;
-            margin-top: 15px;
-            min-height: 150px;
-        }
-
         .container {
             max-width: 1100px;
             margin: 0 auto;
@@ -326,16 +318,34 @@
             margin-bottom: 8px;
         }
 
-        .sentence-exercise input[type="text"] {
-            width: 100%;
+        .sentence-exercise .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .sentence-exercise .fixed-subject {
+            background: #8e24aa;
+            color: white;
+            padding: 12px 15px;
+            border-radius: 8px 0 0 8px;
+            font-weight: bold;
+            min-width: 80px;
+            text-align: center;
+            border: 2px solid #8e24aa;
+            border-right: none;
+        }
+
+        .sentence-exercise .editable-part {
+            flex: 1;
             padding: 12px 15px;
             border: 2px solid #ce93d8;
-            border-radius: 8px;
+            border-radius: 0 8px 8px 0;
             font-size: 1em;
             font-family: inherit;
         }
 
-        .sentence-exercise input[type="text"]:focus {
+        .sentence-exercise .editable-part:focus {
             outline: none;
             border-color: #8e24aa;
         }
@@ -419,6 +429,7 @@
             width: 100%;
             max-width: 500px;
             border-radius: 30px;
+            background: white;
         }
 
         .audio-container .play-hint {
@@ -562,15 +573,11 @@
             <div class="result-box" id="translatedText">Translation will appear here...</div>
         </div>
 
-        <div class="google-translate-embed">
-            <div id="google_translate_element"></div>
-        </div>
-
         <div class="api-info">
-            <strong>📋 API Info:</strong><br>
+            <strong> API Info:</strong><br>
             <small>Using Google Translate API</small><br>
             <code>translate.googleapis.com</code><br><br>
-            <strong> Tip:</strong> Select any text on the page and click translate to get the Spanish equivalent.
+            <strong> Tip:</strong> Type any text and click translate to get the Spanish equivalent.
         </div>
     </div>
 
@@ -712,9 +719,7 @@
         <div class="section" id="part2">
             <h2><span class="part-badge">Part II</span> Write Sentences with Frequency Adverbs</h2>
             <div class="instructions">
-                <strong>Instructions:</strong> Look at the percentages. Write full sentences in the simple present using the proper frequency adverbs and the correct form of the verbs given.
-                <br><br>
-                <strong>Example:</strong> 80% + listen to music → <em>"He usually listens to classical music."</em>
+                <strong>Instructions:</strong> Look at the percentages. Write full sentences in the simple present using the proper frequency adverbs and the correct form of the verbs given. The subject is already provided - complete the rest of the sentence.
             </div>
 
             <!-- Exercise 1 -->
@@ -725,21 +730,27 @@
                     <div class="verb">read books</div>
                 </div>
                 <div class="input-area">
-                    <label for="sent1">1. Write a sentence:</label>
-                    <input type="text" id="sent1" placeholder="e.g., She often reads books...">
+                    <label for="sent1">1. Complete the sentence:</label>
+                    <div class="input-wrapper">
+                        <span class="fixed-subject">She</span>
+                        <input type="text" class="editable-part" id="sent1" placeholder="often reads books...">
+                    </div>
                 </div>
             </div>
 
             <!-- Exercise 2 -->
             <div class="sentence-exercise">
                 <div class="example-box">
-                    <div class="emoji">✍️</div>
+                    <div class="emoji">️</div>
                     <div class="percent">50%</div>
                     <div class="verb">write poems</div>
                 </div>
                 <div class="input-area">
-                    <label for="sent2">2. Write a sentence:</label>
-                    <input type="text" id="sent2" placeholder="e.g., He sometimes writes poems...">
+                    <label for="sent2">2. Complete the sentence:</label>
+                    <div class="input-wrapper">
+                        <span class="fixed-subject">He</span>
+                        <input type="text" class="editable-part" id="sent2" placeholder="sometimes writes poems...">
+                    </div>
                 </div>
             </div>
 
@@ -751,34 +762,43 @@
                     <div class="verb">water plants</div>
                 </div>
                 <div class="input-area">
-                    <label for="sent3">3. Write a sentence:</label>
-                    <input type="text" id="sent3" placeholder="e.g., She never waters plants...">
+                    <label for="sent3">3. Complete the sentence:</label>
+                    <div class="input-wrapper">
+                        <span class="fixed-subject">She</span>
+                        <input type="text" class="editable-part" id="sent3" placeholder="never waters plants...">
+                    </div>
                 </div>
             </div>
 
             <!-- Exercise 4 -->
             <div class="sentence-exercise">
                 <div class="example-box">
-                    <div class="emoji">🛁</div>
+                    <div class="emoji"></div>
                     <div class="percent">25%</div>
                     <div class="verb">take a bath</div>
                 </div>
                 <div class="input-area">
-                    <label for="sent4">4. Write a sentence:</label>
-                    <input type="text" id="sent4" placeholder="e.g., He hardly ever takes a bath...">
+                    <label for="sent4">4. Complete the sentence:</label>
+                    <div class="input-wrapper">
+                        <span class="fixed-subject">He</span>
+                        <input type="text" class="editable-part" id="sent4" placeholder="hardly ever takes a bath...">
+                    </div>
                 </div>
             </div>
 
             <!-- Exercise 5 -->
             <div class="sentence-exercise">
                 <div class="example-box">
-                    <div class="emoji">🍳</div>
+                    <div class="emoji"></div>
                     <div class="percent">100%</div>
                     <div class="verb">cook</div>
                 </div>
                 <div class="input-area">
-                    <label for="sent5">5. Write a sentence:</label>
-                    <input type="text" id="sent5" placeholder="e.g., She always cooks...">
+                    <label for="sent5">5. Complete the sentence:</label>
+                    <div class="input-wrapper">
+                        <span class="fixed-subject">She</span>
+                        <input type="text" class="editable-part" id="sent5" placeholder="always cooks...">
+                    </div>
                 </div>
             </div>
 
@@ -802,7 +822,7 @@
                     <source src="https://docs.google.com/uc?export=download&id=1itpEea1VReOSL5EGEDIHpwklvNYvbIVM" type="audio/mpeg">
                     Your browser does not support the audio element.
                 </audio>
-                <div class="play-hint">💡 Click play to listen. You can replay it as many times as needed.</div>
+                <div class="play-hint"> Click play to listen. You can replay it as many times as needed.</div>
             </div>
 
             <table class="listening-table">
@@ -951,7 +971,7 @@
                 feedback.textContent = `👍 Good job! You got ${correct}/${total} correct. Review the ones marked in red and try again!`;
                 feedback.className = 'feedback correct';
             } else {
-                feedback.textContent = `📚 You got ${correct}/${total} correct. Keep practicing! Review the lesson and try again.`;
+                feedback.textContent = ` You got ${correct}/${total} correct. Keep practicing! Review the lesson and try again.`;
                 feedback.className = 'feedback incorrect';
             }
             feedback.style.display = 'block';
@@ -968,30 +988,30 @@
         }
 
         // ============ PART II - SENTENCES ============
-        function checkSentence(input, keywords, adverb) {
-            const text = input.toLowerCase().trim();
+        function normalizeText(text) {
+            // Remove extra spaces, convert to lowercase, trim
+            return text.toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        function checkSentence(input, subject, adverb, keywords) {
+            const text = normalizeText(input);
             if (!text) return false;
             
             // Check if adverb is present
-            const hasAdverb = text.includes(adverb.toLowerCase());
+            const hasAdverb = text.includes(normalizeText(adverb));
             // Check if key verb concept is present
-            const hasKeyword = keywords.some(k => text.includes(k));
-            // Check for basic sentence structure (has subject and verb)
-            const hasSubject = /^(he|she|it|they|we|i|you|maria|john|anna|person)/.test(text) || 
-                              text.includes(' he ') || text.includes(' she ') || text.includes(' they ');
-            const hasVerb = /\b(reads?|write?s?|water?s?|take?s?|cook|listen|play|go|do)\b/.test(text) ||
-                           /\b(reading|writing|watering|taking|cooking|listening|playing|going|doing)\b/.test(text);
-
-            return hasAdverb && hasKeyword && (hasSubject || hasVerb);
+            const hasKeyword = keywords.some(k => text.includes(normalizeText(k)));
+            
+            return hasAdverb && hasKeyword;
         }
 
         function checkPart2() {
             const exercises = [
-                { id: 'sent1', adverb: 'often', keywords: ['read', 'book', 'reading', 'books'] },
-                { id: 'sent2', adverb: 'sometimes', keywords: ['write', 'poem', 'writing', 'poems', 'wrote'] },
-                { id: 'sent3', adverb: 'never', keywords: ['water', 'plant', 'watering', 'plants', 'watered'] },
-                { id: 'sent4', adverb: 'hardly ever', keywords: ['take', 'bath', 'taking', 'baths', 'took'] },
-                { id: 'sent5', adverb: 'always', keywords: ['cook', 'cooking', 'cooked', 'cooks'] }
+                { id: 'sent1', subject: 'She', adverb: 'often', keywords: ['read', 'reads', 'reading', 'book', 'books'] },
+                { id: 'sent2', subject: 'He', adverb: 'sometimes', keywords: ['write', 'writes', 'writing', 'poem', 'poems', 'wrote'] },
+                { id: 'sent3', subject: 'She', adverb: 'never', keywords: ['water', 'waters', 'watering', 'plant', 'plants', 'watered'] },
+                { id: 'sent4', subject: 'He', adverb: 'hardly ever', keywords: ['take', 'takes', 'taking', 'bath', 'baths', 'took'] },
+                { id: 'sent5', subject: 'She', adverb: 'always', keywords: ['cook', 'cooking', 'cooked', 'cooks'] }
             ];
 
             let correct = 0;
@@ -1000,14 +1020,14 @@
 
             exercises.forEach(ex => {
                 const input = document.getElementById(ex.id);
-                if (!input.value.trim()) {
+                if (!normalizeText(input.value)) {
                     allAnswered = false;
                 }
             });
 
             if (!allAnswered) {
                 const feedback = document.getElementById('part2-feedback');
-                feedback.textContent = '️ Please complete all sentences before checking.';
+                feedback.textContent = '⚠️ Please complete all sentences before checking.';
                 feedback.className = 'feedback hint';
                 feedback.style.display = 'block';
                 return;
@@ -1015,7 +1035,7 @@
 
             exercises.forEach(ex => {
                 const input = document.getElementById(ex.id);
-                const isValid = checkSentence(input, ex.keywords, ex.adverb);
+                const isValid = checkSentence(input, ex.subject, ex.adverb, ex.keywords);
                 
                 if (isValid) {
                     correct++;
@@ -1052,10 +1072,6 @@
         }
 
         // ============ PART III - LISTENING ============
-        // Note: Since we cannot reveal correct answers, validation checks if all questions are answered
-        // The actual correct answers would be determined by the audio content
-        // For demonstration, we'll validate completion and provide general feedback
-        
         const part3CorrectAnswers = {
             q1: 'C',  // Margarita
             q2: 'C',  // She is a student
@@ -1107,7 +1123,7 @@
             }
             feedback.style.display = 'block';
 
-            scoreDisplay.textContent = ` Your Score: ${correct} out of ${total} (${Math.round((correct/total)*100)}%)`;
+            scoreDisplay.textContent = `Your Score: ${correct} out of ${total} (${Math.round((correct/total)*100)}%)`;
             scoreDisplay.style.display = 'block';
             
             if (correct === total) {
@@ -1143,18 +1159,6 @@
             });
         });
     </script>
-
-    <!-- Google Translate Widget -->
-    <script type="text/javascript">
-        function googleTranslateElementInit() {
-            new google.translate.TranslateElement({
-                pageLanguage: 'en',
-                includedLanguages: 'es',
-                layout: google.translate.TranslateElement.InlineLayout.SIMPLE
-            }, 'google_translate_element');
-        }
-    </script>
-    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
 </body>
 </html>
