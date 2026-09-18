@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Describing Cities: Adjectives & Vocabulary - Unit 4</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            line-height: 1.6;
+            padding-right: 320px;
+        }
+
+        /* Translator Panel - Fixed Right */
+        .translator-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(180deg, #6a1b9a 0%, #8e24aa 100%);
+            padding: 20px 15px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .translator-panel h3 {
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .translator-panel .translator-widget {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .translator-panel textarea {
+            width: 100%;
+            min-height: 100px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .translator-panel textarea:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .translator-panel .lang-labels {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            color: #6a1b9a;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .translator-panel .translate-btn {
+            width: 100%;
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+
+        .translator-panel .translate-btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+        }
+
+        .translator-panel .result-box {
+            background: #f3e5f5;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 80px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .translator-panel .api-info {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 0.85em;
+            margin-top: 15px;
+        }
+
+        .translator-panel .api-info code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            word-break: break-all;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        header .subtitle {
+            font-size: 1em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #8e24aa;
+        }
+
+        .section h2 {
+            color: #6a1b9a;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #e1bee7;
+            padding-bottom: 10px;
+        }
+
+        .section .instructions {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #8e24aa;
+        }
+
+        /* Part I - Unscramble */
+        .reading-passage {
+            background: #fafafa;
+            border: 2px solid #e1bee7;
+            border-radius: 12px;
+            padding: 25px;
+            line-height: 2.2;
+            font-size: 1.05em;
+        }
+
+        .blank-input {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 5px;
+        }
+
+        .blank-input input {
+            width: 150px;
+            padding: 8px 12px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 0.95em;
+            text-align: center;
+            font-family: inherit;
+        }
+
+        .blank-input input:focus {
+            outline: none;
+            border-color: #8e24aa;
+            background: #f3e5f5;
+        }
+
+        .blank-input input.correct {
+            border-color: #43a047;
+            background: #c8e6c9;
+        }
+
+        .blank-input input.incorrect {
+            border-color: #e53935;
+            background: #ffcdd2;
+        }
+
+        .scrambled-hint {
+            background: #8e24aa;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 5px;
+        }
+
+        /* Part II - Matching */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .matching-column h4 {
+            color: #6a1b9a;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .matching-item {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            padding: 12px 18px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+
+        .matching-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .matching-item .number {
+            background: #8e24aa;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .matching-item .letter {
+            background: #6a1b9a;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .matching-item select {
+            margin-left: auto;
+            padding: 8px 12px;
+            border: 2px solid #ce93d8;
+            border-radius: 20px;
+            font-size: 1em;
+            background: white;
+            color: #4a148c;
+            cursor: pointer;
+        }
+
+        .matching-item select:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .matching-item select.correct {
+            border-color: #43a047;
+            background: #c8e6c9;
+        }
+
+        .matching-item select.incorrect {
+            border-color: #e53935;
+            background: #ffcdd2;
+        }
+
+        .btn {
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-check {
+            background: #43a047;
+        }
+
+        .btn-check:hover {
+            background: #2e7d32;
+        }
+
+        .btn-reset {
+            background: #e53935;
+        }
+
+        .btn-reset:hover {
+            background: #c62828;
+        }
+
+        .feedback {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            font-weight: 500;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        .feedback.correct {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 2px solid #43a047;
+        }
+
+        .feedback.incorrect {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 2px solid #e53935;
+        }
+
+        .feedback.hint {
+            background: #fff9c4;
+            color: #f57f17;
+            border: 2px solid #fbc02d;
+        }
+
+        .part-badge {
+            display: inline-block;
+            background: #8e24aa;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-right: 10px;
+        }
+
+        .score-display {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.3em;
+            font-weight: bold;
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding-right: 0;
+            }
+            .translator-panel {
+                position: relative;
+                width: 100%;
+                height: auto;
+                border-radius: 0 0 15px 15px;
+            }
+            .matching-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            .section {
+                padding: 20px;
+            }
+            .blank-input input {
+                width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Fixed Translator Panel -->
+    <div class="translator-panel">
+        <h3>🌐 English → Spanish Translator</h3>
+        
+        <div class="translator-widget">
+            <div class="lang-labels">
+                <span>🇬🇧 English</span>
+                <span>🇪🇸 Español</span>
+            </div>
+            <textarea id="sourceText" placeholder="Type or paste English text here..."></textarea>
+            <button class="translate-btn" onclick="translateText()">Translate ▶</button>
+            <div class="result-box" id="translatedText">Translation will appear here...</div>
+        </div>
+
+        <div class="api-info">
+            <strong>📋 API Info:</strong><br>
+            <small>Using Google Translate API</small><br>
+            <code>translate.googleapis.com</code><br><br>
+            <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
+        </div>
+    </div>
+
+    <header>
+        <h1>️ Describing Cities</h1>
+        <p>Unit 4 - Adjectives & Vocabulary</p>
+        <div class="subtitle">Learn to describe urban spaces with powerful adjectives</div>
+    </header>
+
+    <div class="container">
+
+        <!-- PART I -->
+        <div class="section" id="part1">
+            <h2><span class="part-badge">Part I</span> Unscramble the Adjectives</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Fill in the blanks by unscrambling the letters to form adjectives. Read the passage about New York City and type the correct word for each blank.
+            </div>
+
+            <div class="reading-passage">
+                <p>
+                    New York City is a huge, 
+                    <span class="blank-input">
+                        <input type="text" id="blank1" data-answer="bustling">
+                        <span class="scrambled-hint">btsuglin</span>
+                    </span>
+                    metropolis that combines both 
+                    <span class="blank-input">
+                        <input type="text" id="blank2" data-answer="modern">
+                        <span class="scrambled-hint">dormen</span>
+                    </span>
+                    and old architecture, creating a 
+                    <span class="blank-input">
+                        <input type="text" id="blank3" data-answer="fantastic">
+                        <span class="scrambled-hint">citssnaf</span>
+                    </span>
+                    mix of history and innovation. The towering skyscrapers like the Empire State Building and One World Trade Center dominate the skyline, offering 
+                    <span class="blank-input">
+                        <input type="text" id="blank4" data-answer="amazing">
+                        <span class="scrambled-hint">zamagin</span>
+                    </span>
+                    views of the city below. In contrast, areas like Greenwich Village have 
+                    <span class="blank-input">
+                        <input type="text" id="blank5" data-answer="picturesque">
+                        <span class="scrambled-hint">quiteerupcs</span>
+                    </span>
+                    small streets lined with 
+                    <span class="blank-input">
+                        <input type="text" id="blank6" data-answer="lovely">
+                        <span class="scrambled-hint">veloly</span>
+                    </span>
+                    old townhouses that give the city a sense of charm.
+                </p>
+                <p>
+                    Times Square is a 
+                    <span class="blank-input">
+                        <input type="text" id="blank7" data-answer="crowded">
+                        <span class="scrambled-hint">wordedc</span>
+                    </span>
+                    and 
+                    <span class="blank-input">
+                        <input type="text" id="blank8" data-answer="noisy">
+                        <span class="scrambled-hint">sonyi</span>
+                    </span>
+                    spot in the city, filled with bright lights, flashing billboards, and constant movement, making it an 
+                    <span class="blank-input">
+                        <input type="text" id="blank9" data-answer="attractive">
+                        <span class="scrambled-hint">aacevirttt</span>
+                    </span>
+                    destination for tourists. Meanwhile, Central Park offers a cool, green escape from the big city, with its 
+                    <span class="blank-input">
+                        <input type="text" id="blank10" data-answer="beautiful">
+                        <span class="scrambled-hint">fulbiutea</span>
+                    </span>
+                    landscapes and quiet paths that feel worlds away from the urban rush.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 25px;">
+                <button class="btn btn-check" onclick="checkPart1()">✓ Check Answers</button>
+                <button class="btn btn-reset" onclick="resetPart1()">↺ Reset</button>
+            </div>
+            <div id="part1-feedback" class="feedback"></div>
+        </div>
+
+        <!-- PART II -->
+        <div class="section" id="part2">
+            <h2><span class="part-badge">Part II</span> Match Definitions</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Read the definitions and match them with the corresponding word. Select the correct letter (a-j) for each word (1-10).
+            </div>
+
+            <div class="matching-container">
+                <div class="matching-column">
+                    <h4>Words</h4>
+                    <div class="matching-item">
+                        <span class="number">1</span>
+                        <span>picturesque</span>
+                        <select id="match1">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                    <div class="matching-item">
+                        <span class="number">2</span>
+                        <span>lovely</span>
+                        <select id="match2">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                    <div class="matching-item">
+                        <span class="number">3</span>
+                        <span>modern</span>
+                        <select id="match3">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                    <div class="matching-item">
+                        <span class="number">4</span>
+                        <span>noisy</span>
+                        <select id="match4">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                    <div class="matching-item">
+                        <span class="number">5</span>
+                        <span>ancient</span>
+                        <select id="match5">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="matching-column">
+                    <h4>More Words</h4>
+                    <div class="matching-item">
+                        <span class="number">6</span>
+                        <span>bustling</span>
+                        <select id="match6">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                    <div class="matching-item">
+                        <span class="number">7</span>
+                        <span>huge</span>
+                        <select id="match7">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                    <div class="matching-item">
+                        <span class="number">8</span>
+                        <span>crowded</span>
+                        <select id="match8">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                    <div class="matching-item">
+                        <span class="number">9</span>
+                        <span>boring</span>
+                        <select id="match9">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                    <div class="matching-item">
+                        <span class="number">10</span>
+                        <span>attractive</span>
+                        <select id="match10">
+                            <option value="">--</option>
+                            <option value="a">a</option>
+                            <option value="b">b</option>
+                            <option value="c">c</option>
+                            <option value="d">d</option>
+                            <option value="e">e</option>
+                            <option value="f">f</option>
+                            <option value="g">g</option>
+                            <option value="h">h</option>
+                            <option value="i">i</option>
+                            <option value="j">j</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: #f3e5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                <h4 style="color: #6a1b9a; margin-bottom: 15px; text-align: center;">Definitions:</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95em;">
+                    <div><strong>a.</strong> Very old; from a long time ago.</div>
+                    <div><strong>b.</strong> Not interesting; dull.</div>
+                    <div><strong>c.</strong> Very large in size.</div>
+                    <div><strong>d.</strong> Full of activity and energy.</div>
+                    <div><strong>e.</strong> Pleasing to look at; appealing.</div>
+                    <div><strong>f.</strong> Beautiful and charming, like a picture.</div>
+                    <div><strong>g.</strong> Relating to the present time; new and up-to-date.</div>
+                    <div><strong>h.</strong> Very cute or pleasant.</div>
+                    <div><strong>i.</strong> Full of people; having little space.</div>
+                    <div><strong>j.</strong> Full of loud sounds.</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 25px;">
+                <button class="btn btn-check" onclick="checkPart2()">✓ Check Answers</button>
+                <button class="btn btn-reset" onclick="resetPart2()">↺ Reset</button>
+            </div>
+            <div id="part2-feedback" class="feedback"></div>
+            <div class="score-display" id="part2-score"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // ============ TRANSLATOR ============
+        async function translateText() {
+            const text = document.getElementById('sourceText').value.trim();
+            const resultBox = document.getElementById('translatedText');
+            
+            if (!text) {
+                resultBox.textContent = '⚠️ Please enter some text to translate.';
+                resultBox.style.color = '#f57f17';
+                return;
+            }
+
+            resultBox.textContent = 'Translating...';
+            resultBox.style.color = '#333';
+
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                let translated = '';
+                if (data && data[0]) {
+                    data[0].forEach(item => {
+                        if (item[0]) translated += item[0];
+                    });
+                }
+                
+                resultBox.textContent = translated || 'No translation available.';
+                resultBox.style.color = '#333';
+            } catch (error) {
+                resultBox.textContent = '❌ Error connecting to translator. Please try again.';
+                resultBox.style.color = '#c62828';
+            }
+        }
+
+        // Allow Enter key to translate
+        document.getElementById('sourceText').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                translateText();
+            }
+        });
+
+        // ============ PART I - UNSCRAMBLE ============
+        function normalizeText(text) {
+            return text.toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        function checkPart1() {
+            const blanks = [
+                {id: 'blank1', answer: 'bustling'},
+                {id: 'blank2', answer: 'modern'},
+                {id: 'blank3', answer: 'fantastic'},
+                {id: 'blank4', answer: 'amazing'},
+                {id: 'blank5', answer: 'picturesque'},
+                {id: 'blank6', answer: 'lovely'},
+                {id: 'blank7', answer: 'crowded'},
+                {id: 'blank8', answer: 'noisy'},
+                {id: 'blank9', answer: 'attractive'},
+                {id: 'blank10', answer: 'beautiful'}
+            ];
+
+            let correct = 0;
+            let total = blanks.length;
+            let allAnswered = true;
+
+            blanks.forEach(blank => {
+                const input = document.getElementById(blank.id);
+                if (!normalizeText(input.value)) {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('part1-feedback');
+                feedback.textContent = '️ Please fill in all blanks before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            blanks.forEach(blank => {
+                const input = document.getElementById(blank.id);
+                const userAnswer = normalizeText(input.value);
+                
+                if (userAnswer === blank.answer) {
+                    correct++;
+                    input.classList.remove('incorrect');
+                    input.classList.add('correct');
+                } else {
+                    input.classList.remove('correct');
+                    input.classList.add('incorrect');
+                }
+            });
+
+            const feedback = document.getElementById('part1-feedback');
+            if (correct === total) {
+                feedback.textContent = `🎉 Perfect! You got ${correct}/${total} correct! Excellent work!`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 7) {
+                feedback.textContent = `👍 Good job! You got ${correct}/${total} correct. Review the words marked in red!`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 You got ${correct}/${total} correct. Keep practicing! Review the scrambled letters carefully.`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetPart1() {
+            const blanks = ['blank1', 'blank2', 'blank3', 'blank4', 'blank5', 
+                           'blank6', 'blank7', 'blank8', 'blank9', 'blank10'];
+            
+            blanks.forEach(id => {
+                const input = document.getElementById(id);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            });
+            
+            document.getElementById('part1-feedback').style.display = 'none';
+        }
+
+        // ============ PART II - MATCHING ============
+        const correctMatches = {
+            match1: 'f',   // picturesque - Beautiful and charming, like a picture
+            match2: 'h',   // lovely - Very cute or pleasant
+            match3: 'g',   // modern - Relating to the present time; new and up-to-date
+            match4: 'j',   // noisy - Full of loud sounds
+            match5: 'a',   // ancient - Very old; from a long time ago
+            match6: 'd',   // bustling - Full of activity and energy
+            match7: 'c',   // huge - Very large in size
+            match8: 'i',   // crowded - Full of people; having little space
+            match9: 'b',   // boring - Not interesting; dull
+            match10: 'e'   // attractive - Pleasing to look at; appealing
+        };
+
+        function checkPart2() {
+            let correct = 0;
+            let total = 10;
+            let allAnswered = true;
+
+            for (let i = 1; i <= 10; i++) {
+                const select = document.getElementById('match' + i);
+                if (!select.value) {
+                    allAnswered = false;
+                }
+            }
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('part2-feedback');
+                feedback.textContent = '⚠️ Please answer all matching questions before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            for (let i = 1; i <= 10; i++) {
+                const select = document.getElementById('match' + i);
+                if (select.value === correctMatches['match' + i]) {
+                    correct++;
+                    select.classList.remove('incorrect');
+                    select.classList.add('correct');
+                } else {
+                    select.classList.remove('correct');
+                    select.classList.add('incorrect');
+                }
+            }
+
+            const feedback = document.getElementById('part2-feedback');
+            const scoreDisplay = document.getElementById('part2-score');
+            
+            if (correct === total) {
+                feedback.textContent = `🎉 Excellent! You got ${correct}/${total} correct! Perfect score!`;
+                feedback.className = 'feedback correct';
+                scoreDisplay.textContent = '🏆 Perfect Score: 10/10 (100%)';
+            } else if (correct >= 7) {
+                feedback.textContent = `👍 Good work! You got ${correct}/${total} correct. Review the mismatches!`;
+                feedback.className = 'feedback correct';
+                scoreDisplay.textContent = `⭐ Good Job: ${correct}/10 (${Math.round((correct/total)*100)}%)`;
+            } else {
+                feedback.textContent = ` You got ${correct}/${total} correct. Study the definitions and try again!`;
+                feedback.className = 'feedback incorrect';
+                scoreDisplay.textContent = `📖 Keep Learning: ${correct}/10 (${Math.round((correct/total)*100)}%)`;
+            }
+            
+            feedback.style.display = 'block';
+            scoreDisplay.style.display = 'block';
+            
+            if (correct === total) {
+                scoreDisplay.style.background = 'linear-gradient(135deg, #43a047 0%, #66bb6a 100%)';
+            } else if (correct >= 7) {
+                scoreDisplay.style.background = 'linear-gradient(135deg, #ffa000 0%, #ffca28 100%)';
+            } else {
+                scoreDisplay.style.background = 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)';
+            }
+        }
+
+        function resetPart2() {
+            for (let i = 1; i <= 10; i++) {
+                const select = document.getElementById('match' + i);
+                select.value = '';
+                select.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('part2-feedback').style.display = 'none';
+            document.getElementById('part2-score').style.display = 'none';
+        }
+    </script>
+
+</body>
+</html>
