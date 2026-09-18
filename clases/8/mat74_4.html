@@ -152,6 +152,74 @@
             box-shadow: 0 0 5px rgba(66, 165, 245, 0.3);
         }
 
+        .input-box.correct {
+            border-color: #4caf50;
+            background-color: #e8f5e9;
+        }
+
+        .input-box.incorrect {
+            border-color: #f44336;
+            background-color: #ffebee;
+        }
+
+        .check-btn {
+            background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .check-btn:hover {
+            background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .check-btn:active {
+            transform: translateY(0);
+        }
+
+        .feedback {
+            margin-top: 10px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .feedback.correct {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #4caf50;
+        }
+
+        .feedback.incorrect {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #f44336;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .unit {
             color: #555;
             font-weight: 500;
@@ -189,6 +257,15 @@
             
             .section {
                 padding: 20px;
+            }
+            
+            .answer-input {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .input-box {
+                width: 100%;
             }
         }
     </style>
@@ -251,34 +328,79 @@
 
         <!-- Ejercicios -->
         <section class="section">
-            <h2 class="section-title">️ Ejercicios</h2>
+            <h2 class="section-title">✏️ Ejercicios</h2>
             <p style="margin-bottom: 20px; color: #555;">Resuelve los siguientes ejercicios y escribe tu respuesta en el espacio correspondiente:</p>
 
-            <div class="exercise">
+            <div class="exercise" id="exercise1">
                 <div class="exercise-text">
                     <span class="exercise-number">1</span>
                     ¿Cuál será el área total de una esfera cuyo diámetro es igual a 12 cm?
                 </div>
                 <div class="answer-input">
                     <label>Respuesta: </label>
-                    <input type="text" class="input-box" placeholder="Tu respuesta">
+                    <input type="text" class="input-box" id="input1" placeholder="Tu respuesta">
                     <span class="pi-symbol">π</span>
                     <span class="unit">cm²</span>
+                    <button class="check-btn" onclick="checkAnswer(1, 144)">Comprobar</button>
                 </div>
+                <div class="feedback" id="feedback1"></div>
             </div>
 
-            <div class="exercise">
+            <div class="exercise" id="exercise2">
                 <div class="exercise-text">
                     <span class="exercise-number">2</span>
                     ¿Cuál es el diámetro de una esfera cuya área es igual a 144π cm²?
                 </div>
                 <div class="answer-input">
                     <label>Respuesta: </label>
-                    <input type="text" class="input-box" placeholder="Tu respuesta">
+                    <input type="text" class="input-box" id="input2" placeholder="Tu respuesta">
                     <span class="unit">cm</span>
+                    <button class="check-btn" onclick="checkAnswer(2, 12)">Comprobar</button>
                 </div>
+                <div class="feedback" id="feedback2"></div>
             </div>
         </section>
     </div>
+
+    <script>
+        function checkAnswer(exerciseNum, correctAnswer) {
+            const input = document.getElementById(`input${exerciseNum}`);
+            const feedback = document.getElementById(`feedback${exerciseNum}`);
+            const userAnswer = parseFloat(input.value.trim());
+            
+            // Reset classes
+            input.classList.remove('correct', 'incorrect');
+            feedback.classList.remove('correct', 'incorrect', 'show');
+            
+            // Check if input is empty
+            if (isNaN(userAnswer)) {
+                feedback.textContent = '⚠️ Por favor, ingresa un número';
+                feedback.classList.add('incorrect', 'show');
+                return;
+            }
+            
+            // Check answer
+            if (userAnswer === correctAnswer) {
+                input.classList.add('correct');
+                feedback.textContent = '✅ ¡Correcto! Muy bien hecho';
+                feedback.classList.add('correct', 'show');
+            } else {
+                input.classList.add('incorrect');
+                feedback.textContent = '❌ Incorrecto. Inténtalo de nuevo';
+                feedback.classList.add('incorrect', 'show');
+            }
+        }
+
+        // Allow pressing Enter to check answer
+        document.querySelectorAll('.input-box').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const exerciseNum = this.id.replace('input', '');
+                    const correctAnswer = exerciseNum === '1' ? 144 : 12;
+                    checkAnswer(exerciseNum, correctAnswer);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
