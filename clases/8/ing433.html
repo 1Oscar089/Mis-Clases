@@ -425,11 +425,13 @@
             margin-bottom: 15px;
         }
 
-        .audio-container audio {
+        .audio-container iframe {
             width: 100%;
-            max-width: 500px;
-            border-radius: 30px;
-            background: white;
+            max-width: 640px;
+            height: 480px;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
 
         .audio-container .play-hint {
@@ -542,6 +544,9 @@
             .sentence-exercise {
                 flex-direction: column;
             }
+            .audio-container iframe {
+                height: 360px;
+            }
         }
 
         @media (max-width: 600px) {
@@ -553,6 +558,9 @@
             }
             .listening-table {
                 font-size: 0.85em;
+            }
+            .audio-container iframe {
+                height: 300px;
             }
         }
     </style>
@@ -574,10 +582,10 @@
         </div>
 
         <div class="api-info">
-            <strong> API Info:</strong><br>
+            <strong>📋 API Info:</strong><br>
             <small>Using Google Translate API</small><br>
             <code>translate.googleapis.com</code><br><br>
-            <strong> Tip:</strong> Type any text and click translate to get the Spanish equivalent.
+            <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
         </div>
     </div>
 
@@ -733,7 +741,7 @@
                     <label for="sent1">1. Complete the sentence:</label>
                     <div class="input-wrapper">
                         <span class="fixed-subject">She</span>
-                        <input type="text" class="editable-part" id="sent1" placeholder="often reads books...">
+                        <input type="text" class="editable-part" id="sent1">
                     </div>
                 </div>
             </div>
@@ -741,7 +749,7 @@
             <!-- Exercise 2 -->
             <div class="sentence-exercise">
                 <div class="example-box">
-                    <div class="emoji">️</div>
+                    <div class="emoji">✍️</div>
                     <div class="percent">50%</div>
                     <div class="verb">write poems</div>
                 </div>
@@ -749,7 +757,7 @@
                     <label for="sent2">2. Complete the sentence:</label>
                     <div class="input-wrapper">
                         <span class="fixed-subject">He</span>
-                        <input type="text" class="editable-part" id="sent2" placeholder="sometimes writes poems...">
+                        <input type="text" class="editable-part" id="sent2">
                     </div>
                 </div>
             </div>
@@ -757,7 +765,7 @@
             <!-- Exercise 3 -->
             <div class="sentence-exercise">
                 <div class="example-box">
-                    <div class="emoji"></div>
+                    <div class="emoji">🌱</div>
                     <div class="percent">0%</div>
                     <div class="verb">water plants</div>
                 </div>
@@ -765,7 +773,7 @@
                     <label for="sent3">3. Complete the sentence:</label>
                     <div class="input-wrapper">
                         <span class="fixed-subject">She</span>
-                        <input type="text" class="editable-part" id="sent3" placeholder="never waters plants...">
+                        <input type="text" class="editable-part" id="sent3">
                     </div>
                 </div>
             </div>
@@ -773,7 +781,7 @@
             <!-- Exercise 4 -->
             <div class="sentence-exercise">
                 <div class="example-box">
-                    <div class="emoji"></div>
+                    <div class="emoji">🛁</div>
                     <div class="percent">25%</div>
                     <div class="verb">take a bath</div>
                 </div>
@@ -781,7 +789,7 @@
                     <label for="sent4">4. Complete the sentence:</label>
                     <div class="input-wrapper">
                         <span class="fixed-subject">He</span>
-                        <input type="text" class="editable-part" id="sent4" placeholder="hardly ever takes a bath...">
+                        <input type="text" class="editable-part" id="sent4">
                     </div>
                 </div>
             </div>
@@ -789,7 +797,7 @@
             <!-- Exercise 5 -->
             <div class="sentence-exercise">
                 <div class="example-box">
-                    <div class="emoji"></div>
+                    <div class="emoji">🍳</div>
                     <div class="percent">100%</div>
                     <div class="verb">cook</div>
                 </div>
@@ -797,7 +805,7 @@
                     <label for="sent5">5. Complete the sentence:</label>
                     <div class="input-wrapper">
                         <span class="fixed-subject">She</span>
-                        <input type="text" class="editable-part" id="sent5" placeholder="always cooks...">
+                        <input type="text" class="editable-part" id="sent5">
                     </div>
                 </div>
             </div>
@@ -817,12 +825,9 @@
             </div>
 
             <div class="audio-container">
-                <h4> Audio Player</h4>
-                <audio controls id="audioPlayer">
-                    <source src="https://docs.google.com/uc?export=download&id=1itpEea1VReOSL5EGEDIHpwklvNYvbIVM" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                </audio>
-                <div class="play-hint"> Click play to listen. You can replay it as many times as needed.</div>
+                <h4>🎧 Audio Player</h4>
+                <iframe src="https://drive.google.com/file/d/1itpEea1VReOSL5EGEDIHpwklvNYvbIVM/preview" width="640" height="480"></iframe>
+                <div class="play-hint">▶️ Click play to listen. You can replay it as many times as needed.</div>
             </div>
 
             <table class="listening-table">
@@ -885,7 +890,7 @@
             const resultBox = document.getElementById('translatedText');
             
             if (!text) {
-                resultBox.textContent = '️ Please enter some text to translate.';
+                resultBox.textContent = '⚠️ Please enter some text to translate.';
                 resultBox.style.color = '#f57f17';
                 return;
             }
@@ -971,7 +976,7 @@
                 feedback.textContent = `👍 Good job! You got ${correct}/${total} correct. Review the ones marked in red and try again!`;
                 feedback.className = 'feedback correct';
             } else {
-                feedback.textContent = ` You got ${correct}/${total} correct. Keep practicing! Review the lesson and try again.`;
+                feedback.textContent = `📚 You got ${correct}/${total} correct. Keep practicing! Review the lesson and try again.`;
                 feedback.className = 'feedback incorrect';
             }
             feedback.style.display = 'block';
@@ -993,7 +998,7 @@
             return text.toLowerCase().replace(/\s+/g, ' ').trim();
         }
 
-        function checkSentence(input, subject, adverb, keywords) {
+        function checkSentence(input, adverb, keywords) {
             const text = normalizeText(input);
             if (!text) return false;
             
@@ -1007,11 +1012,11 @@
 
         function checkPart2() {
             const exercises = [
-                { id: 'sent1', subject: 'She', adverb: 'often', keywords: ['read', 'reads', 'reading', 'book', 'books'] },
-                { id: 'sent2', subject: 'He', adverb: 'sometimes', keywords: ['write', 'writes', 'writing', 'poem', 'poems', 'wrote'] },
-                { id: 'sent3', subject: 'She', adverb: 'never', keywords: ['water', 'waters', 'watering', 'plant', 'plants', 'watered'] },
-                { id: 'sent4', subject: 'He', adverb: 'hardly ever', keywords: ['take', 'takes', 'taking', 'bath', 'baths', 'took'] },
-                { id: 'sent5', subject: 'She', adverb: 'always', keywords: ['cook', 'cooking', 'cooked', 'cooks'] }
+                { id: 'sent1', adverb: 'often', keywords: ['read', 'reads', 'reading', 'book', 'books'] },
+                { id: 'sent2', adverb: 'sometimes', keywords: ['write', 'writes', 'writing', 'poem', 'poems', 'wrote'] },
+                { id: 'sent3', adverb: 'never', keywords: ['water', 'waters', 'watering', 'plant', 'plants', 'watered'] },
+                { id: 'sent4', adverb: 'hardly ever', keywords: ['take', 'takes', 'taking', 'bath', 'baths', 'took'] },
+                { id: 'sent5', adverb: 'always', keywords: ['cook', 'cooking', 'cooked', 'cooks'] }
             ];
 
             let correct = 0;
@@ -1035,7 +1040,7 @@
 
             exercises.forEach(ex => {
                 const input = document.getElementById(ex.id);
-                const isValid = checkSentence(input, ex.subject, ex.adverb, ex.keywords);
+                const isValid = checkSentence(input, ex.adverb, ex.keywords);
                 
                 if (isValid) {
                     correct++;
@@ -1049,13 +1054,13 @@
 
             const feedback = document.getElementById('part2-feedback');
             if (correct === total) {
-                feedback.textContent = `🎉 Perfect! All ${correct}/${total} sentences are correct! Great use of frequency adverbs!`;
+                feedback.textContent = ` Perfect! All ${correct}/${total} sentences are correct! Great use of frequency adverbs!`;
                 feedback.className = 'feedback correct';
             } else if (correct >= 3) {
                 feedback.textContent = `👍 Good work! ${correct}/${total} sentences look correct. Review the ones marked in red - check your adverb and verb form!`;
                 feedback.className = 'feedback correct';
             } else {
-                feedback.textContent = ` ${correct}/${total} sentences accepted. Remember: use the correct adverb for each percentage and conjugate the verb properly! Try again.`;
+                feedback.textContent = `📚 ${correct}/${total} sentences accepted. Remember: use the correct adverb for each percentage and conjugate the verb properly! Try again.`;
                 feedback.className = 'feedback incorrect';
             }
             feedback.style.display = 'block';
@@ -1102,7 +1107,7 @@
 
             if (answered < total) {
                 const feedback = document.getElementById('part3-feedback');
-                feedback.textContent = `⚠️ Please answer all ${total} questions. You've answered ${answered} so far.`;
+                feedback.textContent = `️ Please answer all ${total} questions. You've answered ${answered} so far.`;
                 feedback.className = 'feedback hint';
                 feedback.style.display = 'block';
                 return;
