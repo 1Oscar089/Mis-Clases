@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -105,19 +105,10 @@
             margin: 20px 0;
         }
 
-        .exercise-image {
-            width: 100%;
-            max-width: 900px;
-            margin: 20px auto;
-            display: block;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
         .exercise-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 30px;
             margin-top: 25px;
         }
 
@@ -136,6 +127,20 @@
             margin-bottom: 15px;
             font-weight: bold;
             font-size: 1.2em;
+        }
+
+        .svg-container {
+            width: 100%;
+            height: 280px;
+            margin: 15px 0;
+            background: #fafafa;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .svg-container svg {
+            width: 100%;
+            height: 100%;
         }
 
         .answer-row {
@@ -289,7 +294,7 @@
 
         <!-- Comprende -->
         <section class="section">
-            <h2 class="section-title">📚 Comprende</h2>
+            <h2 class="section-title"> Comprende</h2>
             <div class="comprende-box">
                 <p>
                     En una circunferencia los <span class="highlight">ángulos inscritos</span>, que subtienden arcos de igual medida, tienen igual medida.
@@ -323,92 +328,278 @@
             <p style="margin-bottom: 20px; color: #555;">
                 Determina el valor de <strong>x</strong> y <strong>y</strong> para cada caso. Considera que <strong>arco AB = arco CD</strong>.
             </p>
-            
-            <div class="exercise-container">
-                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 300'%3E%3Crect fill='%23f5f5f5' width='900' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' font-family='Arial' font-size='18' fill='%23999'%3EImagen de ejercicios - Determina x e y%3C/text%3E%3C/svg%3E" alt="Ejercicios de arcos congruentes - Determina x e y para cada caso (a, b, c, d)" class="exercise-image" style="display: none;">
-                
-                <!-- Nota: Reemplaza el src de arriba con la ruta real de tu imagen -->
-                <div style="text-align: center; padding: 40px; background: #f5f5f5; border-radius: 8px; margin: 20px 0;">
-                    <p style="color: #666; font-size: 1.1em;">📷 Imagen de los ejercicios (a, b, c, d)</p>
-                    <p style="color: #999; margin-top: 10px;">Determina el valor de x y y para cada caso</p>
+
+            <div class="exercise-grid">
+                <!-- Ejercicio a -->
+                <div class="exercise-item" id="exercise-a">
+                    <div class="exercise-header">Literal a)</div>
+                    <div class="svg-container">
+                        <svg viewBox="0 0 300 280">
+                            <!-- Círculo -->
+                            <circle cx="150" cy="140" r="120" fill="none" stroke="#1976d2" stroke-width="2"/>
+                            
+                            <!-- Centro -->
+                            <circle cx="150" cy="140" r="3" fill="#1976d2"/>
+                            <text x="155" y="145" font-size="14" fill="#1976d2" font-weight="bold">O</text>
+                            
+                            <!-- Puntos -->
+                            <circle cx="250" cy="180" r="3" fill="#f44336"/>
+                            <text x="255" y="185" font-size="14" fill="#f44336" font-weight="bold">A</text>
+                            
+                            <circle cx="230" cy="60" r="3" fill="#f44336"/>
+                            <text x="235" y="55" font-size="14" fill="#f44336" font-weight="bold">B</text>
+                            
+                            <circle cx="70" cy="60" r="3" fill="#4caf50"/>
+                            <text x="60" y="55" font-size="14" fill="#4caf50" font-weight="bold">C</text>
+                            
+                            <circle cx="50" cy="100" r="3" fill="#4caf50"/>
+                            <text x="35" y="105" font-size="14" fill="#4caf50" font-weight="bold">D</text>
+                            
+                            <circle cx="180" cy="50" r="3" fill="#ff9800"/>
+                            <text x="185" y="45" font-size="14" fill="#ff9800" font-weight="bold">P</text>
+                            
+                            <!-- Líneas -->
+                            <line x1="150" y1="140" x2="50" y2="100" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="150" y1="140" x2="250" y2="180" stroke="#f44336" stroke-width="1.5"/>
+                            
+                            <line x1="70" y1="60" x2="180" y2="50" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="50" y1="100" x2="180" y2="50" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="230" y1="60" x2="180" y2="50" stroke="#f44336" stroke-width="1.5"/>
+                            <line x1="250" y1="180" x2="180" y2="50" stroke="#f44336" stroke-width="1.5"/>
+                            
+                            <!-- Ángulos -->
+                            <path d="M 150 140 L 135 130 A 8 8 0 0 0 145 148 Z" fill="#1976d2" opacity="0.5"/>
+                            <text x="130" y="135" font-size="12" fill="#1976d2">20°</text>
+                            
+                            <path d="M 180 50 L 170 65 A 10 10 0 0 0 175 70 Z" fill="#ff9800" opacity="0.5"/>
+                            <text x="175" y="75" font-size="12" fill="#ff9800">x</text>
+                            
+                            <path d="M 180 50 L 185 70 A 10 10 0 0 0 190 75 Z" fill="#ff9800" opacity="0.5"/>
+                            <text x="190" y="85" font-size="12" fill="#ff9800">y</text>
+                            
+                            <!-- Arcos congruentes -->
+                            <path d="M 230 60 A 120 120 0 0 1 250 180" fill="none" stroke="#f44336" stroke-width="3" stroke-dasharray="5,3"/>
+                            <path d="M 70 60 A 120 120 0 0 0 50 100" fill="none" stroke="#4caf50" stroke-width="3" stroke-dasharray="5,3"/>
+                        </svg>
+                    </div>
+                    <div class="answer-row">
+                        <span class="answer-label">Valor de x:</span>
+                        <input type="number" class="input-box" id="input-a-x" placeholder="°" step="any">
+                        <span>°</span>
+                        <button class="check-btn" onclick="checkAnswer('a', 'x', 10)">Comprobar</button>
+                    </div>
+                    <div class="feedback" id="feedback-a-x"></div>
+                    <div class="answer-row">
+                        <span class="answer-label">Valor de y:</span>
+                        <input type="number" class="input-box" id="input-a-y" placeholder="°" step="any">
+                        <span>°</span>
+                        <button class="check-btn" onclick="checkAnswer('a', 'y', 10)">Comprobar</button>
+                    </div>
+                    <div class="feedback" id="feedback-a-y"></div>
                 </div>
 
-                <div class="exercise-grid">
-                    <!-- Ejercicio a -->
-                    <div class="exercise-item" id="exercise-a">
-                        <div class="exercise-header">Literal a)</div>
-                        <div class="answer-row">
-                            <span class="answer-label">Valor de x:</span>
-                            <input type="number" class="input-box" id="input-a-x" placeholder="°" step="any">
-                            <span>°</span>
-                            <button class="check-btn" onclick="checkAnswer('a', 'x', 20)">Comprobar</button>
-                        </div>
-                        <div class="answer-row">
-                            <span class="answer-label">Valor de y:</span>
-                            <input type="number" class="input-box" id="input-a-y" placeholder="°" step="any">
-                            <span>°</span>
-                            <button class="check-btn" onclick="checkAnswer('a', 'y', 20)">Comprobar</button>
-                        </div>
-                        <div class="feedback" id="feedback-a-x"></div>
-                        <div class="feedback" id="feedback-a-y"></div>
+                <!-- Ejercicio b -->
+                <div class="exercise-item" id="exercise-b">
+                    <div class="exercise-header">Literal b)</div>
+                    <div class="svg-container">
+                        <svg viewBox="0 0 300 280">
+                            <!-- Círculo -->
+                            <circle cx="150" cy="140" r="120" fill="none" stroke="#1976d2" stroke-width="2"/>
+                            
+                            <!-- Centro -->
+                            <circle cx="150" cy="140" r="3" fill="#1976d2"/>
+                            <text x="155" y="135" font-size="14" fill="#1976d2" font-weight="bold">O</text>
+                            
+                            <!-- Puntos -->
+                            <circle cx="230" cy="60" r="3" fill="#f44336"/>
+                            <text x="235" y="55" font-size="14" fill="#f44336" font-weight="bold">A</text>
+                            
+                            <circle cx="150" cy="20" r="3" fill="#f44336"/>
+                            <text x="155" y="15" font-size="14" fill="#f44336" font-weight="bold">B</text>
+                            
+                            <circle cx="50" cy="120" r="3" fill="#4caf50"/>
+                            <text x="35" y="115" font-size="14" fill="#4caf50" font-weight="bold">C</text>
+                            
+                            <circle cx="50" cy="160" r="3" fill="#4caf50"/>
+                            <text x="35" y="170" font-size="14" fill="#4caf50" font-weight="bold">D</text>
+                            
+                            <circle cx="150" cy="260" r="3" fill="#ff9800"/>
+                            <text x="155" y="275" font-size="14" fill="#ff9800" font-weight="bold">P</text>
+                            
+                            <!-- Líneas -->
+                            <line x1="150" y1="140" x2="50" y2="120" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="150" y1="140" x2="150" y2="260" stroke="#ff9800" stroke-width="1.5"/>
+                            <line x1="150" y1="140" x2="150" y2="20" stroke="#f44336" stroke-width="1.5"/>
+                            
+                            <line x1="50" y1="120" x2="150" y2="260" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="50" y1="160" x2="150" y2="260" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="230" y1="60" x2="150" y2="260" stroke="#f44336" stroke-width="1.5"/>
+                            
+                            <!-- Ángulos -->
+                            <path d="M 150 140 L 140 130 A 8 8 0 0 0 145 145 Z" fill="#1976d2" opacity="0.5"/>
+                            <text x="120" y="135" font-size="12" fill="#1976d2">32°</text>
+                            
+                            <path d="M 150 260 L 140 245 A 10 10 0 0 0 145 240 Z" fill="#ff9800" opacity="0.5"/>
+                            <text x="125" y="235" font-size="12" fill="#ff9800">x</text>
+                            
+                            <path d="M 150 260 L 155 240 A 10 10 0 0 0 160 235 Z" fill="#ff9800" opacity="0.5"/>
+                            <text x="165" y="235" font-size="12" fill="#ff9800">y</text>
+                            
+                            <!-- Arcos congruentes -->
+                            <path d="M 230 60 A 120 120 0 0 1 150 20" fill="none" stroke="#f44336" stroke-width="3" stroke-dasharray="5,3"/>
+                            <path d="M 50 120 A 120 120 0 0 0 50 160" fill="none" stroke="#4caf50" stroke-width="3" stroke-dasharray="5,3"/>
+                        </svg>
                     </div>
+                    <div class="answer-row">
+                        <span class="answer-label">Valor de x:</span>
+                        <input type="number" class="input-box" id="input-b-x" placeholder="°" step="any">
+                        <span>°</span>
+                        <button class="check-btn" onclick="checkAnswer('b', 'x', 16)">Comprobar</button>
+                    </div>
+                    <div class="feedback" id="feedback-b-x"></div>
+                    <div class="answer-row">
+                        <span class="answer-label">Valor de y:</span>
+                        <input type="number" class="input-box" id="input-b-y" placeholder="°" step="any">
+                        <span>°</span>
+                        <button class="check-btn" onclick="checkAnswer('b', 'y', 16)">Comprobar</button>
+                    </div>
+                    <div class="feedback" id="feedback-b-y"></div>
+                </div>
 
-                    <!-- Ejercicio b -->
-                    <div class="exercise-item" id="exercise-b">
-                        <div class="exercise-header">Literal b)</div>
-                        <div class="answer-row">
-                            <span class="answer-label">Valor de x:</span>
-                            <input type="number" class="input-box" id="input-b-x" placeholder="°" step="any">
-                            <span>°</span>
-                            <button class="check-btn" onclick="checkAnswer('b', 'x', 16)">Comprobar</button>
-                        </div>
-                        <div class="answer-row">
-                            <span class="answer-label">Valor de y:</span>
-                            <input type="number" class="input-box" id="input-b-y" placeholder="°" step="any">
-                            <span>°</span>
-                            <button class="check-btn" onclick="checkAnswer('b', 'y', 16)">Comprobar</button>
-                        </div>
-                        <div class="feedback" id="feedback-b-x"></div>
-                        <div class="feedback" id="feedback-b-y"></div>
+                <!-- Ejercicio c -->
+                <div class="exercise-item" id="exercise-c">
+                    <div class="exercise-header">Literal c)</div>
+                    <div class="svg-container">
+                        <svg viewBox="0 0 300 280">
+                            <!-- Círculo -->
+                            <circle cx="150" cy="140" r="120" fill="none" stroke="#1976d2" stroke-width="2"/>
+                            
+                            <!-- Centro -->
+                            <circle cx="150" cy="140" r="3" fill="#1976d2"/>
+                            <text x="140" y="135" font-size="14" fill="#1976d2" font-weight="bold">O</text>
+                            
+                            <!-- Puntos -->
+                            <circle cx="230" cy="60" r="3" fill="#f44336"/>
+                            <text x="235" y="55" font-size="14" fill="#f44336" font-weight="bold">A</text>
+                            
+                            <circle cx="190" cy="40" r="3" fill="#f44336"/>
+                            <text x="195" y="35" font-size="14" fill="#f44336" font-weight="bold">B</text>
+                            
+                            <circle cx="190" cy="240" r="3" fill="#4caf50"/>
+                            <text x="195" y="255" font-size="14" fill="#4caf50" font-weight="bold">C</text>
+                            
+                            <circle cx="230" cy="200" r="3" fill="#4caf50"/>
+                            <text x="235" y="210" font-size="14" fill="#4caf50" font-weight="bold">D</text>
+                            
+                            <circle cx="50" cy="140" r="3" fill="#ff9800"/>
+                            <text x="30" y="145" font-size="14" fill="#ff9800" font-weight="bold">P</text>
+                            
+                            <!-- Líneas -->
+                            <line x1="150" y1="140" x2="190" y2="40" stroke="#f44336" stroke-width="1.5"/>
+                            <line x1="150" y1="140" x2="190" y2="240" stroke="#4caf50" stroke-width="1.5"/>
+                            
+                            <line x1="50" y1="140" x2="190" y2="40" stroke="#f44336" stroke-width="1.5"/>
+                            <line x1="50" y1="140" x2="230" y2="200" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="50" y1="140" x2="190" y2="240" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="230" y1="60" x2="190" y2="240" stroke="#f44336" stroke-width="1.5"/>
+                            
+                            <!-- Ángulos -->
+                            <path d="M 150 140 L 155 130 A 8 8 0 0 0 160 135 Z" fill="#1976d2" opacity="0.5"/>
+                            <text x="165" y="130" font-size="12" fill="#1976d2">x</text>
+                            
+                            <path d="M 50 140 L 65 135 A 10 10 0 0 0 70 140 Z" fill="#ff9800" opacity="0.5"/>
+                            <text x="75" y="135" font-size="12" fill="#ff9800">23°</text>
+                            
+                            <path d="M 50 140 L 65 150 A 10 10 0 0 0 70 155 Z" fill="#ff9800" opacity="0.5"/>
+                            <text x="75" y="165" font-size="12" fill="#ff9800">y</text>
+                            
+                            <!-- Arcos congruentes -->
+                            <path d="M 230 60 A 120 120 0 0 1 190 40" fill="none" stroke="#f44336" stroke-width="3" stroke-dasharray="5,3"/>
+                            <path d="M 190 240 A 120 120 0 0 1 230 200" fill="none" stroke="#4caf50" stroke-width="3" stroke-dasharray="5,3"/>
+                        </svg>
                     </div>
+                    <div class="answer-row">
+                        <span class="answer-label">Valor de x:</span>
+                        <input type="number" class="input-box" id="input-c-x" placeholder="°" step="any">
+                        <span>°</span>
+                        <button class="check-btn" onclick="checkAnswer('c', 'x', 46)">Comprobar</button>
+                    </div>
+                    <div class="feedback" id="feedback-c-x"></div>
+                    <div class="answer-row">
+                        <span class="answer-label">Valor de y:</span>
+                        <input type="number" class="input-box" id="input-c-y" placeholder="°" step="any">
+                        <span>°</span>
+                        <button class="check-btn" onclick="checkAnswer('c', 'y', 23)">Comprobar</button>
+                    </div>
+                    <div class="feedback" id="feedback-c-y"></div>
+                </div>
 
-                    <!-- Ejercicio c -->
-                    <div class="exercise-item" id="exercise-c">
-                        <div class="exercise-header">Literal c)</div>
-                        <div class="answer-row">
-                            <span class="answer-label">Valor de x:</span>
-                            <input type="number" class="input-box" id="input-c-x" placeholder="°" step="any">
-                            <span>°</span>
-                            <button class="check-btn" onclick="checkAnswer('c', 'x', 23)">Comprobar</button>
-                        </div>
-                        <div class="answer-row">
-                            <span class="answer-label">Valor de y:</span>
-                            <input type="number" class="input-box" id="input-c-y" placeholder="°" step="any">
-                            <span>°</span>
-                            <button class="check-btn" onclick="checkAnswer('c', 'y', 23)">Comprobar</button>
-                        </div>
-                        <div class="feedback" id="feedback-c-x"></div>
-                        <div class="feedback" id="feedback-c-y"></div>
+                <!-- Ejercicio d -->
+                <div class="exercise-item" id="exercise-d">
+                    <div class="exercise-header">Literal d)</div>
+                    <div class="svg-container">
+                        <svg viewBox="0 0 300 280">
+                            <!-- Círculo -->
+                            <circle cx="150" cy="140" r="120" fill="none" stroke="#1976d2" stroke-width="2"/>
+                            
+                            <!-- Centro -->
+                            <circle cx="150" cy="140" r="3" fill="#1976d2"/>
+                            <text x="155" y="135" font-size="14" fill="#1976d2" font-weight="bold">O</text>
+                            
+                            <!-- Puntos -->
+                            <circle cx="230" cy="60" r="3" fill="#f44336"/>
+                            <text x="235" y="55" font-size="14" fill="#f44336" font-weight="bold">A</text>
+                            
+                            <circle cx="70" cy="80" r="3" fill="#f44336"/>
+                            <text x="55" y="75" font-size="14" fill="#f44336" font-weight="bold">B</text>
+                            
+                            <circle cx="30" cy="140" r="3" fill="#4caf50"/>
+                            <text x="15" y="145" font-size="14" fill="#4caf50" font-weight="bold">C</text>
+                            
+                            <circle cx="110" cy="240" r="3" fill="#4caf50"/>
+                            <text x="115" y="260" font-size="14" fill="#4caf50" font-weight="bold">D</text>
+                            
+                            <circle cx="270" cy="140" r="3" fill="#ff9800"/>
+                            <text x="275" y="145" font-size="14" fill="#ff9800" font-weight="bold">P</text>
+                            
+                            <!-- Líneas -->
+                            <line x1="150" y1="140" x2="230" y2="60" stroke="#f44336" stroke-width="1.5"/>
+                            <line x1="150" y1="140" x2="110" y2="240" stroke="#4caf50" stroke-width="1.5"/>
+                            <line x1="150" y1="140" x2="30" y2="140" stroke="#4caf50" stroke-width="1.5"/>
+                            
+                            <line x1="70" y1="80" x2="270" y2="140" stroke="#f44336" stroke-width="1.5"/>
+                            <line x1="230" y1="60" x2="270" y2="140" stroke="#f44336" stroke-width="1.5"/>
+                            <line x1="110" y1="240" x2="270" y2="140" stroke="#4caf50" stroke-width="1.5"/>
+                            
+                            <!-- Ángulos -->
+                            <path d="M 150 140 L 155 130 A 8 8 0 0 0 160 135 Z" fill="#1976d2" opacity="0.5"/>
+                            <text x="130" y="130" font-size="12" fill="#1976d2">x</text>
+                            
+                            <path d="M 270 140 L 255 130 A 10 10 0 0 0 250 135 Z" fill="#ff9800" opacity="0.5"/>
+                            <text x="235" y="125" font-size="12" fill="#ff9800">40°</text>
+                            
+                            <path d="M 270 140 L 255 155 A 10 10 0 0 0 250 160 Z" fill="#ff9800" opacity="0.5"/>
+                            <text x="235" y="175" font-size="12" fill="#ff9800">y</text>
+                            
+                            <!-- Arcos congruentes -->
+                            <path d="M 230 60 A 120 120 0 0 1 70 80" fill="none" stroke="#f44336" stroke-width="3" stroke-dasharray="5,3"/>
+                            <path d="M 30 140 A 120 120 0 0 1 110 240" fill="none" stroke="#4caf50" stroke-width="3" stroke-dasharray="5,3"/>
+                        </svg>
                     </div>
-
-                    <!-- Ejercicio d -->
-                    <div class="exercise-item" id="exercise-d">
-                        <div class="exercise-header">Literal d)</div>
-                        <div class="answer-row">
-                            <span class="answer-label">Valor de x:</span>
-                            <input type="number" class="input-box" id="input-d-x" placeholder="°" step="any">
-                            <span>°</span>
-                            <button class="check-btn" onclick="checkAnswer('d', 'x', 40)">Comprobar</button>
-                        </div>
-                        <div class="answer-row">
-                            <span class="answer-label">Valor de y:</span>
-                            <input type="number" class="input-box" id="input-d-y" placeholder="°" step="any">
-                            <span>°</span>
-                            <button class="check-btn" onclick="checkAnswer('d', 'y', 40)">Comprobar</button>
-                        </div>
-                        <div class="feedback" id="feedback-d-x"></div>
-                        <div class="feedback" id="feedback-d-y"></div>
+                    <div class="answer-row">
+                        <span class="answer-label">Valor de x:</span>
+                        <input type="number" class="input-box" id="input-d-x" placeholder="°" step="any">
+                        <span>°</span>
+                        <button class="check-btn" onclick="checkAnswer('d', 'x', 80)">Comprobar</button>
                     </div>
+                    <div class="feedback" id="feedback-d-x"></div>
+                    <div class="answer-row">
+                        <span class="answer-label">Valor de y:</span>
+                        <input type="number" class="input-box" id="input-d-y" placeholder="°" step="any">
+                        <span>°</span>
+                        <button class="check-btn" onclick="checkAnswer('d', 'y', 40)">Comprobar</button>
+                    </div>
+                    <div class="feedback" id="feedback-d-y"></div>
                 </div>
             </div>
         </section>
@@ -426,7 +617,7 @@
             
             // Check if input is empty
             if (isNaN(userAnswer)) {
-                feedback.textContent = '⚠️ Por favor, ingresa un número';
+                feedback.textContent = '️ Por favor, ingresa un número';
                 feedback.classList.add('incorrect', 'show');
                 return;
             }
@@ -442,7 +633,7 @@
                 feedback.classList.add('correct', 'show');
             } else {
                 input.classList.add('incorrect');
-                feedback.textContent = ` Incorrecto. La respuesta correcta es ${correctAnswer}°`;
+                feedback.textContent = '❌ Incorrecto. Inténtalo de nuevo';
                 feedback.classList.add('incorrect', 'show');
             }
         }
@@ -458,10 +649,10 @@
                     // Get correct answer based on literal and variable
                     let correctAnswer;
                     const answers = {
-                        'a': { 'x': 20, 'y': 20 },
+                        'a': { 'x': 10, 'y': 10 },
                         'b': { 'x': 16, 'y': 16 },
-                        'c': { 'x': 23, 'y': 23 },
-                        'd': { 'x': 40, 'y': 40 }
+                        'c': { 'x': 46, 'y': 23 },
+                        'd': { 'x': 80, 'y': 40 }
                     };
                     
                     correctAnswer = answers[literal][variable];
