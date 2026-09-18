@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1.7 Arcos congruentes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f5f5f5 100%);
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            background: white;
+            margin-bottom: 30px;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 5px solid #42a5f5;
+        }
+
+        .section-title {
+            color: #1976d2;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e3f2fd;
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        .comprende-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 2px solid #1976d2;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+            line-height: 1.8;
+        }
+
+        .comprende-box p {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            color: #1565c0;
+        }
+
+        .exercise-container {
+            background: #fafafa;
+            border: 2px solid #90caf9;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .exercise-image {
+            width: 100%;
+            max-width: 900px;
+            margin: 20px auto;
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .exercise-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .exercise-item {
+            background: white;
+            border: 2px solid #42a5f5;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .exercise-header {
+            background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .answer-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+
+        .answer-label {
+            font-weight: 600;
+            color: #1976d2;
+            min-width: 80px;
+        }
+
+        .input-box {
+            border: 2px solid #42a5f5;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 1em;
+            width: 120px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-box:focus {
+            border-color: #1976d2;
+            box-shadow: 0 0 5px rgba(66, 165, 245, 0.3);
+        }
+
+        .input-box.correct {
+            border-color: #4caf50;
+            background-color: #e8f5e9;
+        }
+
+        .input-box.incorrect {
+            border-color: #f44336;
+            background-color: #ffebee;
+        }
+
+        .check-btn {
+            background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .check-btn:hover {
+            background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .check-btn:active {
+            transform: translateY(0);
+        }
+
+        .feedback {
+            margin-top: 10px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .feedback.correct {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #4caf50;
+        }
+
+        .feedback.incorrect {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #f44336;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .instruction {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            
+            .section {
+                padding: 20px;
+            }
+            
+            .exercise-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .answer-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .input-box {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>1.7 Arcos congruentes</h1>
+        </header>
+
+        <!-- Problema Inicial -->
+        <section class="section">
+            <h2 class="section-title">📹 Problema Inicial</h2>
+            <div class="video-container">
+                <iframe 
+                    src="https://www.youtube.com/embed/tOc8R9Q9xfw" 
+                    title="Video Problema Inicial - Arcos congruentes"
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            </div>
+        </section>
+
+        <!-- Comprende -->
+        <section class="section">
+            <h2 class="section-title">📚 Comprende</h2>
+            <div class="comprende-box">
+                <p>
+                    En una circunferencia los <span class="highlight">ángulos inscritos</span>, que subtienden arcos de igual medida, tienen igual medida.
+                </p>
+                <p>
+                    También se cumple que si dos ángulos inscritos son de igual medida, entonces los arcos que subtienden también son de <span class="highlight">igual medida</span>.
+                </p>
+            </div>
+            <div class="instruction">
+                <strong>💡 Importante:</strong> Recuerda que si dos arcos son congruentes (AB = CD), entonces los ángulos inscritos que los subtienden también son congruentes.
+            </div>
+        </section>
+
+        <!-- Ejemplos -->
+        <section class="section">
+            <h2 class="section-title">🎬 Ejemplos</h2>
+            <div class="video-container">
+                <iframe 
+                    src="https://www.youtube.com/embed/ky0ky7oMm4k" 
+                    title="Video Ejemplos - Arcos congruentes"
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            </div>
+        </section>
+
+        <!-- Ejercicios -->
+        <section class="section">
+            <h2 class="section-title">✏️ Ejercicios</h2>
+            <p style="margin-bottom: 20px; color: #555;">
+                Determina el valor de <strong>x</strong> y <strong>y</strong> para cada caso. Considera que <strong>arco AB = arco CD</strong>.
+            </p>
+            
+            <div class="exercise-container">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 300'%3E%3Crect fill='%23f5f5f5' width='900' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' font-family='Arial' font-size='18' fill='%23999'%3EImagen de ejercicios - Determina x e y%3C/text%3E%3C/svg%3E" alt="Ejercicios de arcos congruentes - Determina x e y para cada caso (a, b, c, d)" class="exercise-image" style="display: none;">
+                
+                <!-- Nota: Reemplaza el src de arriba con la ruta real de tu imagen -->
+                <div style="text-align: center; padding: 40px; background: #f5f5f5; border-radius: 8px; margin: 20px 0;">
+                    <p style="color: #666; font-size: 1.1em;">📷 Imagen de los ejercicios (a, b, c, d)</p>
+                    <p style="color: #999; margin-top: 10px;">Determina el valor de x y y para cada caso</p>
+                </div>
+
+                <div class="exercise-grid">
+                    <!-- Ejercicio a -->
+                    <div class="exercise-item" id="exercise-a">
+                        <div class="exercise-header">Literal a)</div>
+                        <div class="answer-row">
+                            <span class="answer-label">Valor de x:</span>
+                            <input type="number" class="input-box" id="input-a-x" placeholder="°" step="any">
+                            <span>°</span>
+                            <button class="check-btn" onclick="checkAnswer('a', 'x', 20)">Comprobar</button>
+                        </div>
+                        <div class="answer-row">
+                            <span class="answer-label">Valor de y:</span>
+                            <input type="number" class="input-box" id="input-a-y" placeholder="°" step="any">
+                            <span>°</span>
+                            <button class="check-btn" onclick="checkAnswer('a', 'y', 20)">Comprobar</button>
+                        </div>
+                        <div class="feedback" id="feedback-a-x"></div>
+                        <div class="feedback" id="feedback-a-y"></div>
+                    </div>
+
+                    <!-- Ejercicio b -->
+                    <div class="exercise-item" id="exercise-b">
+                        <div class="exercise-header">Literal b)</div>
+                        <div class="answer-row">
+                            <span class="answer-label">Valor de x:</span>
+                            <input type="number" class="input-box" id="input-b-x" placeholder="°" step="any">
+                            <span>°</span>
+                            <button class="check-btn" onclick="checkAnswer('b', 'x', 16)">Comprobar</button>
+                        </div>
+                        <div class="answer-row">
+                            <span class="answer-label">Valor de y:</span>
+                            <input type="number" class="input-box" id="input-b-y" placeholder="°" step="any">
+                            <span>°</span>
+                            <button class="check-btn" onclick="checkAnswer('b', 'y', 16)">Comprobar</button>
+                        </div>
+                        <div class="feedback" id="feedback-b-x"></div>
+                        <div class="feedback" id="feedback-b-y"></div>
+                    </div>
+
+                    <!-- Ejercicio c -->
+                    <div class="exercise-item" id="exercise-c">
+                        <div class="exercise-header">Literal c)</div>
+                        <div class="answer-row">
+                            <span class="answer-label">Valor de x:</span>
+                            <input type="number" class="input-box" id="input-c-x" placeholder="°" step="any">
+                            <span>°</span>
+                            <button class="check-btn" onclick="checkAnswer('c', 'x', 23)">Comprobar</button>
+                        </div>
+                        <div class="answer-row">
+                            <span class="answer-label">Valor de y:</span>
+                            <input type="number" class="input-box" id="input-c-y" placeholder="°" step="any">
+                            <span>°</span>
+                            <button class="check-btn" onclick="checkAnswer('c', 'y', 23)">Comprobar</button>
+                        </div>
+                        <div class="feedback" id="feedback-c-x"></div>
+                        <div class="feedback" id="feedback-c-y"></div>
+                    </div>
+
+                    <!-- Ejercicio d -->
+                    <div class="exercise-item" id="exercise-d">
+                        <div class="exercise-header">Literal d)</div>
+                        <div class="answer-row">
+                            <span class="answer-label">Valor de x:</span>
+                            <input type="number" class="input-box" id="input-d-x" placeholder="°" step="any">
+                            <span>°</span>
+                            <button class="check-btn" onclick="checkAnswer('d', 'x', 40)">Comprobar</button>
+                        </div>
+                        <div class="answer-row">
+                            <span class="answer-label">Valor de y:</span>
+                            <input type="number" class="input-box" id="input-d-y" placeholder="°" step="any">
+                            <span>°</span>
+                            <button class="check-btn" onclick="checkAnswer('d', 'y', 40)">Comprobar</button>
+                        </div>
+                        <div class="feedback" id="feedback-d-x"></div>
+                        <div class="feedback" id="feedback-d-y"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function checkAnswer(literal, variable, correctAnswer) {
+            const input = document.getElementById(`input-${literal}-${variable}`);
+            const feedback = document.getElementById(`feedback-${literal}-${variable}`);
+            const userAnswer = parseFloat(input.value.trim());
+            
+            // Reset classes
+            input.classList.remove('correct', 'incorrect');
+            feedback.classList.remove('correct', 'incorrect', 'show');
+            
+            // Check if input is empty
+            if (isNaN(userAnswer)) {
+                feedback.textContent = '⚠️ Por favor, ingresa un número';
+                feedback.classList.add('incorrect', 'show');
+                return;
+            }
+            
+            // Allow small margin of error for decimal answers
+            const tolerance = 0.01;
+            const isCorrect = Math.abs(userAnswer - correctAnswer) < tolerance;
+            
+            // Check answer
+            if (isCorrect) {
+                input.classList.add('correct');
+                feedback.textContent = '✅ ¡Correcto! Muy bien hecho';
+                feedback.classList.add('correct', 'show');
+            } else {
+                input.classList.add('incorrect');
+                feedback.textContent = ` Incorrecto. La respuesta correcta es ${correctAnswer}°`;
+                feedback.classList.add('incorrect', 'show');
+            }
+        }
+
+        // Allow pressing Enter to check answer
+        document.querySelectorAll('.input-box').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const parts = this.id.split('-');
+                    const literal = parts[1];
+                    const variable = parts[2];
+                    
+                    // Get correct answer based on literal and variable
+                    let correctAnswer;
+                    const answers = {
+                        'a': { 'x': 20, 'y': 20 },
+                        'b': { 'x': 16, 'y': 16 },
+                        'c': { 'x': 23, 'y': 23 },
+                        'd': { 'x': 40, 'y': 40 }
+                    };
+                    
+                    correctAnswer = answers[literal][variable];
+                    checkAnswer(literal, variable, correctAnswer);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
