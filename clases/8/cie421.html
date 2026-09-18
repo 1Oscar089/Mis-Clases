@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mol y constante de Avogadro</title>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-primary: #2980b9;
+            --color-secondary: #d4efdf;
+            --color-accent: #a9dfbf;
+            --color-text: #2c3e50;
+            --color-text-light: #555555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--color-primary);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--color-primary);
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        h2 {
+            color: var(--color-primary);
+            border-left: 5px solid var(--color-accent);
+            padding-left: 10px;
+            margin-top: 35px;
+        }
+
+        p, li {
+            color: var(--color-text-light);
+        }
+
+        .teoria-box {
+            background-color: var(--color-secondary);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .highlight {
+            background-color: #fff;
+            padding: 12px;
+            border-left: 4px solid var(--color-primary);
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .dato-box {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 0.95rem;
+        }
+
+        .dato-box strong {
+            color: #856404;
+        }
+
+        .formula {
+            background-color: #fff;
+            border: 2px solid var(--color-accent);
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 1.2rem;
+        }
+
+        .ejemplo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .ejemplo-item {
+            background-color: #f9f9f9;
+            border: 1px solid var(--color-accent);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .ejemplo-item strong {
+            color: var(--color-primary);
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        /* Estilos para el Quiz */
+        #quiz-container {
+            margin-top: 20px;
+        }
+
+        .question-block {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .question-block p {
+            font-weight: bold;
+            color: var(--color-text);
+            margin-top: 0;
+        }
+
+        .options label {
+            display: block;
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #f4f4f4;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .options label:hover {
+            background-color: var(--color-secondary);
+        }
+
+        .options input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .btn {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 10px 5px 10px 0;
+        }
+
+        .btn:hover {
+            background-color: #1f618d;
+        }
+
+        .btn-secondary {
+            background-color: var(--color-accent);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover {
+            background-color: #7dcea0;
+        }
+
+        #quiz-result {
+            margin-top: 20px;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .correct { background-color: #d4efdf; color: #1e8449; }
+        .incorrect { background-color: #fadbd8; color: #922b21; }
+
+        .seed-info {
+            background-color: #e8f4f8;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            margin: 10px 0;
+            color: #555;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.5rem; }
+            .formula { font-size: 1rem; }
+            .ejemplo-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Mol y constante de Avogadro</h1>
+    </header>
+
+    <h2>¿Qué es el mol?</h2>
+    <p>Así como contamos huevos en docenas o personas en miles, en química necesitamos contar átomos y moléculas en cantidades extremadamente grandes. Para esto usamos el <strong>mol</strong>, la unidad de medida del Sistema Internacional que permite contar la cantidad de átomos o moléculas en una muestra de una sustancia.</p>
+
+    <div class="dato-box">
+        <strong> Dato curioso:</strong> Cada 23 de octubre se celebra el <strong>Día Mundial del Mol</strong> entre las 6:02 a.m. y 6:02 p.m. La forma de expresión de las horas y fechas hace referencia a la forma decimal del N<sub>A</sub> con tres cifras significativas: 6.02 × 10²³.
+    </div>
+
+    <div class="teoria-box">
+        <h3>Constante de Avogadro</h3>
+        <p>El mol es equivalente a <strong>6.022 × 10²³ partículas</strong>. Este número es denominado como <strong>constante de Avogadro</strong> en honor al químico italiano Amedeo Avogadro.</p>
+        
+        <div class="formula">
+            N<sub>A</sub> = 6.022 × 10²³ partículas/mol
+        </div>
+        
+        <p>Un mol de partículas (que pueden ser átomos, moléculas, iones, electrones y otras partículas) posee un número de partículas igual a la constante de Avogadro.</p>
+    </div>
+
+    <h2>Ejemplos Prácticos</h2>
+    <div class="ejemplo-grid">
+        <div class="ejemplo-item">
+            <strong>1 mol de hierro (Fe)</strong>
+            6.022 × 10²³ átomos de este elemento
+        </div>
+        <div class="ejemplo-item">
+            <strong>3 mol de CO₂</strong>
+            3 × (6.022 × 10²³) = 18.066 × 10²³ moléculas
+        </div>
+        <div class="ejemplo-item">
+            <strong>1 mol de agua (H₂O)</strong>
+            6.022 × 10²³ moléculas de este compuesto
+        </div>
+    </div>
+
+    <div class="teoria-box">
+        <h3>¿Por qué usar el mol?</h3>
+        <p>Las partículas son tan pequeñas que no se pueden ver a simple vista, y tan numerosas que contarlas una a una sería una tarea imposible. El mol ayuda a manejar y comparar cantidades extremadamente grandes de partículas de una manera más precisa y eficientemente posible.</p>
+    </div>
+
+    <div class="highlight">
+        <strong>Definición oficial:</strong> En el SI, un mol se define como la cantidad de una sustancia que posee tantas entidades elementales como el número de átomos que hay en <strong>12 g del isótopo de carbono-12</strong>, isotópicamente puro.
+    </div>
+
+    <h2>Evalúa tu comprensión</h2>
+    <p>Responde las siguientes 5 preguntas. Tu navegador generará un código único para que siempre tengas las mismas preguntas al recargar.</p>
+    
+    <div class="seed-info" id="seed-info"></div>
+
+    <button class="btn" onclick="generarQuiz()">Iniciar / Nuevo Cuestionario</button>
+    
+    <div id="quiz-container"></div>
+    
+    <button class="btn btn-secondary" id="btn-check" onclick="calificarQuiz()" style="display:none;">Calificar Respuestas</button>
+    
+    <div id="quiz-result"></div>
+
+</div>
+
+<script>
+    // Generar seed único basado en el navegador
+    function generarSeedUnico() {
+        // Crear un identificador único basado en propiedades del navegador
+        const userAgent = navigator.userAgent;
+        const screenRes = screen.width + 'x' + screen.height;
+        const language = navigator.language;
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Combinar todas las propiedades
+        const identificador = userAgent + screenRes + language + timezone;
+        
+        // Generar hash simple
+        let hash = 0;
+        for (let i = 0; i < identificador.length; i++) {
+            const char = identificador.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convertir a entero de 32 bits
+        }
+        
+        return Math.abs(hash);
+    }
+
+    // Guardar o recuperar seed del localStorage
+    function obtenerSeed() {
+        let seed = localStorage.getItem('quizSeed_mol_avogadro');
+        if (!seed) {
+            seed = generarSeedUnico();
+            localStorage.setItem('quizSeed_mol_avogadro', seed);
+        }
+        return parseInt(seed);
+    }
+
+    // Generador de números pseudoaleatorios con seed
+    function seededRandom(seed) {
+        const m = 0x80000000;
+        const a = 1103515245;
+        const c = 12345;
+        let state = seed ? seed : Math.floor(Math.random() * (m - 1));
+        
+        return function() {
+            state = (a * state + c) % m;
+            return state / (m - 1);
+        };
+    }
+
+    // Mezclar array con seed
+    function mezclarArrayConSeed(array, seed) {
+        const random = seededRandom(seed);
+        let arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    const bancoPreguntas = [
+        { q: "¿Qué es el mol?", options: ["Una unidad de masa", "Una unidad de medida que cuenta átomos o moléculas", "Una unidad de volumen", "Una unidad de temperatura"], correct: 1 },
+        { q: "¿Cuál es el valor de la constante de Avogadro?", options: ["6.022 × 10²²", "6.022 × 10²³", "6.022 × 10²⁴", "6.022 × 10²¹"], correct: 1 },
+        { q: "¿En honor a quién se nombra la constante de Avogadro?", options: ["Albert Einstein", "Isaac Newton", "Amedeo Avogadro", "Marie Curie"], correct: 2 },
+        { q: "¿Cuándo se celebra el Día Mundial del Mol?", options: ["12 de marzo", "23 de octubre", "6 de febrero", "22 de abril"], correct: 1 },
+        { q: "¿Entre qué horas se celebra el Día del Mol?", options: ["10:00 am a 10:00 pm", "6:02 am a 6:02 pm", "12:00 pm a 12:00 am", "8:00 am a 8:00 pm"], correct: 1 },
+        { q: "¿Cuántos átomos hay en 1 mol de hierro (Fe)?", options: ["6.022 × 10²²", "6.022 × 10²³", "12 × 10²³", "1 × 10²³"], correct: 1 },
+        { q: "¿Cuántas moléculas hay en 1 mol de agua (H₂O)?", options: ["6.022 × 10²³", "3 × 10²³", "2 × 6.022 × 10²³", "12 × 10²³"], correct: 0 },
+        { q: "¿Cuántas moléculas hay en 3 moles de CO₂?", options: ["6.022 × 10²³", "3 × (6.022 × 10²³)", "2 × (6.022 × 10²³)", "18.066 × 10²²"], correct: 1 },
+        { q: "¿Para qué sirve el mol en química?", options: ["Para medir temperatura", "Para contar partículas muy pequeñas y numerosas", "Para medir volumen", "Para calcular densidad"], correct: 1 },
+        { q: "¿Qué tipo de partículas se pueden contar con el mol?", options: ["Solo átomos", "Solo moléculas", "Átomos, moléculas, iones y electrones", "Solo iones"], correct: 2 },
+        { q: "¿Con qué isótopo se define oficialmente el mol?", options: ["Oxígeno-16", "Hidrógeno-1", "Carbono-12", "Nitrógeno-14"], correct: 2 },
+        { q: "¿Cuántos gramos de carbono-12 definen un mol?", options: ["1 g", "6 g", "12 g", "24 g"], correct: 2 },
+        { q: "¿Por qué no podemos contar los átomos uno por uno?", options: ["Son muy grandes", "Son invisibles y demasiado numerosos", "No existen", "Se mueven muy rápido"], correct: 1 },
+        { q: "¿A qué sistema de unidades pertenece el mol?", options: ["Sistema Imperial", "Sistema Internacional (SI)", "Sistema CGS", "Sistema MKS"], correct: 1 },
+        { q: "¿Qué representa N<sub>A</sub>?", options: ["Número atómico", "Constante de Avogadro", "Número de neutrones", "Número de masa"], correct: 1 },
+        { q: "Si tienes 2 moles de una sustancia, ¿cuántas partículas tienes?", options: ["6.022 × 10²³", "2 × (6.022 × 10²³)", "6.022 × 10²²", "12 × 10²³"], correct: 1 },
+        { q: "¿El mol es una unidad de?", options: ["Masa", "Cantidad de sustancia", "Volumen", "Energía"], correct: 1 },
+        { q: "¿Qué hace el mol más eficiente?", options: ["Permite contar partículas individualmente", "Permite manejar grandes cantidades de manera precisa", "Elimina la necesidad de calcular", "Convierte átomos en moléculas"], correct: 1 },
+        { q: "¿Las cifras 6:02 en el Día del Mol hacen referencia a?", options: ["La hora exacta", "6.02 × 10²³ (constante de Avogadro)", "6 meses y 2 días", "6 años y 2 meses"], correct: 1 },
+        { q: "¿Un mol de cualquier sustancia siempre contiene?", options: ["La misma masa", "El mismo volumen", "El mismo número de partículas (6.022 × 10²³)", "Los mismos átomos"], correct: 2 }
+    ];
+
+    let preguntasActuales = [];
+    let seedActual = obtenerSeed();
+
+    // Mostrar información del seed
+    document.getElementById('seed-info').innerHTML = 
+        `<strong>Tu código único:</strong> ${seedActual}<br>
+        Este código asegura que siempre tengas las mismas preguntas en este dispositivo.`;
+
+    function generarQuiz() {
+        // Mezclar preguntas con el seed
+        const mezcladas = mezclarArrayConSeed(bancoPreguntas, seedActual);
+        preguntasActuales = mezcladas.slice(0, 5);
+        
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = '';
+        document.getElementById('quiz-result').style.display = 'none';
+        document.getElementById('btn-check').style.display = 'inline-block';
+
+        preguntasActuales.forEach((pregunta, index) => {
+            let html = `
+                <div class="question-block">
+                    <p>${index + 1}. ${pregunta.q}</p>
+                    <div class="options">
+            `;
+            pregunta.options.forEach((opt, optIndex) => {
+                html += `
+                    <label>
+                        <input type="radio" name="q${index}" value="${optIndex}">
+                        ${opt}
+                    </label>
+                `;
+            });
+            html += `</div></div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function calificarQuiz() {
+        let puntaje = 0;
+        preguntasActuales.forEach((pregunta, index) => {
+            const seleccion = document.querySelector(`input[name="q${index}"]:checked`);
+            if (seleccion && parseInt(seleccion.value) === pregunta.correct) {
+                puntaje++;
+            }
+        });
+
+        const resultDiv = document.getElementById('quiz-result');
+        resultDiv.style.display = 'block';
+        resultDiv.className = puntaje >= 3 ? 'correct' : 'incorrect';
+        
+        let mensaje = `Obtuviste ${puntaje} de 5 respuestas correctas. `;
+        if (puntaje === 5) mensaje += "¡Excelente trabajo!";
+        else if (puntaje >= 3) mensaje += "¡Buen trabajo! Repasa los errores.";
+        else mensaje += "Te sugiero repasar la teoría e intentarlo de nuevo.";
+        
+        resultDiv.innerText = mensaje;
+        document.getElementById('btn-check').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
