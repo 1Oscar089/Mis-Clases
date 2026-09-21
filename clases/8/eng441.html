@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Often? - Daily Activities & Frequency Adverbs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            line-height: 1.6;
+            padding-right: 320px;
+        }
+
+        /* Translator Panel - Fixed Right */
+        .translator-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(180deg, #6a1b9a 0%, #8e24aa 100%);
+            padding: 20px 15px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .translator-panel h3 {
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .translator-panel .translator-widget {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .translator-panel textarea {
+            width: 100%;
+            min-height: 100px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .translator-panel textarea:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .translator-panel .lang-labels {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            color: #6a1b9a;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .translator-panel .translate-btn {
+            width: 100%;
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+
+        .translator-panel .translate-btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+        }
+
+        .translator-panel .result-box {
+            background: #f3e5f5;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 80px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .translator-panel .api-info {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 0.85em;
+            margin-top: 15px;
+        }
+
+        .translator-panel .api-info code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            word-break: break-all;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        header .subtitle {
+            font-size: 1em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #8e24aa;
+        }
+
+        .section h2 {
+            color: #6a1b9a;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #e1bee7;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #7b1fa2;
+            margin: 20px 0 10px 0;
+        }
+
+        .section .instructions {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #8e24aa;
+        }
+
+        /* Frequency Scale */
+        .frequency-scale {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .frequency-item {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .frequency-item .percentage {
+            background: #8e24aa;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
+            margin-right: 15px;
+        }
+
+        .frequency-item .adverb {
+            font-weight: bold;
+            color: #6a1b9a;
+            font-size: 1.2em;
+            margin-right: 15px;
+            min-width: 120px;
+        }
+
+        .frequency-item .meaning {
+            color: #666;
+            font-style: italic;
+        }
+
+        .theory-box {
+            background: #f3e5f5;
+            border-left: 4px solid #8e24aa;
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            margin: 20px 0;
+        }
+
+        .theory-box ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .theory-box li {
+            margin: 8px 0;
+        }
+
+        .structure-box {
+            background: white;
+            border: 3px solid #8e24aa;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .structure-box .formula {
+            font-size: 1.2em;
+            color: #6a1b9a;
+            font-weight: bold;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f3e5f5;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .example-box {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #6a1b9a;
+        }
+
+        .example-box .sentence {
+            font-size: 1.1em;
+            margin: 12px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border-left: 3px solid #8e24aa;
+        }
+
+        .example-box .sentence .highlight {
+            color: #6a1b9a;
+            font-weight: bold;
+        }
+
+        .example-box .translation {
+            color: #666;
+            font-style: italic;
+            font-size: 0.95em;
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+
+        /* Exercises */
+        .exercise {
+            background: #fafafa;
+            border: 2px solid #e1bee7;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .exercise h4 {
+            color: #6a1b9a;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .exercise input, .exercise select {
+            padding: 10px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            margin: 5px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .exercise input:focus, .exercise select:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .exercise input.correct {
+            border-color: #43a047;
+            background: #c8e6c9;
+        }
+
+        .exercise input.incorrect {
+            border-color: #e53935;
+            background: #ffcdd2;
+        }
+
+        .exercise select.correct {
+            border-color: #43a047;
+            background: #c8e6c9;
+        }
+
+        .exercise select.incorrect {
+            border-color: #e53935;
+            background: #ffcdd2;
+        }
+
+        .btn {
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-check {
+            background: #43a047;
+        }
+
+        .btn-check:hover {
+            background: #2e7d32;
+        }
+
+        .btn-reset {
+            background: #e53935;
+        }
+
+        .btn-reset:hover {
+            background: #c62828;
+        }
+
+        .feedback {
+            margin-top: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .feedback.correct {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 2px solid #43a047;
+        }
+
+        .feedback.incorrect {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 2px solid #e53935;
+        }
+
+        .feedback.hint {
+            background: #fff9c4;
+            color: #f57f17;
+            border: 2px solid #fbc02d;
+        }
+
+        .part-badge {
+            display: inline-block;
+            background: #8e24aa;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-right: 10px;
+        }
+
+        .activity-card {
+            background: white;
+            border: 2px solid #ce93d8;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .activity-card .emoji {
+            font-size: 2.5em;
+        }
+
+        .activity-card .activity-name {
+            font-weight: bold;
+            color: #6a1b9a;
+            flex: 1;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding-right: 0;
+            }
+            .translator-panel {
+                position: relative;
+                width: 100%;
+                height: auto;
+                border-radius: 0 0 15px 15px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Fixed Translator Panel -->
+    <div class="translator-panel">
+        <h3>🌐 English → Spanish Translator</h3>
+        
+        <div class="translator-widget">
+            <div class="lang-labels">
+                <span>🇬🇧 English</span>
+                <span>🇪🇸 Español</span>
+            </div>
+            <textarea id="sourceText" placeholder="Type or paste English text here..."></textarea>
+            <button class="translate-btn" onclick="translateText()">Translate ▶</button>
+            <div class="result-box" id="translatedText">Translation will appear here...</div>
+        </div>
+
+        <div class="api-info">
+            <strong>📋 API Info:</strong><br>
+            <small>Using Google Translate API</small><br>
+            <code>translate.googleapis.com</code><br><br>
+            <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
+        </div>
+    </div>
+
+    <header>
+        <h1> How Often?</h1>
+        <p>Daily Activities & Frequency Adverbs</p>
+        <div class="subtitle">Learn to ask and answer questions about how frequently you do activities</div>
+    </header>
+
+    <div class="container">
+
+        <!-- THEORY SECTION -->
+        <div class="section" id="theory">
+            <h2>📖 Theory</h2>
+            
+            <h3>Questions with "How often...?"</h3>
+            <p>Questions with <strong>"How often"</strong> ask about the frequency of an activity - how frequent or how many times something is done.</p>
+
+            <div class="structure-box">
+                <h4>Question Structure:</h4>
+                <div class="formula">
+                    How often + do/does + subject + verb + complement?
+                </div>
+                <div style="margin-top: 15px;">
+                    <p><strong>Examples:</strong></p>
+                    <p>How often <strong>do</strong> you clean your house?</p>
+                    <p>How often <strong>does</strong> she exercise?</p>
+                </div>
+            </div>
+
+            <div class="theory-box">
+                <h3>Important Rules:</h3>
+                <ul>
+                    <li>Use <strong>"do"</strong> with: I, you, we, they</li>
+                    <li>Use <strong>"does"</strong> with: he, she, it</li>
+                    <li>The verb stays in <strong>base form</strong> (no -s ending)</li>
+                    <li>Answers use frequency adverbs: always, usually, often, sometimes, hardly ever, never</li>
+                </ul>
+            </div>
+
+            <h3>Frequency Adverbs Scale:</h3>
+            
+            <div class="frequency-scale">
+                <div class="frequency-item">
+                    <span class="percentage">100%</span>
+                    <span class="adverb">Always</span>
+                    <span class="meaning">Siempre - all the time</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="percentage">80%</span>
+                    <span class="adverb">Usually</span>
+                    <span class="meaning">Usualmente - most of the time</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="percentage">60%</span>
+                    <span class="adverb">Often</span>
+                    <span class="meaning">A menudo - many times</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="percentage">40%</span>
+                    <span class="adverb">Sometimes</span>
+                    <span class="meaning">A veces - occasionally</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="percentage">10%</span>
+                    <span class="adverb">Hardly ever</span>
+                    <span class="meaning">Casi nunca - rarely</span>
+                </div>
+                <div class="frequency-item">
+                    <span class="percentage">0%</span>
+                    <span class="adverb">Never</span>
+                    <span class="meaning">Nunca - not at all</span>
+                </div>
+            </div>
+
+            <div class="structure-box">
+                <h4>Answer Structure:</h4>
+                <div class="formula">
+                    Subject + frequency adverb + verb (conjugated) + complement
+                </div>
+                <div style="margin-top: 15px;">
+                    <p><strong>Examples:</strong></p>
+                    <p>I <strong>always clean</strong> the house.</p>
+                    <p>He <strong>usually cleans</strong> the house.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXAMPLES SECTION -->
+        <div class="section" id="examples">
+            <h2>💡 Examples</h2>
+            
+            <h3>Common Daily Activities:</h3>
+            
+            <div class="activity-card">
+                <span class="emoji">🏠</span>
+                <span class="activity-name">clean the house</span>
+            </div>
+            <div class="activity-card">
+                <span class="emoji">🏃</span>
+                <span class="activity-name">exercise</span>
+            </div>
+            <div class="activity-card">
+                <span class="emoji">📚</span>
+                <span class="activity-name">study English</span>
+            </div>
+            <div class="activity-card">
+                <span class="emoji"></span>
+                <span class="activity-name">play video games</span>
+            </div>
+            <div class="activity-card">
+                <span class="emoji"></span>
+                <span class="activity-name">check my phone</span>
+            </div>
+            <div class="activity-card">
+                <span class="emoji">🍳</span>
+                <span class="activity-name">cook dinner</span>
+            </div>
+
+            <h3>Question & Answer Examples:</h3>
+            
+            <div class="example-box">
+                <div class="sentence">
+                    <strong>Q:</strong> <span class="highlight">How often do you clean your house?</span><br>
+                    <strong>A:</strong> <span class="highlight">I always clean the house.</span>
+                    <div class="translation">P: ¿Con qué frecuencia limpias tu casa? R: Siempre limpio la casa.</div>
+                </div>
+                <div class="sentence">
+                    <strong>Q:</strong> <span class="highlight">How often does he clean the house?</span><br>
+                    <strong>A:</strong> <span class="highlight">He usually cleans the house.</span>
+                    <div class="translation">P: ¿Con qué frecuencia limpia él la casa? R: Él usualmente limpia la casa.</div>
+                </div>
+                <div class="sentence">
+                    <strong>Q:</strong> <span class="highlight">How often do you exercise?</span><br>
+                    <strong>A:</strong> <span class="highlight">I often exercise in the morning.</span>
+                    <div class="translation">P: ¿Con qué frecuencia haces ejercicio? R: A menudo hago ejercicio en la mañana.</div>
+                </div>
+                <div class="sentence">
+                    <strong>Q:</strong> <span class="highlight">How often does she study English?</span><br>
+                    <strong>A:</strong> <span class="highlight">She sometimes studies English.</span>
+                    <div class="translation">P: ¿Con qué frecuencia estudia ella inglés? R: Ella a veces estudia inglés.</div>
+                </div>
+                <div class="sentence">
+                    <strong>Q:</strong> <span class="highlight">How often do they play video games?</span><br>
+                    <strong>A:</strong> <span class="highlight">They hardly ever play video games.</span>
+                    <div class="translation">P: ¿Con qué frecuencia juegan ellos videojuegos? R: Ellos casi nunca juegan videojuegos.</div>
+                </div>
+                <div class="sentence">
+                    <strong>Q:</strong> <span class="highlight">How often do you cook dinner?</span><br>
+                    <strong>A:</strong> <span class="highlight">I never cook dinner.</span>
+                    <div class="translation">P: ¿Con qué frecuencia cocinas la cena? R: Nunca cocino la cena.</div>
+                </div>
+            </div>
+
+            <div class="theory-box">
+                <h3>Remember:</h3>
+                <ul>
+                    <li>With <strong>he/she/it</strong>, add <strong>-s</strong> to the verb in answers: "He cleans", "She studies"</li>
+                    <li>In questions, use base form: "How often does he clean?" (NOT "cleans")</li>
+                    <li>Frequency adverbs go <strong>before</strong> the main verb</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- EXERCISES SECTION -->
+        <div class="section" id="exercises">
+            <h2>✏️ Exercises</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Complete the exercises below to practice "How often" questions and frequency adverbs.
+            </div>
+
+            <!-- Exercise 1 -->
+            <div class="exercise" id="exercise1">
+                <h4>Exercise 1: Choose do or does</h4>
+                
+                <p>1. How often _____ you exercise?</p>
+                <select id="ex1-1">
+                    <option value="">Select...</option>
+                    <option value="do">do</option>
+                    <option value="does">does</option>
+                </select>
+
+                <p>2. How often _____ she clean her room?</p>
+                <select id="ex1-2">
+                    <option value="">Select...</option>
+                    <option value="do">do</option>
+                    <option value="does">does</option>
+                </select>
+
+                <p>3. How often _____ they play soccer?</p>
+                <select id="ex1-3">
+                    <option value="">Select...</option>
+                    <option value="do">do</option>
+                    <option value="does">does</option>
+                </select>
+
+                <p>4. How often _____ he study English?</p>
+                <select id="ex1-4">
+                    <option value="">Select...</option>
+                    <option value="do">do</option>
+                    <option value="does">does</option>
+                </select>
+
+                <p>5. How often _____ we have homework?</p>
+                <select id="ex1-5">
+                    <option value="">Select...</option>
+                    <option value="do">do</option>
+                    <option value="does">does</option>
+                </select>
+
+                <br>
+                <button class="btn btn-check" onclick="checkExercise1()">Check Answers</button>
+                <button class="btn btn-reset" onclick="resetExercise1()">Reset</button>
+                <div id="ex1-feedback" class="feedback"></div>
+            </div>
+
+            <!-- Exercise 2 -->
+            <div class="exercise" id="exercise2">
+                <h4>Exercise 2: Match the percentage with the adverb</h4>
+
+                <p>1. 100% - </p>
+                <select id="ex2-1">
+                    <option value="">Select...</option>
+                    <option value="always">always</option>
+                    <option value="usually">usually</option>
+                    <option value="often">often</option>
+                    <option value="sometimes">sometimes</option>
+                    <option value="hardly ever">hardly ever</option>
+                    <option value="never">never</option>
+                </select>
+
+                <p>2. 80% - </p>
+                <select id="ex2-2">
+                    <option value="">Select...</option>
+                    <option value="always">always</option>
+                    <option value="usually">usually</option>
+                    <option value="often">often</option>
+                    <option value="sometimes">sometimes</option>
+                    <option value="hardly ever">hardly ever</option>
+                    <option value="never">never</option>
+                </select>
+
+                <p>3. 60% - </p>
+                <select id="ex2-3">
+                    <option value="">Select...</option>
+                    <option value="always">always</option>
+                    <option value="usually">usually</option>
+                    <option value="often">often</option>
+                    <option value="sometimes">sometimes</option>
+                    <option value="hardly ever">hardly ever</option>
+                    <option value="never">never</option>
+                </select>
+
+                <p>4. 40% - </p>
+                <select id="ex2-4">
+                    <option value="">Select...</option>
+                    <option value="always">always</option>
+                    <option value="usually">usually</option>
+                    <option value="often">often</option>
+                    <option value="sometimes">sometimes</option>
+                    <option value="hardly ever">hardly ever</option>
+                    <option value="never">never</option>
+                </select>
+
+                <p>5. 10% - </p>
+                <select id="ex2-5">
+                    <option value="">Select...</option>
+                    <option value="always">always</option>
+                    <option value="usually">usually</option>
+                    <option value="often">often</option>
+                    <option value="sometimes">sometimes</option>
+                    <option value="hardly ever">hardly ever</option>
+                    <option value="never">never</option>
+                </select>
+
+                <p>6. 0% - </p>
+                <select id="ex2-6">
+                    <option value="">Select...</option>
+                    <option value="always">always</option>
+                    <option value="usually">usually</option>
+                    <option value="often">often</option>
+                    <option value="sometimes">sometimes</option>
+                    <option value="hardly ever">hardly ever</option>
+                    <option value="never">never</option>
+                </select>
+
+                <br>
+                <button class="btn btn-check" onclick="checkExercise2()">Check Answers</button>
+                <button class="btn btn-reset" onclick="resetExercise2()">Reset</button>
+                <div id="ex2-feedback" class="feedback"></div>
+            </div>
+
+            <!-- Exercise 3 -->
+            <div class="exercise" id="exercise3">
+                <h4>Exercise 3: Write the correct form of the verb</h4>
+                <p>Complete the sentences with the correct verb form (add -s if needed)</p>
+
+                <p>1. She always __________ (clean) her room.</p>
+                <input type="text" id="ex3-1" placeholder="Type the verb">
+
+                <p>2. They often __________ (play) basketball.</p>
+                <input type="text" id="ex3-2" placeholder="Type the verb">
+
+                <p>3. He usually __________ (study) at night.</p>
+                <input type="text" id="ex3-3" placeholder="Type the verb">
+
+                <p>4. I sometimes __________ (cook) dinner.</p>
+                <input type="text" id="ex3-4" placeholder="Type the verb">
+
+                <p>5. My brother never __________ (exercise).</p>
+                <input type="text" id="ex3-5" placeholder="Type the verb">
+
+                <br>
+                <button class="btn btn-check" onclick="checkExercise3()">Check Answers</button>
+                <button class="btn btn-reset" onclick="resetExercise3()">Reset</button>
+                <div id="ex3-feedback" class="feedback"></div>
+            </div>
+
+            <!-- Exercise 4 -->
+            <div class="exercise" id="exercise4">
+                <h4>Exercise 4: Write complete questions</h4>
+                <p>Use the words to write "How often" questions</p>
+
+                <p>1. (you / exercise / week) → </p>
+                <input type="text" id="ex4-1" placeholder="Example: How often do you exercise?" style="width: 100%; max-width: 600px;">
+
+                <p>2. (she / clean / house) → </p>
+                <input type="text" id="ex4-2" placeholder="Write your question..." style="width: 100%; max-width: 600px;">
+
+                <p>3. (they / play / video games) → </p>
+                <input type="text" id="ex4-3" placeholder="Write your question..." style="width: 100%; max-width: 600px;">
+
+                <p>4. (he / study / English) → </p>
+                <input type="text" id="ex4-4" placeholder="Write your question..." style="width: 100%; max-width: 600px;">
+
+                <br>
+                <button class="btn btn-check" onclick="checkExercise4()">Check Answers</button>
+                <button class="btn btn-reset" onclick="resetExercise4()">Reset</button>
+                <div id="ex4-feedback" class="feedback"></div>
+            </div>
+
+            <!-- Exercise 5 -->
+            <div class="exercise" id="exercise5">
+                <h4>Exercise 5: Write complete answers</h4>
+                <p>Answer the questions using a frequency adverb and the verb in parentheses</p>
+
+                <p>1. How often do you clean your room? (always)</p>
+                <input type="text" id="ex5-1" placeholder="Example: I always clean my room." style="width: 100%; max-width: 600px;">
+
+                <p>2. How often does Maria exercise? (often)</p>
+                <input type="text" id="ex5-2" placeholder="Write your answer..." style="width: 100%; max-width: 600px;">
+
+                <p>3. How often do they study English? (sometimes)</p>
+                <input type="text" id="ex5-3" placeholder="Write your answer..." style="width: 100%; max-width: 600px;">
+
+                <p>4. How often does your father cook? (never)</p>
+                <input type="text" id="ex5-4" placeholder="Write your answer..." style="width: 100%; max-width: 600px;">
+
+                <br>
+                <button class="btn btn-check" onclick="checkExercise5()">Check Answers</button>
+                <button class="btn btn-reset" onclick="resetExercise5()">Reset</button>
+                <div id="ex5-feedback" class="feedback"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // ============ TRANSLATOR ============
+        async function translateText() {
+            const text = document.getElementById('sourceText').value.trim();
+            const resultBox = document.getElementById('translatedText');
+            
+            if (!text) {
+                resultBox.textContent = '⚠️ Please enter some text to translate.';
+                resultBox.style.color = '#f57f17';
+                return;
+            }
+
+            resultBox.textContent = 'Translating...';
+            resultBox.style.color = '#333';
+
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                let translated = '';
+                if (data && data[0]) {
+                    data[0].forEach(item => {
+                        if (item[0]) translated += item[0];
+                    });
+                }
+                
+                resultBox.textContent = translated || 'No translation available.';
+                resultBox.style.color = '#333';
+            } catch (error) {
+                resultBox.textContent = '❌ Error connecting to translator. Please try again.';
+                resultBox.style.color = '#c62828';
+            }
+        }
+
+        document.getElementById('sourceText').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                translateText();
+            }
+        });
+
+        function normalizeText(text) {
+            return text.toLowerCase().trim().replace(/\s+/g, ' ');
+        }
+
+        // ============ EXERCISE 1 ============
+        function checkExercise1() {
+            const answers = {
+                'ex1-1': 'do',
+                'ex1-2': 'does',
+                'ex1-3': 'do',
+                'ex1-4': 'does',
+                'ex1-5': 'do'
+            };
+
+            let correct = 0;
+            let total = 5;
+            let allAnswered = true;
+
+            for (let id in answers) {
+                const select = document.getElementById(id);
+                if (!select.value) {
+                    allAnswered = false;
+                }
+            }
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('ex1-feedback');
+                feedback.textContent = '⚠️ Please answer all questions before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            for (let id in answers) {
+                const select = document.getElementById(id);
+                if (select.value === answers[id]) {
+                    correct++;
+                    select.classList.remove('incorrect');
+                    select.classList.add('correct');
+                } else {
+                    select.classList.remove('correct');
+                    select.classList.add('incorrect');
+                }
+            }
+
+            const feedback = document.getElementById('ex1-feedback');
+            if (correct === total) {
+                feedback.textContent = `🎉 Perfect! You got ${correct}/${total} correct! Remember: do (I/you/we/they), does (he/she/it)`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 3) {
+                feedback.textContent = `👍 Good job! You got ${correct}/${total} correct. Review: do with I/you/we/they, does with he/she/it`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 You got ${correct}/${total} correct. Remember: Use "do" with I, you, we, they. Use "does" with he, she, it.`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetExercise1() {
+            for (let i = 1; i <= 5; i++) {
+                const select = document.getElementById('ex1-' + i);
+                select.value = '';
+                select.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('ex1-feedback').style.display = 'none';
+        }
+
+        // ============ EXERCISE 2 ============
+        function checkExercise2() {
+            const answers = {
+                'ex2-1': 'always',
+                'ex2-2': 'usually',
+                'ex2-3': 'often',
+                'ex2-4': 'sometimes',
+                'ex2-5': 'hardly ever',
+                'ex2-6': 'never'
+            };
+
+            let correct = 0;
+            let total = 6;
+            let allAnswered = true;
+
+            for (let id in answers) {
+                const select = document.getElementById(id);
+                if (!select.value) {
+                    allAnswered = false;
+                }
+            }
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('ex2-feedback');
+                feedback.textContent = '⚠️ Please answer all questions before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            for (let id in answers) {
+                const select = document.getElementById(id);
+                if (select.value === answers[id]) {
+                    correct++;
+                    select.classList.remove('incorrect');
+                    select.classList.add('correct');
+                } else {
+                    select.classList.remove('correct');
+                    select.classList.add('incorrect');
+                }
+            }
+
+            const feedback = document.getElementById('ex2-feedback');
+            if (correct === total) {
+                feedback.textContent = `🎉 Excellent! You got ${correct}/${total} correct!`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 4) {
+                feedback.textContent = `👍 Good work! You got ${correct}/${total} correct.`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 You got ${correct}/${total} correct. Review the frequency scale.`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetExercise2() {
+            for (let i = 1; i <= 6; i++) {
+                const select = document.getElementById('ex2-' + i);
+                select.value = '';
+                select.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('ex2-feedback').style.display = 'none';
+        }
+
+        // ============ EXERCISE 3 ============
+        function checkExercise3() {
+            const answers = {
+                'ex3-1': ['cleans'],
+                'ex3-2': ['play'],
+                'ex3-3': ['studies'],
+                'ex3-4': ['cook'],
+                'ex3-5': ['exercises']
+            };
+
+            let correct = 0;
+            let total = 5;
+            let allAnswered = true;
+
+            for (let id in answers) {
+                const input = document.getElementById(id);
+                if (!normalizeText(input.value)) {
+                    allAnswered = false;
+                }
+            }
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('ex3-feedback');
+                feedback.textContent = '⚠️ Please complete all blanks before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            for (let id in answers) {
+                const input = document.getElementById(id);
+                const userAnswer = normalizeText(input.value);
+                if (answers[id].includes(userAnswer)) {
+                    correct++;
+                    input.classList.remove('incorrect');
+                    input.classList.add('correct');
+                } else {
+                    input.classList.remove('correct');
+                    input.classList.add('incorrect');
+                }
+            }
+
+            const feedback = document.getElementById('ex3-feedback');
+            if (correct === total) {
+                feedback.textContent = `🎉 Perfect! You got ${correct}/${total} correct! Remember: add -s with he/she/it`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 3) {
+                feedback.textContent = `👍 Good job! ${correct}/${total} correct. Remember: he/she/it + verb-s`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 ${correct}/${total} correct. Remember: With he/she/it, add -s to the verb (cleans, studies, exercises). With I/you/we/they, use base form.`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetExercise3() {
+            for (let i = 1; i <= 5; i++) {
+                const input = document.getElementById('ex3-' + i);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('ex3-feedback').style.display = 'none';
+        }
+
+        // ============ EXERCISE 4 ============
+        function checkExercise4() {
+            const exercises = [
+                {
+                    id: 'ex4-1',
+                    mustHave: ['how', 'often', 'do', 'you', 'exercise'],
+                    structure: 'question'
+                },
+                {
+                    id: 'ex4-2',
+                    mustHave: ['how', 'often', 'does', 'she', 'clean', 'house'],
+                    structure: 'question'
+                },
+                {
+                    id: 'ex4-3',
+                    mustHave: ['how', 'often', 'do', 'they', 'play', 'video', 'games'],
+                    structure: 'question'
+                },
+                {
+                    id: 'ex4-4',
+                    mustHave: ['how', 'often', 'does', 'he', 'study', 'english'],
+                    structure: 'question'
+                }
+            ];
+
+            let correct = 0;
+            let total = 4;
+            let allAnswered = true;
+
+            exercises.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                if (!normalizeText(input.value)) {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('ex4-feedback');
+                feedback.textContent = '⚠️ Please complete all questions before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            exercises.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                const text = normalizeText(input.value);
+                
+                const hasAllWords = ex.mustHave.every(word => text.includes(word));
+                const startsWithHowOften = text.startsWith('how often');
+                
+                if (hasAllWords && startsWithHowOften) {
+                    correct++;
+                    input.classList.remove('incorrect');
+                    input.classList.add('correct');
+                } else {
+                    input.classList.remove('correct');
+                    input.classList.add('incorrect');
+                }
+            });
+
+            const feedback = document.getElementById('ex4-feedback');
+            if (correct === total) {
+                feedback.textContent = `🎉 Perfect! All ${correct}/${total} questions are correct!`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 2) {
+                feedback.textContent = `👍 Good work! ${correct}/${total} correct. Structure: How often + do/does + subject + verb?`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 ${correct}/${total} correct. Remember: How often + do/does + subject + verb (base form)?`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetExercise4() {
+            for (let i = 1; i <= 4; i++) {
+                const input = document.getElementById('ex4-' + i);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('ex4-feedback').style.display = 'none';
+        }
+
+        // ============ EXERCISE 5 ============
+        function checkExercise5() {
+            const exercises = [
+                {
+                    id: 'ex5-1',
+                    mustHave: ['i', 'always', 'clean', 'room'],
+                    adverb: 'always'
+                },
+                {
+                    id: 'ex5-2',
+                    mustHave: ['maria', 'often', 'exercise', 'she'],
+                    adverb: 'often'
+                },
+                {
+                    id: 'ex5-3',
+                    mustHave: ['they', 'sometimes', 'study', 'english'],
+                    adverb: 'sometimes'
+                },
+                {
+                    id: 'ex5-4',
+                    mustHave: ['father', 'never', 'cook', 'he'],
+                    adverb: 'never'
+                }
+            ];
+
+            let correct = 0;
+            let total = 4;
+            let allAnswered = true;
+
+            exercises.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                if (!normalizeText(input.value)) {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('ex5-feedback');
+                feedback.textContent = '️ Please complete all answers before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            exercises.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                const text = normalizeText(input.value);
+                
+                const hasAdverb = text.includes(ex.adverb);
+                const hasSomeWords = ex.mustHave.some(word => text.includes(word));
+                const hasSubject = text.match(/\b(i|she|he|they|maria|father)\b/);
+                
+                if (hasAdverb && hasSomeWords && hasSubject) {
+                    correct++;
+                    input.classList.remove('incorrect');
+                    input.classList.add('correct');
+                } else {
+                    input.classList.remove('correct');
+                    input.classList.add('incorrect');
+                }
+            });
+
+            const feedback = document.getElementById('ex5-feedback');
+            if (correct === total) {
+                feedback.textContent = ` Excellent! All ${correct}/${total} answers are correct!`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 2) {
+                feedback.textContent = `👍 Good work! ${correct}/${total} correct. Structure: Subject + adverb + verb + complement`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 ${correct}/${total} correct. Remember: Subject + frequency adverb + verb (with -s for he/she/it) + complement`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetExercise5() {
+            for (let i = 1; i <= 4; i++) {
+                const input = document.getElementById('ex5-' + i);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('ex5-feedback').style.display = 'none';
+        }
+    </script>
+
+</body>
+</html>
