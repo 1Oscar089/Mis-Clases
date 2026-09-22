@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Present Tense - Daily Routines</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            line-height: 1.6;
+            padding-right: 320px;
+        }
+
+        .translator-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(180deg, #6a1b9a 0%, #8e24aa 100%);
+            padding: 20px 15px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .translator-panel h3 {
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .translator-panel .translator-widget {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .translator-panel textarea {
+            width: 100%;
+            min-height: 100px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .translator-panel textarea:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .translator-panel .lang-labels {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            color: #6a1b9a;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .translator-panel .translate-btn {
+            width: 100%;
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+
+        .translator-panel .translate-btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+        }
+
+        .translator-panel .result-box {
+            background: #f3e5f5;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 80px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .translator-panel .api-info {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 0.85em;
+            margin-top: 15px;
+        }
+
+        .translator-panel .api-info code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            word-break: break-all;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        header .subtitle {
+            font-size: 1em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #8e24aa;
+        }
+
+        .section h2 {
+            color: #6a1b9a;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #e1bee7;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #7b1fa2;
+            margin: 20px 0 10px 0;
+        }
+
+        .section .instructions {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #8e24aa;
+        }
+
+        .theory-box {
+            background: #f3e5f5;
+            border-left: 4px solid #8e24aa;
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            margin: 20px 0;
+        }
+
+        .theory-box ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .theory-box li {
+            margin: 8px 0;
+        }
+
+        .structure-box {
+            background: white;
+            border: 3px solid #8e24aa;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .structure-box .formula {
+            font-size: 1.2em;
+            color: #6a1b9a;
+            font-weight: bold;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f3e5f5;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .example-box {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #6a1b9a;
+        }
+
+        .example-box .sentence {
+            font-size: 1.1em;
+            margin: 12px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border-left: 3px solid #8e24aa;
+        }
+
+        .example-box .sentence .highlight {
+            color: #6a1b9a;
+            font-weight: bold;
+        }
+
+        .example-box .translation {
+            color: #666;
+            font-style: italic;
+            font-size: 0.95em;
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+
+        .vocab-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .vocab-card {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid #ce93d8;
+            transition: transform 0.3s;
+        }
+
+        .vocab-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .vocab-card .emoji {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+        }
+
+        .vocab-card .word {
+            font-weight: bold;
+            color: #6a1b9a;
+            font-size: 1.1em;
+        }
+
+        /* Board Race Activity */
+        .board-race-container {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .prompt-card {
+            background: white;
+            border: 3px solid #8e24aa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #6a1b9a;
+        }
+
+        .prompt-card .element {
+            background: #f3e5f5;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px dashed #8e24aa;
+        }
+
+        .prompt-card .slash {
+            color: #8e24aa;
+            font-size: 1.5em;
+        }
+
+        .race-input {
+            width: 100%;
+            max-width: 600px;
+            padding: 12px 15px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            margin-top: 10px;
+        }
+
+        .race-input:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .race-input.correct {
+            border-color: #43a047;
+            background: #c8e6c9;
+        }
+
+        .race-input.incorrect {
+            border-color: #e53935;
+            background: #ffcdd2;
+        }
+
+        /* Unscramble */
+        .unscramble-item {
+            background: #fafafa;
+            border: 2px solid #e1bee7;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .unscramble-item .words {
+            background: #f3e5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-weight: bold;
+            color: #6a1b9a;
+            letter-spacing: 1px;
+        }
+
+        .unscramble-item .number {
+            background: #8e24aa;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .unscramble-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .unscramble-input:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .unscramble-input.correct {
+            border-color: #43a047;
+            background: #c8e6c9;
+        }
+
+        .unscramble-input.incorrect {
+            border-color: #e53935;
+            background: #ffcdd2;
+        }
+
+        /* Conversation */
+        .conversation-box {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .conversation-line {
+            background: white;
+            padding: 15px 20px;
+            margin: 12px 0;
+            border-radius: 10px;
+            border-left: 4px solid #8e24aa;
+            font-size: 1.05em;
+        }
+
+        .conversation-line .speaker {
+            font-weight: bold;
+            color: #6a1b9a;
+            margin-right: 10px;
+        }
+
+        .conversation-line .highlight {
+            color: #8e24aa;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .conversation-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            margin-top: 8px;
+        }
+
+        .conversation-input:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .conversation-input.correct {
+            border-color: #43a047;
+            background: #c8e6c9;
+        }
+
+        .conversation-input.incorrect {
+            border-color: #e53935;
+            background: #ffcdd2;
+        }
+
+        /* Quiz */
+        .quiz-container {
+            background: #f3e5f5;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .quiz-question {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border: 2px solid #ce93d8;
+        }
+
+        .quiz-question p {
+            font-weight: bold;
+            color: #6a1b9a;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .quiz-options label {
+            display: block;
+            padding: 10px 15px;
+            margin: 8px 0;
+            background: #ede7f6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quiz-options label:hover {
+            background: #e1bee7;
+        }
+
+        .quiz-options input[type="radio"] {
+            margin-right: 10px;
+            accent-color: #8e24aa;
+        }
+
+        .quiz-options label.selected {
+            background: #ce93d8;
+            color: white;
+            font-weight: bold;
+        }
+
+        .btn {
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-check {
+            background: #43a047;
+        }
+
+        .btn-check:hover {
+            background: #2e7d32;
+        }
+
+        .btn-reset {
+            background: #e53935;
+        }
+
+        .btn-reset:hover {
+            background: #c62828;
+        }
+
+        .feedback {
+            margin-top: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .feedback.correct {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 2px solid #43a047;
+        }
+
+        .feedback.incorrect {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 2px solid #e53935;
+        }
+
+        .feedback.hint {
+            background: #fff9c4;
+            color: #f57f17;
+            border: 2px solid #fbc02d;
+        }
+
+        .part-badge {
+            display: inline-block;
+            background: #8e24aa;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-right: 10px;
+        }
+
+        .score-display {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.3em;
+            font-weight: bold;
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding-right: 0;
+            }
+            .translator-panel {
+                position: relative;
+                width: 100%;
+                height: auto;
+                border-radius: 0 0 15px 15px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Fixed Translator Panel -->
+    <div class="translator-panel">
+        <h3>🌐 English → Spanish Translator</h3>
+        
+        <div class="translator-widget">
+            <div class="lang-labels">
+                <span>🇬🇧 English</span>
+                <span>🇪 Español</span>
+            </div>
+            <textarea id="sourceText" placeholder="Type or paste English text here..."></textarea>
+            <button class="translate-btn" onclick="translateText()">Translate ▶</button>
+            <div class="result-box" id="translatedText">Translation will appear here...</div>
+        </div>
+
+        <div class="api-info">
+            <strong>📋 API Info:</strong><br>
+            <small>Using Google Translate API</small><br>
+            <code>translate.googleapis.com</code><br><br>
+            <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
+        </div>
+    </div>
+
+    <header>
+        <h1>🗓️ Simple Present Tense</h1>
+        <p>Daily Routines & Time Expressions</p>
+        <div class="subtitle">Learn to talk about your daily activities using the Simple Present Tense</div>
+    </header>
+
+    <div class="container">
+
+        <!-- THEORY SECTION -->
+        <div class="section" id="theory">
+            <h2>📖 Theory</h2>
+            
+            <h3>What is the Simple Present Tense?</h3>
+            <p>The Simple Present Tense is used to talk about <strong>habits, routines, and daily activities</strong> that happen regularly.</p>
+
+            <div class="structure-box">
+                <h4>Affirmative Sentence Structure:</h4>
+                <div class="formula">
+                    Subject + Verb (base form / +s) + Complement + Time Expression
+                </div>
+                <div style="margin-top: 15px; text-align: left;">
+                    <p><strong>Examples:</strong></p>
+                    <p>✅ I <strong>take</strong> a shower <em>in the morning</em>.</p>
+                    <p>✅ She <strong>watches</strong> TV <em>in the evening</em>.</p>
+                    <p>✅ They <strong>go</strong> to school <em>on weekdays</em>.</p>
+                </div>
+            </div>
+
+            <div class="theory-box">
+                <h3>Important Rules:</h3>
+                <ul>
+                    <li><strong>I / You / We / They</strong> → verb in base form (no -s)</li>
+                    <li><strong>He / She / It</strong> → verb + <strong>s</strong> or <strong>es</strong></li>
+                    <li>Time expressions tell us <strong>when</strong> the activity happens</li>
+                    <li>Use <strong>"in"</strong> for: in the morning, in the afternoon, in the evening</li>
+                    <li>Use <strong>"at"</strong> for: at night</li>
+                    <li>Use <strong>"on"</strong> for: on weekdays, on weekends</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- VOCABULARY SECTION -->
+        <div class="section" id="vocabulary">
+            <h2>📚 Vocabulary</h2>
+            
+            <h3>Daily Activities:</h3>
+            <div class="vocab-grid">
+                <div class="vocab-card">
+                    <div class="emoji"></div>
+                    <div class="word">take a shower</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">🏫</div>
+                    <div class="word">go to school</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">📺</div>
+                    <div class="word">watch TV</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">🛏️</div>
+                    <div class="word">go to bed</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">📝</div>
+                    <div class="word">do homework</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">🍳</div>
+                    <div class="word">have breakfast</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji"></div>
+                    <div class="word">help with housework</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">🌙</div>
+                    <div class="word">go to bed</div>
+                </div>
+            </div>
+
+            <h3>Time Expressions:</h3>
+            <div class="vocab-grid">
+                <div class="vocab-card">
+                    <div class="emoji">🌅</div>
+                    <div class="word">in the morning</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">☀️</div>
+                    <div class="word">in the afternoon</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">🌆</div>
+                    <div class="word">in the evening</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">🌙</div>
+                    <div class="word">at night</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji">📅</div>
+                    <div class="word">on weekdays</div>
+                </div>
+                <div class="vocab-card">
+                    <div class="emoji"></div>
+                    <div class="word">on weekends</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXAMPLES SECTION -->
+        <div class="section" id="examples">
+            <h2>💡 Examples</h2>
+            
+            <div class="example-box">
+                <div class="sentence">
+                    <span class="highlight">I take a shower in the morning.</span>
+                    <div class="translation">Yo me baño en la mañana.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">We go to school on weekdays.</span>
+                    <div class="translation">Nosotros vamos a la escuela entre semana.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">You watch TV in the evening.</span>
+                    <div class="translation">Tú ves televisión en la tarde/noche.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">I go to bed at night.</span>
+                    <div class="translation">Yo me voy a la cama en la noche.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">She helps with the housework in the afternoon.</span>
+                    <div class="translation">Ella ayuda con el quehacer en la tarde.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">He does his homework in the afternoon.</span>
+                    <div class="translation">Él hace su tarea en la tarde.</div>
+                </div>
+            </div>
+
+            <div class="theory-box">
+                <h3>Remember:</h3>
+                <ul>
+                    <li>With <strong>he/she/it</strong>: add <strong>-s</strong> or <strong>-es</strong> to the verb</li>
+                    <li>watch → watches, do → does, go → goes, have → has</li>
+                    <li>Time expressions usually go at the <strong>end</strong> of the sentence</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ACTIVITY 1: BOARD RACE -->
+        <div class="section" id="activity1">
+            <h2><span class="part-badge">Activity 1</span> Board Race: Build the Sentence</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Look at the prompt cards (subject + activity + time expression). Write a complete sentence in Simple Present Tense using all the elements.
+            </div>
+
+            <div class="board-race-container">
+                <h4 style="color: #6a1b9a; margin-bottom: 15px;">🏁 Race Prompts:</h4>
+
+                <div class="prompt-card">
+                    <span class="element">We</span>
+                    <span class="slash">/</span>
+                    <span class="element"> watch TV</span>
+                    <span class="slash">/</span>
+                    <span class="element">in the evening</span>
+                </div>
+                <input type="text" class="race-input" id="race1" placeholder="Write the complete sentence...">
+
+                <div class="prompt-card">
+                    <span class="element">I</span>
+                    <span class="slash">/</span>
+                    <span class="element">🚿 take a shower</span>
+                    <span class="slash">/</span>
+                    <span class="element">in the morning</span>
+                </div>
+                <input type="text" class="race-input" id="race2" placeholder="Write the complete sentence...">
+
+                <div class="prompt-card">
+                    <span class="element">They</span>
+                    <span class="slash">/</span>
+                    <span class="element"> go to school</span>
+                    <span class="slash">/</span>
+                    <span class="element">on weekdays</span>
+                </div>
+                <input type="text" class="race-input" id="race3" placeholder="Write the complete sentence...">
+
+                <div class="prompt-card">
+                    <span class="element">She</span>
+                    <span class="slash">/</span>
+                    <span class="element"> do homework</span>
+                    <span class="slash">/</span>
+                    <span class="element">in the afternoon</span>
+                </div>
+                <input type="text" class="race-input" id="race4" placeholder="Write the complete sentence...">
+
+                <div class="prompt-card">
+                    <span class="element">He</span>
+                    <span class="slash">/</span>
+                    <span class="element">🛏️ go to bed</span>
+                    <span class="slash">/</span>
+                    <span class="element">at night</span>
+                </div>
+                <input type="text" class="race-input" id="race5" placeholder="Write the complete sentence...">
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-check" onclick="checkActivity1()">✓ Check Answers</button>
+                    <button class="btn btn-reset" onclick="resetActivity1()">↺ Reset</button>
+                </div>
+                <div id="activity1-feedback" class="feedback"></div>
+            </div>
+        </div>
+
+        <!-- ACTIVITY 2: UNSCRAMBLE -->
+        <div class="section" id="activity2">
+            <h2><span class="part-badge">Activity 2</span> Unscramble the Sentences</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> The words are mixed up! Put them in the correct order to form a complete sentence in Simple Present Tense.
+            </div>
+
+            <div class="unscramble-item">
+                <p><span class="number">1</span> Unscramble:</p>
+                <div class="words">take / in the morning / a shower / I</div>
+                <input type="text" class="unscramble-input" id="unsc1" placeholder="Write the correct sentence...">
+            </div>
+
+            <div class="unscramble-item">
+                <p><span class="number">2</span> Unscramble:</p>
+                <div class="words">on weekdays / we / go / to school</div>
+                <input type="text" class="unscramble-input" id="unsc2" placeholder="Write the correct sentence...">
+            </div>
+
+            <div class="unscramble-item">
+                <p><span class="number">3</span> Unscramble:</p>
+                <div class="words">my classmates / I / in the afternoon / with the housework / help</div>
+                <input type="text" class="unscramble-input" id="unsc3" placeholder="Write the correct sentence...">
+            </div>
+
+            <div class="unscramble-item">
+                <p><span class="number">4</span> Unscramble:</p>
+                <div class="words">watch / in the evening / you / TV</div>
+                <input type="text" class="unscramble-input" id="unsc4" placeholder="Write the correct sentence...">
+            </div>
+
+            <div class="unscramble-item">
+                <p><span class="number">5</span> Unscramble:</p>
+                <div class="words">to bed / at night / I / go</div>
+                <input type="text" class="unscramble-input" id="unsc5" placeholder="Write the correct sentence...">
+            </div>
+
+            <div class="unscramble-item">
+                <p><span class="number">6</span> Unscramble:</p>
+                <div class="words">your homework / do / in the afternoon / you</div>
+                <input type="text" class="unscramble-input" id="unsc6" placeholder="Write the correct sentence...">
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-check" onclick="checkActivity2()">✓ Check Answers</button>
+                <button class="btn btn-reset" onclick="resetActivity2()">↺ Reset</button>
+            </div>
+            <div id="activity2-feedback" class="feedback"></div>
+        </div>
+
+        <!-- ACTIVITY 3: CONVERSATION -->
+        <div class="section" id="activity3">
+            <h2><span class="part-badge">Activity 3</span> Complete the Conversation</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Read the conversation between Ariel and René. Fill in the missing parts using Simple Present Tense and the correct time expressions.
+            </div>
+
+            <div class="conversation-box">
+                <h4 style="color: #6a1b9a; margin-bottom: 15px;">💬 Conversation: Morning & Afternoon Routines</h4>
+                
+                <div class="conversation-line">
+                    <span class="speaker">A:</span> Hi, Ariel! What do you do <strong>in the morning</strong>?
+                </div>
+                
+                <div class="conversation-line">
+                    <span class="speaker">B:</span> Hello, René. I <input type="text" class="conversation-input" id="conv1" placeholder="have breakfast and..." style="display: inline; width: auto; min-width: 300px;"> <strong>in the morning</strong>.
+                </div>
+                
+                <div class="conversation-line">
+                    <span class="speaker">A:</span> Great! What do you do <strong>in the afternoon</strong>?
+                </div>
+                
+                <div class="conversation-line">
+                    <span class="speaker">B:</span> I <input type="text" class="conversation-input" id="conv2" placeholder="watch TV..." style="display: inline; width: auto; min-width: 300px;"> <strong>in the afternoon</strong>.
+                </div>
+                
+                <div class="conversation-line">
+                    <span class="speaker">A:</span> Nice!
+                </div>
+            </div>
+
+            <div class="conversation-box" style="margin-top: 25px;">
+                <h4 style="color: #6a1b9a; margin-bottom: 15px;">💬 Now write your own conversation:</h4>
+                
+                <div class="conversation-line">
+                    <span class="speaker">A:</span> Hi! What do you do <strong>in the morning</strong>?
+                </div>
+                
+                <div class="conversation-line">
+                    <span class="speaker">B:</span> I <input type="text" class="conversation-input" id="conv3" placeholder="your morning activity..." style="display: inline; width: auto; min-width: 300px;"> <strong>in the morning</strong>.
+                </div>
+                
+                <div class="conversation-line">
+                    <span class="speaker">A:</span> What do you do <strong>in the evening</strong>?
+                </div>
+                
+                <div class="conversation-line">
+                    <span class="speaker">B:</span> I <input type="text" class="conversation-input" id="conv4" placeholder="your evening activity..." style="display: inline; width: auto; min-width: 300px;"> <strong>in the evening</strong>.
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-check" onclick="checkActivity3()">✓ Check Answers</button>
+                <button class="btn btn-reset" onclick="resetActivity3()">↺ Reset</button>
+            </div>
+            <div id="activity3-feedback" class="feedback"></div>
+        </div>
+
+        <!-- QUIZ SECTION -->
+        <div class="section" id="quiz">
+            <h2>🎯 Quiz</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Answer the following 5 questions about Simple Present Tense and daily routines. These questions are fixed - they won't change!
+            </div>
+
+            <div class="quiz-container">
+                <div class="quiz-question">
+                    <p>1. Which sentence is correct?</p>
+                    <div class="quiz-options">
+                        <label><input type="radio" name="q1" value="A"> She watch TV in the evening.</label>
+                        <label><input type="radio" name="q1" value="B"> She watches TV in the evening.</label>
+                        <label><input type="radio" name="q1" value="C"> She watching TV in the evening.</label>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <p>2. Complete: "We _____ to school on weekdays."</p>
+                    <div class="quiz-options">
+                        <label><input type="radio" name="q2" value="A"> goes</label>
+                        <label><input type="radio" name="q2" value="B"> going</label>
+                        <label><input type="radio" name="q2" value="C"> go</label>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <p>3. Which time expression uses "at"?</p>
+                    <div class="quiz-options">
+                        <label><input type="radio" name="q3" value="A"> at the morning</label>
+                        <label><input type="radio" name="q3" value="B"> at night</label>
+                        <label><input type="radio" name="q3" value="C"> at the afternoon</label>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <p>4. Unscramble: "homework / do / I / in the afternoon / my"</p>
+                    <div class="quiz-options">
+                        <label><input type="radio" name="q4" value="A"> I do my homework in the afternoon.</label>
+                        <label><input type="radio" name="q4" value="B"> In the afternoon I homework do my.</label>
+                        <label><input type="radio" name="q4" value="C"> My homework I do in the afternoon.</label>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <p>5. What is the correct form of "have" with "He"?</p>
+                    <div class="quiz-options">
+                        <label><input type="radio" name="q5" value="A"> He have breakfast.</label>
+                        <label><input type="radio" name="q5" value="B"> He has breakfast.</label>
+                        <label><input type="radio" name="q5" value="C"> He haves breakfast.</label>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-check" onclick="checkQuiz()">✓ Submit Quiz</button>
+                    <button class="btn btn-reset" onclick="resetQuiz()">↺ Reset Quiz</button>
+                </div>
+                <div id="quiz-feedback" class="feedback"></div>
+                <div class="score-display" id="quiz-score"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ============ TRANSLATOR ============
+        async function translateText() {
+            const text = document.getElementById('sourceText').value.trim();
+            const resultBox = document.getElementById('translatedText');
+            
+            if (!text) {
+                resultBox.textContent = '⚠️ Please enter some text to translate.';
+                resultBox.style.color = '#f57f17';
+                return;
+            }
+
+            resultBox.textContent = 'Translating...';
+            resultBox.style.color = '#333';
+
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                let translated = '';
+                if (data && data[0]) {
+                    data[0].forEach(item => {
+                        if (item[0]) translated += item[0];
+                    });
+                }
+                
+                resultBox.textContent = translated || 'No translation available.';
+                resultBox.style.color = '#333';
+            } catch (error) {
+                resultBox.textContent = '❌ Error connecting to translator. Please try again.';
+                resultBox.style.color = '#c62828';
+            }
+        }
+
+        document.getElementById('sourceText').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                translateText();
+            }
+        });
+
+        function normalizeText(text) {
+            return text.toLowerCase().trim().replace(/\s+/g, ' ').replace(/\.$/, '');
+        }
+
+        // ============ ACTIVITY 1: BOARD RACE ============
+        function checkActivity1() {
+            const exercises = [
+                { id: 'race1', keywords: ['we', 'watch', 'tv', 'in the evening'] },
+                { id: 'race2', keywords: ['i', 'take', 'a shower', 'in the morning'] },
+                { id: 'race3', keywords: ['they', 'go', 'to school', 'on weekdays'] },
+                { id: 'race4', keywords: ['she', 'does', 'homework', 'in the afternoon'] },
+                { id: 'race5', keywords: ['he', 'goes', 'to bed', 'at night'] }
+            ];
+
+            let correct = 0;
+            let total = 5;
+            let allAnswered = true;
+
+            exercises.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                if (!normalizeText(input.value)) {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('activity1-feedback');
+                feedback.textContent = '️ Please complete all sentences before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            exercises.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                const text = normalizeText(input.value);
+                const hasAll = ex.keywords.every(k => text.includes(k));
+                
+                if (hasAll) {
+                    correct++;
+                    input.classList.remove('incorrect');
+                    input.classList.add('correct');
+                } else {
+                    input.classList.remove('correct');
+                    input.classList.add('incorrect');
+                }
+            });
+
+            const feedback = document.getElementById('activity1-feedback');
+            if (correct === total) {
+                feedback.textContent = `🎉 Perfect! All ${correct}/${total} sentences are correct! Great job!`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 3) {
+                feedback.textContent = `👍 Good work! ${correct}/${total} correct. Review the ones in red.`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 ${correct}/${total} correct. Remember: Subject + Verb + Complement + Time Expression`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetActivity1() {
+            for (let i = 1; i <= 5; i++) {
+                const input = document.getElementById('race' + i);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('activity1-feedback').style.display = 'none';
+        }
+
+        // ============ ACTIVITY 2: UNSCRAMBLE ============
+        function checkActivity2() {
+            const answers = [
+                { id: 'unsc1', correct: 'i take a shower in the morning' },
+                { id: 'unsc2', correct: 'we go to school on weekdays' },
+                { id: 'unsc3', correct: 'i help my classmates with the housework in the afternoon' },
+                { id: 'unsc4', correct: 'you watch tv in the evening' },
+                { id: 'unsc5', correct: 'i go to bed at night' },
+                { id: 'unsc6', correct: 'you do your homework in the afternoon' }
+            ];
+
+            let correct = 0;
+            let total = 6;
+            let allAnswered = true;
+
+            answers.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                if (!normalizeText(input.value)) {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('activity2-feedback');
+                feedback.textContent = '️ Please complete all sentences before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            answers.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                const userText = normalizeText(input.value).replace(/\.$/, '');
+                const correctText = ex.correct;
+                
+                if (userText === correctText) {
+                    correct++;
+                    input.classList.remove('incorrect');
+                    input.classList.add('correct');
+                } else {
+                    input.classList.remove('correct');
+                    input.classList.add('incorrect');
+                }
+            });
+
+            const feedback = document.getElementById('activity2-feedback');
+            if (correct === total) {
+                feedback.textContent = ` Perfect! All ${correct}/${total} sentences are correct!`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 4) {
+                feedback.textContent = `👍 Good job! ${correct}/${total} correct. Review the structure: Subject + Verb + Complement + Time`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 ${correct}/${total} correct. Remember the order: Subject → Verb → Object → Time Expression`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetActivity2() {
+            for (let i = 1; i <= 6; i++) {
+                const input = document.getElementById('unsc' + i);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('activity2-feedback').style.display = 'none';
+        }
+
+        // ============ ACTIVITY 3: CONVERSATION ============
+        function checkActivity3() {
+            const exercises = [
+                { id: 'conv1', keywords: ['have breakfast', 'go to school'] },
+                { id: 'conv2', keywords: ['watch tv'] },
+                { id: 'conv3', keywords: [] },
+                { id: 'conv4', keywords: [] }
+            ];
+
+            let correct = 0;
+            let total = 4;
+            let allAnswered = true;
+
+            exercises.forEach(ex => {
+                const input = document.getElementById(ex.id);
+                if (!normalizeText(input.value)) {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('activity3-feedback');
+                feedback.textContent = '⚠️ Please complete all blanks before checking.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            // Check conv1 and conv2 (fixed answers)
+            const conv1 = normalizeText(document.getElementById('conv1').value);
+            const conv2 = normalizeText(document.getElementById('conv2').value);
+            
+            if (conv1.includes('have breakfast') && conv1.includes('go to school')) {
+                correct++;
+                document.getElementById('conv1').classList.add('correct');
+            } else if (conv1.includes('have breakfast') || conv1.includes('go to school')) {
+                correct++;
+                document.getElementById('conv1').classList.add('correct');
+            } else {
+                document.getElementById('conv1').classList.add('incorrect');
+            }
+
+            if (conv2.includes('watch tv')) {
+                correct++;
+                document.getElementById('conv2').classList.add('correct');
+            } else {
+                document.getElementById('conv2').classList.add('incorrect');
+            }
+
+            // Check conv3 and conv4 (open answers - just need a verb)
+            const conv3 = normalizeText(document.getElementById('conv3').value);
+            const conv4 = normalizeText(document.getElementById('conv4').value);
+            
+            const verbPattern = /\b(take|go|watch|do|have|play|study|read|eat|cook|clean|help)\b/;
+            
+            if (verbPattern.test(conv3) && conv3.length > 3) {
+                correct++;
+                document.getElementById('conv3').classList.add('correct');
+            } else {
+                document.getElementById('conv3').classList.add('incorrect');
+            }
+
+            if (verbPattern.test(conv4) && conv4.length > 3) {
+                correct++;
+                document.getElementById('conv4').classList.add('correct');
+            } else {
+                document.getElementById('conv4').classList.add('incorrect');
+            }
+
+            const feedback = document.getElementById('activity3-feedback');
+            if (correct === total) {
+                feedback.textContent = `🎉 Excellent conversation! All ${correct}/${total} parts are correct!`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 2) {
+                feedback.textContent = `👍 Good work! ${correct}/${total} correct. Keep practicing!`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 ${correct}/${total} correct. Use verbs in Simple Present: take, go, watch, do, have, etc.`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetActivity3() {
+            for (let i = 1; i <= 4; i++) {
+                const input = document.getElementById('conv' + i);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('activity3-feedback').style.display = 'none';
+        }
+
+        // ============ QUIZ (FIXED QUESTIONS WITH SEED) ============
+        // These questions are FIXED and will never change (seeded)
+        const quizAnswers = {
+            q1: 'B',  // She watches TV in the evening.
+            q2: 'C',  // go
+            q3: 'B',  // at night
+            q4: 'A',  // I do my homework in the afternoon.
+            q5: 'B'   // He has breakfast.
+        };
+
+        function checkQuiz() {
+            let correct = 0;
+            let total = 5;
+            let allAnswered = true;
+
+            for (let i = 1; i <= 5; i++) {
+                const selected = document.querySelector(`input[name="q${i}"]:checked`);
+                if (!selected) {
+                    allAnswered = false;
+                }
+            }
+
+            if (!allAnswered) {
+                const feedback = document.getElementById('quiz-feedback');
+                feedback.textContent = '⚠️ Please answer all 5 questions before submitting.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            for (let i = 1; i <= 5; i++) {
+                const selected = document.querySelector(`input[name="q${i}"]:checked`);
+                const label = selected.parentElement;
+                
+                if (selected.value === quizAnswers['q' + i]) {
+                    correct++;
+                    label.style.background = '#c8e6c9';
+                    label.style.border = '2px solid #43a047';
+                } else {
+                    label.style.background = '#ffcdd2';
+                    label.style.border = '2px solid #e53935';
+                }
+            }
+
+            const feedback = document.getElementById('quiz-feedback');
+            const scoreDisplay = document.getElementById('quiz-score');
+            
+            if (correct === total) {
+                feedback.textContent = '🎉 Perfect score! You mastered Simple Present Tense!';
+                feedback.className = 'feedback correct';
+                scoreDisplay.textContent = '🏆 Perfect Score: 5/5 (100%)';
+                scoreDisplay.style.background = 'linear-gradient(135deg, #43a047 0%, #66bb6a 100%)';
+            } else if (correct >= 3) {
+                feedback.textContent = `👍 Good job! You got ${correct}/${total} correct. Review the ones marked in red.`;
+                feedback.className = 'feedback correct';
+                scoreDisplay.textContent = `⭐ Good Job: ${correct}/5 (${Math.round((correct/total)*100)}%)`;
+                scoreDisplay.style.background = 'linear-gradient(135deg, #ffa000 0%, #ffca28 100%)';
+            } else {
+                feedback.textContent = `📚 You got ${correct}/${total} correct. Review the theory and try again!`;
+                feedback.className = 'feedback incorrect';
+                scoreDisplay.textContent = `📖 Keep Learning: ${correct}/5 (${Math.round((correct/total)*100)}%)`;
+                scoreDisplay.style.background = 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)';
+            }
+            
+            feedback.style.display = 'block';
+            scoreDisplay.style.display = 'block';
+        }
+
+        function resetQuiz() {
+            for (let i = 1; i <= 5; i++) {
+                const radios = document.querySelectorAll(`input[name="q${i}"]`);
+                radios.forEach(radio => {
+                    radio.checked = false;
+                    radio.parentElement.style.background = '#ede7f6';
+                    radio.parentElement.style.border = 'none';
+                });
+            }
+            document.getElementById('quiz-feedback').style.display = 'none';
+            document.getElementById('quiz-score').style.display = 'none';
+        }
+
+        // Visual feedback for radio selection
+        document.querySelectorAll('.quiz-options input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const name = this.name;
+                document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                    r.parentElement.style.background = '#ede7f6';
+                    r.parentElement.style.border = 'none';
+                });
+                this.parentElement.style.background = '#ce93d8';
+                this.parentElement.style.color = 'white';
+            });
+        });
+    </script>
+
+</body>
+</html>
