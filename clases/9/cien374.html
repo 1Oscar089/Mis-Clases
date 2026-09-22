@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo del pH en Soluciones Buffer</title>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-primary: #2980b9;
+            --color-secondary: #d4efdf;
+            --color-accent: #a9dfbf;
+            --color-text: #2c3e50;
+            --color-text-light: #555555;
+            --color-success: #27ae60;
+            --color-error: #e74c3c;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--color-primary);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--color-primary);
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        h2 {
+            color: var(--color-primary);
+            border-left: 5px solid var(--color-accent);
+            padding-left: 10px;
+            margin-top: 35px;
+        }
+
+        h3 {
+            color: var(--color-text);
+            margin-top: 25px;
+        }
+
+        p, li {
+            color: var(--color-text-light);
+        }
+
+        .teoria-box {
+            background-color: var(--color-secondary);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .formula {
+            background-color: #fff;
+            border: 2px solid var(--color-accent);
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 1.1rem;
+            font-family: monospace;
+        }
+
+        .ejemplo-resuelto {
+            background-color: #f9f9f9;
+            border: 2px solid var(--color-primary);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .ejemplo-header {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: -20px -20px 20px -20px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .paso {
+            background-color: #fff;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid var(--color-accent);
+            border-radius: 0 5px 5px 0;
+        }
+
+        .ejercicio-container {
+            background-color: #f9f9f9;
+            border: 2px solid var(--color-primary);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .ejercicio-header {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: -20px -20px 20px -20px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .ejercicio-enunciado {
+            background-color: #fff;
+            padding: 15px;
+            border-left: 4px solid var(--color-accent);
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .input-group {
+            margin: 15px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--color-text);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+
+        .btn {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 10px 5px 10px 0;
+        }
+
+        .btn:hover {
+            background-color: #1f618d;
+        }
+
+        .btn-secondary {
+            background-color: var(--color-accent);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover {
+            background-color: #7dcea0;
+        }
+
+        .resultado {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            font-weight: bold;
+        }
+
+        .resultado.correcto {
+            background-color: var(--color-secondary);
+            color: var(--color-success);
+            border: 2px solid var(--color-success);
+            display: block;
+        }
+
+        .resultado.incorrecto {
+            background-color: #fadbd8;
+            color: var(--color-error);
+            border: 2px solid var(--color-error);
+            display: block;
+        }
+
+        .pista {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 0 5px 5px 0;
+            font-size: 0.95rem;
+        }
+
+        .solucion-detallada {
+            background-color: #e8f4f8;
+            border: 1px solid var(--color-accent);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .solucion-detallada.mostrar {
+            display: block;
+        }
+
+        .dato-box {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .dato-box strong {
+            color: #856404;
+        }
+
+        .reaccion {
+            background-color: #fff;
+            border: 1px solid var(--color-accent);
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 1.05rem;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.5rem; }
+            .formula { font-size: 0.95rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Cálculo del pH en Soluciones Buffer</h1>
+    </header>
+
+    <h2>Fundamentos Teóricos</h2>
+    
+    <div class="teoria-box">
+        <h3>Equilibrio en Soluciones Buffer</h3>
+        <p>El pH de una solución buffer lo controla el equilibrio de ionización del ácido débil. Por ejemplo, en un buffer de ácido acético/acetato de sodio:</p>
+        
+        <div class="reaccion">
+            CHCOOH + H₂O ⇌ CH₃COO⁻ + H₃O⁺
+        </div>
+
+        <p>La constante de acidez (Ka) se expresa como:</p>
+        <div class="formula">
+            Ka = [CH₃COO⁻][H₃O⁺] / [CH₃COOH]
+        </div>
+
+        <p>Despejando [H₃O⁺]:</p>
+        <div class="formula">
+            [H₃O⁺] = Ka × [CH₃COOH] / [CH₃COO⁻]
+        </div>
+
+        <p>Y finalmente:</p>
+        <div class="formula">
+            pH = -log[H⁺]
+        </div>
+    </div>
+
+    <div class="dato-box">
+        <strong>💡 Ecuación de Henderson-Hasselbalch:</strong><br>
+        pH = pKa + log [base conjugada] / [ácido]<br><br>
+        Donde pKa = -log(Ka)
+    </div>
+
+    <h2>Ejemplo Resuelto</h2>
+    
+    <div class="ejemplo-resuelto">
+        <div class="ejemplo-header">Ejemplo: pH de una solución buffer</div>
+        
+        <p><strong>Problema:</strong> Determina el pH de una solución acuosa que es 0.4 M de ácido acético y 0.4 M de acetato de sodio. La Ka para el ácido acético es 1.8 × 10⁻⁵.</p>
+
+        <div class="paso">
+            <strong>Paso 1:</strong> Identificar las concentraciones<br>
+            [CH₃COOH] = 0.4 M (ácido)<br>
+            [CH₃COO⁻] = 0.4 M (base conjugada)
+        </div>
+
+        <div class="paso">
+            <strong>Paso 2:</strong> Calcular [H₃O⁺]<br>
+            [H₃O⁺] = Ka × [CH₃COOH] / [CH₃COO⁻]<br>
+            [H₃O⁺] = 1.8 × 10⁻⁵ × (0.4 / 0.4)<br>
+            [HO⁺] = 1.8 × 10⁻⁵
+        </div>
+
+        <div class="paso">
+            <strong>Paso 3:</strong> Calcular el pH<br>
+            pH = -log(1.8 × 10⁻⁵)<br>
+            <strong>pH = 4.74</strong>
+        </div>
+
+        <p><strong>Nota:</strong> Como las concentraciones de ácido y base son iguales, el pH es igual al pKa.</p>
+    </div>
+
+    <h2>Ejercicios Prácticos</h2>
+
+    <div class="ejercicio-container">
+        <div class="ejercicio-header">Ejercicio 1: Variación de pH en un Buffer</div>
+        
+        <div class="ejercicio-enunciado">
+            <p>Calcula la variación de pH que tiene lugar cuando añadimos 1 mL de HCl 1 M a 1 L de solución buffer con una concentración de <strong>NH₃ de 0.75 M</strong> y <strong>NHCl de 0.75 M</strong>.<br><br>
+            Ka = 1.8 × 10⁻⁵ para el NH₄⁺.<br><br>
+            <em>El NH₄Cl se disocia en Cl⁻ y NH₄⁺ que presenta hidrólisis ácida:<br>
+            NH₄⁺ + H₂O ⇌ NH₃ + H₃O⁺</em></p>
+        </div>
+
+        <div class="pista">
+            <strong>💡 Pista:</strong> Primero calcula el pH inicial (cuando [NH₃] = [NH⁺]). Luego calcula los moles de HCl añadidos y las nuevas concentraciones de NH₃ y NH₄⁺ después de la reacción. Finalmente calcula el pH final y la diferencia.
+        </div>
+
+        <div class="input-group">
+            <label for="ej1-respuesta">Variación de pH (valor absoluto, 2 decimales):</label>
+            <input type="number" id="ej1-respuesta" step="0.01" placeholder="Ejemplo: 0.01">
+        </div>
+
+        <button class="btn" onclick="validarEjercicio1()">Validar Respuesta</button>
+        <button class="btn btn-secondary" onclick="mostrarSolucion('solucion1')">Ver Solución</button>
+
+        <div id="resultado1" class="resultado"></div>
+
+        <div id="solucion1" class="solucion-detallada">
+            <h4>Solución paso a paso:</h4>
+            <ol>
+                <li><strong>pH inicial:</strong><br>
+                pKa = -log(1.8 × 10⁻⁵) = 4.74<br>
+                pH = 4.74 + log(0.75/0.75) = 4.74 + 0 = <strong>4.74</strong></li>
+                
+                <li><strong>Moles de HCl añadidos:</strong><br>
+                0.001 L × 1 M = 0.001 mol</li>
+                
+                <li><strong>Moles iniciales en 1 L:</strong><br>
+                NH = 0.75 mol<br>
+                NH₄⁺ = 0.75 mol</li>
+                
+                <li><strong>Reacción: NH₃ + H⁺ → NH₄⁺</strong><br>
+                NH₃ final = 0.75 - 0.001 = 0.749 mol<br>
+                NH₄⁺ final = 0.75 + 0.001 = 0.751 mol</li>
+                
+                <li><strong>pH final:</strong><br>
+                pH = 4.74 + log(0.749/0.751) = 4.74 + (-0.0012) = 4.7388</li>
+                
+                <li><strong>Variación de pH:</strong><br>
+                |4.74 - 4.7388| = <strong>0.0012 ≈ 0.00</strong></li>
+            </ol>
+            <p><strong>Conclusión:</strong> La variación es prácticamente nula, demostrando la efectividad del buffer.</p>
+        </div>
+    </div>
+
+    <div class="ejercicio-container">
+        <div class="ejercicio-header">Ejercicio 2: pH de Buffer de Ácido Nitroso</div>
+        
+        <div class="ejercicio-enunciado">
+            <p>¿Cuál es el pH de una disolución con <strong>0.20 M de ácido nitroso (HNO₂)</strong> y <strong>0.050 M de nitrito de sodio (NaNO₂)</strong>?<br><br>
+            Ka = 4.5 × 10⁻⁴</p>
+        </div>
+
+        <div class="pista">
+            <strong>💡 Pista:</strong> Usa la ecuación de Henderson-Hasselbalch. El ácido es HNO₂ y la base conjugada es NO₂⁻ (del NaNO₂).
+        </div>
+
+        <div class="input-group">
+            <label for="ej2-respuesta">pH de la solución (2 decimales):</label>
+            <input type="number" id="ej2-respuesta" step="0.01" placeholder="Ejemplo: 2.75">
+        </div>
+
+        <button class="btn" onclick="validarEjercicio2()">Validar Respuesta</button>
+        <button class="btn btn-secondary" onclick="mostrarSolucion('solucion2')">Ver Solución</button>
+
+        <div id="resultado2" class="resultado"></div>
+
+        <div id="solucion2" class="solucion-detallada">
+            <h4>Solución paso a paso:</h4>
+            <ol>
+                <li><strong>Calcular pKa:</strong><br>
+                pKa = -log(4.5 × 10⁻⁴) = 3.35</li>
+                
+                <li><strong>Identificar concentraciones:</strong><br>
+                [ácido] = [HNO₂] = 0.20 M<br>
+                [base] = [NO₂⁻] = 0.050 M</li>
+                
+                <li><strong>Aplicar Henderson-Hasselbalch:</strong><br>
+                pH = 3.35 + log(0.050/0.20)<br>
+                pH = 3.35 + log(0.25)<br>
+                pH = 3.35 + (-0.60)<br>
+                <strong>pH = 2.75</strong></li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="ejercicio-container">
+        <div class="ejercicio-header">Ejercicio 3: pH de Buffer de Amoníaco</div>
+        
+        <div class="ejercicio-enunciado">
+            <p>¿Cuál es el pH de una disolución que se preparó con <strong>0.030 M de NH₃</strong> y <strong>0.070 M de NH₄NO₃</strong>?<br><br>
+            Ka = 1.8 × 10⁻⁵</p>
+        </div>
+
+        <div class="pista">
+            <strong>💡 Pista:</strong> El NH₃ es la base débil y el NH₄⁺ (del NHNO₃) es el ácido conjugado. Usa pKa = -log(Ka).
+        </div>
+
+        <div class="input-group">
+            <label for="ej3-respuesta">pH de la solución (2 decimales):</label>
+            <input type="number" id="ej3-respuesta" step="0.01" placeholder="Ejemplo: 4.37">
+        </div>
+
+        <button class="btn" onclick="validarEjercicio3()">Validar Respuesta</button>
+        <button class="btn btn-secondary" onclick="mostrarSolucion('solucion3')">Ver Solución</button>
+
+        <div id="resultado3" class="resultado"></div>
+
+        <div id="solucion3" class="solucion-detallada">
+            <h4>Solución paso a paso:</h4>
+            <ol>
+                <li><strong>Calcular pKa:</strong><br>
+                pKa = -log(1.8 × 10⁻⁵) = 4.74</li>
+                
+                <li><strong>Identificar concentraciones:</strong><br>
+                [base] = [NH₃] = 0.030 M<br>
+                [ácido] = [NH₄] = 0.070 M</li>
+                
+                <li><strong>Aplicar Henderson-Hasselbalch:</strong><br>
+                pH = 4.74 + log(0.030/0.070)<br>
+                pH = 4.74 + log(0.4286)<br>
+                pH = 4.74 + (-0.368)<br>
+                <strong>pH = 4.37</strong></li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="ejercicio-container">
+        <div class="ejercicio-header">Ejercicio 4: Preparación de Buffer de Ácido Oxálico</div>
+        
+        <div class="ejercicio-enunciado">
+            <p>Calcula los gramos necesarios para preparar <strong>250 mL</strong> de un buffer de ácido oxálico/oxalato de sodio de <strong>0.2 M</strong> y <strong>pH de 1.5</strong>.<br><br>
+            Masa molar ácido oxálico: 90 g/mol, Ka = 6.5 × 10⁻²<br>
+            Masa molar oxalato de sodio: 134 g/mol</p>
+        </div>
+
+        <div class="pista">
+            <strong>💡 Pista:</strong> Primero usa Henderson-Hasselbalch para encontrar la relación [sal]/[ácido]. Luego usa que [sal] + [ácido] = 0.2 M para encontrar cada concentración. Finalmente calcula los moles y gramos para 250 mL.
+        </div>
+
+        <div class="input-group">
+            <label for="ej4-acido">Gramos de ácido oxálico (2 decimales):</label>
+            <input type="number" id="ej4-acido" step="0.01" placeholder="Ejemplo: 1.47">
+        </div>
+
+        <div class="input-group">
+            <label for="ej4-sal">Gramos de oxalato de sodio (2 decimales):</label>
+            <input type="number" id="ej4-sal" step="0.01" placeholder="Ejemplo: 4.51">
+        </div>
+
+        <button class="btn" onclick="validarEjercicio4()">Validar Respuesta</button>
+        <button class="btn btn-secondary" onclick="mostrarSolucion('solucion4')">Ver Solución</button>
+
+        <div id="resultado4" class="resultado"></div>
+
+        <div id="solucion4" class="solucion-detallada">
+            <h4>Solución paso a paso:</h4>
+            <ol>
+                <li><strong>Calcular pKa:</strong><br>
+                pKa = -log(6.5 × 10⁻²) = 1.187</li>
+                
+                <li><strong>Usar Henderson-Hasselbalch:</strong><br>
+                1.5 = 1.187 + log[sal]/[ácido]<br>
+                log[sal]/[ácido] = 0.313<br>
+                [sal]/[ácido] = 10^0.313 = 2.056</li>
+                
+                <li><strong>Sistema de ecuaciones:</strong><br>
+                [sal] + [ácido] = 0.2 M<br>
+                [sal] = 2.056 × [ácido]<br>
+                2.056[ácido] + [ácido] = 0.2<br>
+                3.056[ácido] = 0.2<br>
+                [ácido] = 0.0654 M<br>
+                [sal] = 0.1346 M</li>
+                
+                <li><strong>Calcular moles para 250 mL (0.250 L):</strong><br>
+                Moles ácido = 0.0654 × 0.250 = 0.01635 mol<br>
+                Moles sal = 0.1346 × 0.250 = 0.03365 mol</li>
+                
+                <li><strong>Calcular gramos:</strong><br>
+                Masa ácido = 0.01635 × 90 = <strong>1.47 g</strong><br>
+                Masa sal = 0.03365 × 134 = <strong>4.51 g</strong></li>
+            </ol>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function validarEjercicio1() {
+        const respuesta = parseFloat(document.getElementById('ej1-respuesta').value);
+        const resultadoDiv = document.getElementById('resultado1');
+        
+        if (isNaN(respuesta)) {
+            resultadoDiv.className = 'resultado incorrecto';
+            resultadoDiv.innerHTML = '❌ Por favor, ingresa un valor numérico.';
+            return;
+        }
+        
+        const respuestaCorrecta = 0.00;
+        const tolerancia = 0.01;
+        
+        if (Math.abs(respuesta - respuestaCorrecta) <= tolerancia) {
+            resultadoDiv.className = 'resultado correcto';
+            resultadoDiv.innerHTML = '✅ ¡Correcto! La variación de pH es aproximadamente 0.00 (0.0012 unidades), demostrando la efectividad del buffer.';
+        } else {
+            resultadoDiv.className = 'resultado incorrecto';
+            resultadoDiv.innerHTML = `❌ Incorrecto. La respuesta correcta es 0.00. Tu respuesta: ${respuesta}. Revisa la solución paso a paso.`;
+        }
+    }
+
+    function validarEjercicio2() {
+        const respuesta = parseFloat(document.getElementById('ej2-respuesta').value);
+        const resultadoDiv = document.getElementById('resultado2');
+        
+        if (isNaN(respuesta)) {
+            resultadoDiv.className = 'resultado incorrecto';
+            resultadoDiv.innerHTML = '❌ Por favor, ingresa un valor numérico.';
+            return;
+        }
+        
+        const respuestaCorrecta = 2.75;
+        const tolerancia = 0.05;
+        
+        if (Math.abs(respuesta - respuestaCorrecta) <= tolerancia) {
+            resultadoDiv.className = 'resultado correcto';
+            resultadoDiv.innerHTML = '✅ ¡Correcto! El pH de la solución es 2.75.';
+        } else {
+            resultadoDiv.className = 'resultado incorrecto';
+            resultadoDiv.innerHTML = `❌ Incorrecto. La respuesta correcta es 2.75. Tu respuesta: ${respuesta}. Revisa la solución paso a paso.`;
+        }
+    }
+
+    function validarEjercicio3() {
+        const respuesta = parseFloat(document.getElementById('ej3-respuesta').value);
+        const resultadoDiv = document.getElementById('resultado3');
+        
+        if (isNaN(respuesta)) {
+            resultadoDiv.className = 'resultado incorrecto';
+            resultadoDiv.innerHTML = '❌ Por favor, ingresa un valor numérico.';
+            return;
+        }
+        
+        const respuestaCorrecta = 4.37;
+        const tolerancia = 0.05;
+        
+        if (Math.abs(respuesta - respuestaCorrecta) <= tolerancia) {
+            resultadoDiv.className = 'resultado correcto';
+            resultadoDiv.innerHTML = '✅ ¡Correcto! El pH de la solución es 4.37.';
+        } else {
+            resultadoDiv.className = 'resultado incorrecto';
+            resultadoDiv.innerHTML = `❌ Incorrecto. La respuesta correcta es 4.37. Tu respuesta: ${respuesta}. Revisa la solución paso a paso.`;
+        }
+    }
+
+    function validarEjercicio4() {
+        const respuestaAcido = parseFloat(document.getElementById('ej4-acido').value);
+        const respuestaSal = parseFloat(document.getElementById('ej4-sal').value);
+        const resultadoDiv = document.getElementById('resultado4');
+        
+        if (isNaN(respuestaAcido) || isNaN(respuestaSal)) {
+            resultadoDiv.className = 'resultado incorrecto';
+            resultadoDiv.innerHTML = '❌ Por favor, ingresa valores numéricos en ambos campos.';
+            return;
+        }
+        
+        const acidoCorrecto = 1.47;
+        const salCorrecta = 4.51;
+        const tolerancia = 0.1;
+        
+        const acidoCorrecto = Math.abs(respuestaAcido - acidoCorrecto) <= tolerancia;
+        const salCorrecta = Math.abs(respuestaSal - salCorrecta) <= tolerancia;
+        
+        if (acidoCorrecto && salCorrecta) {
+            resultadoDiv.className = 'resultado correcto';
+            resultadoDiv.innerHTML = '✅ ¡Excelente! Necesitas 1.47 g de ácido oxálico y 4.51 g de oxalato de sodio.';
+        } else {
+            let mensaje = '❌ Incorrecto. ';
+            if (!acidoCorrecto) mensaje += `Ácido oxálico: correcto es 1.47 g (tú pusiste ${respuestaAcido} g). `;
+            if (!salCorrecta) mensaje += `Oxalato de sodio: correcto es 4.51 g (tú pusiste ${respuestaSal} g). `;
+            mensaje += 'Revisa la solución paso a paso.';
+            resultadoDiv.className = 'resultado incorrecto';
+            resultadoDiv.innerHTML = mensaje;
+        }
+    }
+
+    function mostrarSolucion(id) {
+        const solucionDiv = document.getElementById(id);
+        solucionDiv.classList.toggle('mostrar');
+    }
+</script>
+
+</body>
+</html>
