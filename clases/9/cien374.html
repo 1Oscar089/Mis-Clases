@@ -586,36 +586,37 @@
         }
     }
 
+    
     function validarEjercicio4() {
-        const respuestaAcido = parseFloat(document.getElementById('ej4-acido').value);
-        const respuestaSal = parseFloat(document.getElementById('ej4-sal').value);
-        const resultadoDiv = document.getElementById('resultado4');
-        
-        if (isNaN(respuestaAcido) || isNaN(respuestaSal)) {
-            resultadoDiv.className = 'resultado incorrecto';
-            resultadoDiv.innerHTML = '❌ Por favor, ingresa valores numéricos en ambos campos.';
-            return;
-        }
-        
-        const acidoCorrecto = 1.47;
-        const salCorrecta = 4.51;
-        const tolerancia = 0.1;
-        
-        const acidoCorrecto = Math.abs(respuestaAcido - acidoCorrecto) <= tolerancia;
-        const salCorrecta = Math.abs(respuestaSal - salCorrecta) <= tolerancia;
-        
-        if (acidoCorrecto && salCorrecta) {
-            resultadoDiv.className = 'resultado correcto';
-            resultadoDiv.innerHTML = '✅ ¡Excelente! Necesitas 1.47 g de ácido oxálico y 4.51 g de oxalato de sodio.';
-        } else {
-            let mensaje = '❌ Incorrecto. ';
-            if (!acidoCorrecto) mensaje += `Ácido oxálico: correcto es 1.47 g (tú pusiste ${respuestaAcido} g). `;
-            if (!salCorrecta) mensaje += `Oxalato de sodio: correcto es 4.51 g (tú pusiste ${respuestaSal} g). `;
-            mensaje += 'Revisa la solución paso a paso.';
-            resultadoDiv.className = 'resultado incorrecto';
-            resultadoDiv.innerHTML = mensaje;
-        }
+    const respuestaAcido = parseFloat(document.getElementById('ej4-acido').value);
+    const respuestaSal = parseFloat(document.getElementById('ej4-sal').value);
+    const resultadoDiv = document.getElementById('resultado4');
+    
+    if (isNaN(respuestaAcido) || isNaN(respuestaSal)) {
+        resultadoDiv.className = 'resultado incorrecto';
+        resultadoDiv.innerHTML = '❌ Por favor, ingresa valores numéricos en ambos campos.';
+        return;
     }
+    
+    const acidoCorrecto = 1.47;
+    const salCorrecta = 4.51;
+    const tolerancia = 0.1;
+    
+    const acidoOk = Math.abs(respuestaAcido - acidoCorrecto) <= tolerancia;
+    const salOk = Math.abs(respuestaSal - salCorrecta) <= tolerancia;
+    
+    if (acidoOk && salOk) {
+        resultadoDiv.className = 'resultado correcto';
+        resultadoDiv.innerHTML = '✅ ¡Excelente! Necesitas 1.47 g de ácido oxálico y 4.51 g de oxalato de sodio.';
+    } else {
+        let mensaje = '❌ Incorrecto. ';
+        if (!acidoOk) mensaje += `Ácido oxálico: correcto es 1.47 g (tú pusiste ${respuestaAcido} g). `;
+        if (!salOk) mensaje += `Oxalato de sodio: correcto es 4.51 g (tú pusiste ${respuestaSal} g). `;
+        mensaje += 'Revisa la solución paso a paso.';
+        resultadoDiv.className = 'resultado incorrecto';
+        resultadoDiv.innerHTML = mensaje;
+    }
+}
 
     function mostrarSolucion(id) {
         const solucionDiv = document.getElementById(id);
