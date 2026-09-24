@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,7 +28,7 @@
             height: 100vh;
             background: linear-gradient(180deg, #6a1b9a 0%, #8e24aa 100%);
             padding: 20px 15px;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.2);
+            box-shadow: -4px 0 15px rgba(0, 0, 0, 0.2);
             z-index: 1000;
             overflow-y: auto;
         }
@@ -37,7 +38,7 @@
             text-align: center;
             margin-bottom: 15px;
             font-size: 1.2em;
-            border-bottom: 2px solid rgba(255,255,255,0.3);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
             padding-bottom: 10px;
         }
 
@@ -103,7 +104,7 @@
         }
 
         .translator-panel .api-info {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 8px;
             padding: 12px;
             color: white;
@@ -112,7 +113,7 @@
         }
 
         .translator-panel .api-info code {
-            background: rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.3);
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.8em;
@@ -130,7 +131,7 @@
             color: white;
             padding: 40px 20px;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             border-radius: 0 0 20px 20px;
             margin-bottom: 30px;
         }
@@ -156,7 +157,7 @@
             margin: 30px 0;
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             border-left: 5px solid #8e24aa;
         }
 
@@ -243,12 +244,12 @@
             font-size: 1.8em;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
         .play-btn:hover {
             transform: scale(1.1);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
 
         .play-btn.playing {
@@ -257,8 +258,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
         }
 
         .speed-control {
@@ -356,7 +364,7 @@
             border-spacing: 0;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .classification-table th {
@@ -411,7 +419,7 @@
             border-spacing: 0;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             margin: 20px 0;
         }
 
@@ -473,7 +481,7 @@
             font-size: 0.85em;
             max-width: 280px;
             z-index: 100;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             display: none;
             pointer-events: none;
         }
@@ -521,7 +529,7 @@
         .btn:hover {
             background: #6a1b9a;
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
         .btn-check {
@@ -598,8 +606,15 @@
         }
 
         @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
         }
 
         .autocorrect-status {
@@ -613,6 +628,7 @@
             body {
                 padding-right: 0;
             }
+
             .translator-panel {
                 position: relative;
                 width: 100%;
@@ -625,9 +641,11 @@
             header h1 {
                 font-size: 1.8em;
             }
+
             .section {
                 padding: 20px;
             }
+
             .classification-table th,
             .agenda-table th {
                 font-size: 0.85em;
@@ -636,12 +654,13 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- Fixed Translator Panel -->
     <div class="translator-panel">
         <h3>🌐 English → Spanish Translator</h3>
-        
+
         <div class="translator-widget">
             <div class="lang-labels">
                 <span>🇬🇧 English</span>
@@ -672,7 +691,8 @@
         <div class="section" id="reading">
             <h2><span class="part-badge">Part I</span> It's Reading Time!</h2>
             <div class="instructions">
-                <strong>Instructions:</strong> Read the text about Juan's daily routine. Click the play button to listen to the description at slow speed (0.5x). Then, make a list of Juan's daily activities.
+                <strong>Instructions:</strong> Read the text about Juan's daily routine. Click the play button to listen
+                to the description at slow speed (0.5x). Then, make a list of Juan's daily activities.
             </div>
 
             <div class="reading-poster">
@@ -701,8 +721,10 @@
 
             <div class="list-activity">
                 <h3 style="color: #6a1b9a; margin-bottom: 15px;">📋 Juan's Daily Activities List</h3>
-                <p style="margin-bottom: 10px; color: #666;">Write a list of all the activities Juan does during the day (one per line):</p>
-                <textarea id="juanList" placeholder="Example:&#10;1. Get up early in the morning&#10;2. Take a shower&#10;3. Have breakfast with mom&#10;..."></textarea>
+                <p style="margin-bottom: 10px; color: #666;">Write a list of all the activities Juan does during the day
+                    (one per line):</p>
+                <textarea id="juanList"
+                    placeholder="Example:&#10;1. Get up early in the morning&#10;2. Take a shower&#10;3. Have breakfast with mom&#10;..."></textarea>
                 <div style="text-align: center; margin-top: 15px;">
                     <button class="btn btn-check" onclick="checkJuanList()">✓ Check My List</button>
                     <button class="btn btn-reset" onclick="resetJuanList()">↺ Reset</button>
@@ -715,7 +737,8 @@
         <div class="section" id="classification">
             <h2><span class="part-badge">Part II</span> Let's Classify Them!</h2>
             <div class="instructions">
-                <strong>Instructions:</strong> Click on each daily activity below, then click on the column where it belongs according to the time of day. You can click a placed item to remove it.
+                <strong>Instructions:</strong> Click on each daily activity below, then click on the column where it
+                belongs according to the time of day. You can click a placed item to remove it.
             </div>
 
             <div class="classification-container">
@@ -735,10 +758,18 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><div class="drop-zone" id="zone-morning" onclick="placeActivity('morning')"></div></td>
-                            <td><div class="drop-zone" id="zone-afternoon" onclick="placeActivity('afternoon')"></div></td>
-                            <td><div class="drop-zone" id="zone-evening" onclick="placeActivity('evening')"></div></td>
-                            <td><div class="drop-zone" id="zone-night" onclick="placeActivity('night')"></div></td>
+                            <td>
+                                <div class="drop-zone" id="zone-morning" onclick="placeActivity('morning')"></div>
+                            </td>
+                            <td>
+                                <div class="drop-zone" id="zone-afternoon" onclick="placeActivity('afternoon')"></div>
+                            </td>
+                            <td>
+                                <div class="drop-zone" id="zone-evening" onclick="placeActivity('evening')"></div>
+                            </td>
+                            <td>
+                                <div class="drop-zone" id="zone-night" onclick="placeActivity('night')"></div>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -755,7 +786,9 @@
         <div class="section" id="agenda">
             <h2><span class="part-badge">Part III</span> My Agenda</h2>
             <div class="instructions">
-                <strong>Instructions:</strong> Write 3 daily activities that YOU do in each part of the day. The autocorrector will check your English in real time and show suggestions in Spanish. Green = correct, Yellow = warning, Red = needs correction.
+                <strong>Instructions:</strong> Write 3 daily activities that YOU do in each part of the day. The
+                autocorrector will check your English in real time and show suggestions in Spanish. Green = correct,
+                Yellow = warning, Red = needs correction.
             </div>
 
             <div style="text-align: center; margin: 15px 0;">
@@ -776,24 +809,36 @@
                 <tbody>
                     <tr>
                         <td>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning" placeholder="Activity 1..."></div>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning" placeholder="Activity 2..."></div>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning" placeholder="Activity 3..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning"
+                                    placeholder="Activity 1..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning"
+                                    placeholder="Activity 2..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning"
+                                    placeholder="Activity 3..."></div>
                         </td>
                         <td>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon" placeholder="Activity 1..."></div>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon" placeholder="Activity 2..."></div>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon" placeholder="Activity 3..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon"
+                                    placeholder="Activity 1..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon"
+                                    placeholder="Activity 2..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon"
+                                    placeholder="Activity 3..."></div>
                         </td>
                         <td>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening" placeholder="Activity 1..."></div>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening" placeholder="Activity 2..."></div>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening" placeholder="Activity 3..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening"
+                                    placeholder="Activity 1..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening"
+                                    placeholder="Activity 2..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening"
+                                    placeholder="Activity 3..."></div>
                         </td>
                         <td>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night" placeholder="Activity 1..."></div>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night" placeholder="Activity 2..."></div>
-                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night" placeholder="Activity 3..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night"
+                                    placeholder="Activity 1..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night"
+                                    placeholder="Activity 2..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night"
+                                    placeholder="Activity 3..."></div>
                         </td>
                     </tr>
                 </tbody>
@@ -818,7 +863,7 @@
         async function translateText() {
             const text = document.getElementById('sourceText').value.trim();
             const resultBox = document.getElementById('translatedText');
-            
+
             if (!text) {
                 resultBox.textContent = '️ Please enter some text to translate.';
                 resultBox.style.color = '#f57f17';
@@ -832,14 +877,14 @@
                 const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(text)}`;
                 const response = await fetch(url);
                 const data = await response.json();
-                
+
                 let translated = '';
                 if (data && data[0]) {
                     data[0].forEach(item => {
                         if (item[0]) translated += item[0];
                     });
                 }
-                
+
                 resultBox.textContent = translated || 'No translation available.';
                 resultBox.style.color = '#333';
             } catch (error) {
@@ -848,7 +893,7 @@
             }
         }
 
-        document.getElementById('sourceText').addEventListener('keydown', function(e) {
+        document.getElementById('sourceText').addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 translateText();
@@ -856,12 +901,68 @@
         });
 
         // ============ TEXT TO SPEECH ============
+        // ============ TEXT TO SPEECH ============
         let isSpeaking = false;
         let currentUtterance = null;
+        let maleVoice = null;
 
         const juanFullText = "My name is Juan. I get up early in the morning and I take a shower. Also, I have breakfast with mom. In the afternoon, I go to school and I play soccer with my classmates. I do my homework and I have dinner with my family in the evening. Finally, I go to bed at night. That's a day in my life! I have fun every day!";
 
-        document.getElementById('speedRange').addEventListener('input', function() {
+        // Cargar las voces disponibles
+        function loadVoices() {
+            const voices = window.speechSynthesis.getVoices();
+
+            // Buscar voz masculina en inglés con estas prioridades:
+            const maleVoiceNames = [
+                'Microsoft David',      // Windows - voz masculina clara
+                'Microsoft Mark',       // Windows
+                'Daniel',               // Mac - voz masculina británica
+                'Alex',                 // Mac/iOS - voz masculina
+                'Google UK English Male', // Chrome
+                'Google US English',    // Chrome (a veces masculina)
+                'Rishi',                // Otra opción
+                'Fred',                 // macOS
+                'Tom',                  // Algunas plataformas
+            ];
+
+            // Primero buscar voz masculina específica
+            for (let name of maleVoiceNames) {
+                const found = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
+                if (found) {
+                    maleVoice = found;
+                    console.log('✅ Voz masculina encontrada:', found.name);
+                    return;
+                }
+            }
+
+            // Si no encuentra voz masculina específica, buscar cualquier voz en inglés
+            // que NO sea femenina (evitar Samantha, Victoria, Zira, Karen, etc.)
+            const femaleVoiceNames = ['Samantha', 'Victoria', 'Zira', 'Karen', 'Moira', 'Tessa', 'Fiona', 'Susan', 'Allison'];
+            const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+
+            for (let voice of englishVoices) {
+                const isFemale = femaleVoiceNames.some(name => voice.name.includes(name));
+                if (!isFemale) {
+                    maleVoice = voice;
+                    console.log('✅ Voz en inglés seleccionada (no femenina):', voice.name);
+                    return;
+                }
+            }
+
+            // Último recurso: primera voz en inglés disponible
+            if (englishVoices.length > 0) {
+                maleVoice = englishVoices[0];
+                console.log('⚠️ Usando voz por defecto:', maleVoice.name);
+            }
+        }
+
+        // Las voces pueden cargarse asíncronamente
+        if ('speechSynthesis' in window) {
+            loadVoices();
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        document.getElementById('speedRange').addEventListener('input', function () {
             document.getElementById('speedValue').textContent = this.value + 'x';
             if (currentUtterance) {
                 currentUtterance.rate = parseFloat(this.value);
@@ -870,7 +971,7 @@
 
         function toggleSpeech() {
             const btn = document.getElementById('playBtn');
-            
+
             if (isSpeaking) {
                 window.speechSynthesis.cancel();
                 isSpeaking = false;
@@ -879,32 +980,48 @@
             } else {
                 if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
-                    
+
+                    // Recargar voces por si acaso
+                    if (!maleVoice) loadVoices();
+
                     currentUtterance = new SpeechSynthesisUtterance(juanFullText);
                     currentUtterance.lang = 'en-US';
                     currentUtterance.rate = parseFloat(document.getElementById('speedRange').value);
-                    currentUtterance.pitch = 1;
-                    
-                    currentUtterance.onend = function() {
+                    currentUtterance.pitch = 0.9; // Pitch ligeramente más grave para voz masculina
+
+                    // Asignar la voz masculina si está disponible
+                    if (maleVoice) {
+                        currentUtterance.voice = maleVoice;
+                    }
+
+                    currentUtterance.onend = function () {
                         isSpeaking = false;
                         btn.textContent = '▶';
                         btn.classList.remove('playing');
                     };
-                    
-                    currentUtterance.onerror = function() {
+
+                    currentUtterance.onerror = function () {
                         isSpeaking = false;
                         btn.textContent = '▶';
                         btn.classList.remove('playing');
                     };
-                    
+
                     window.speechSynthesis.speak(currentUtterance);
                     isSpeaking = true;
                     btn.textContent = '⏸';
                     btn.classList.add('playing');
                 } else {
-                    alert('Your browser does not support text-to-speech.');
+                    alert('Tu navegador no soporta text-to-speech.');
                 }
             }
+        }
+
+        function stopSpeech() {
+            window.speechSynthesis.cancel();
+            isSpeaking = false;
+            const btn = document.getElementById('playBtn');
+            btn.textContent = '▶';
+            btn.classList.remove('playing');
         }
 
         function stopSpeech() {
@@ -939,7 +1056,7 @@
 
             let found = 0;
             const fullText = normalizeText(text);
-            
+
             juanActivities.forEach(activity => {
                 if (fullText.includes(activity)) {
                     found++;
@@ -966,25 +1083,25 @@
 
         // ============ CLASSIFICATION ACTIVITY ============
         const activities = [
-            { id: 1, text: 'Get up early', zone: 'morning' },
-            { id: 2, text: 'Take a shower', zone: 'morning' },
-            { id: 3, text: 'Have breakfast', zone: 'morning' },
-            { id: 4, text: 'Brush my teeth', zone: 'morning' },
-            { id: 5, text: 'Go to school', zone: 'morning' },
-            { id: 6, text: 'Have lunch', zone: 'afternoon' },
-            { id: 7, text: 'Play soccer', zone: 'afternoon' },
-            { id: 8, text: 'Do homework', zone: 'afternoon' },
-            { id: 9, text: 'Study English', zone: 'afternoon' },
-            { id: 10, text: 'Watch TV', zone: 'evening' },
-            { id: 11, text: 'Have dinner', zone: 'evening' },
-            { id: 12, text: 'Read a book', zone: 'evening' },
-            { id: 13, text: 'Talk with family', zone: 'evening' },
-            { id: 14, text: 'Go to bed', zone: 'night' },
-            { id: 15, text: 'Sleep', zone: 'night' }
+            {id: 1, text: 'Get up early', zone: 'morning'},
+            {id: 2, text: 'Take a shower', zone: 'morning'},
+            {id: 3, text: 'Have breakfast', zone: 'morning'},
+            {id: 4, text: 'Brush my teeth', zone: 'morning'},
+            {id: 5, text: 'Go to school', zone: 'morning'},
+            {id: 6, text: 'Have lunch', zone: 'afternoon'},
+            {id: 7, text: 'Play soccer', zone: 'afternoon'},
+            {id: 8, text: 'Do homework', zone: 'afternoon'},
+            {id: 9, text: 'Study English', zone: 'afternoon'},
+            {id: 10, text: 'Watch TV', zone: 'evening'},
+            {id: 11, text: 'Have dinner', zone: 'evening'},
+            {id: 12, text: 'Read a book', zone: 'evening'},
+            {id: 13, text: 'Talk with family', zone: 'evening'},
+            {id: 14, text: 'Go to bed', zone: 'night'},
+            {id: 15, text: 'Sleep', zone: 'night'}
         ];
 
         let selectedActivity = null;
-        const placements = { morning: [], afternoon: [], evening: [], night: [] };
+        const placements = {morning: [], afternoon: [], evening: [], night: []};
 
         function renderActivitiesPool() {
             const pool = document.getElementById('activitiesPool');
@@ -994,19 +1111,19 @@
                 chip.className = 'activity-chip';
                 chip.textContent = act.text;
                 chip.dataset.id = act.id;
-                
+
                 // Check if already placed
                 let isPlaced = false;
                 Object.values(placements).forEach(zone => {
                     if (zone.includes(act.id)) isPlaced = true;
                 });
-                
+
                 if (isPlaced) {
                     chip.classList.add('placed');
                 } else if (selectedActivity === act.id) {
                     chip.classList.add('selected');
                 }
-                
+
                 chip.onclick = () => selectActivity(act.id);
                 pool.appendChild(chip);
             });
@@ -1023,17 +1140,17 @@
 
         function placeActivity(zone) {
             if (selectedActivity === null) return;
-            
+
             // Remove from any other zone
             Object.keys(placements).forEach(z => {
                 placements[z] = placements[z].filter(id => id !== selectedActivity);
             });
-            
+
             // Add to selected zone
             if (!placements[zone].includes(selectedActivity)) {
                 placements[zone].push(selectedActivity);
             }
-            
+
             selectedActivity = null;
             renderActivitiesPool();
             renderPlacements();
@@ -1120,23 +1237,23 @@
         let autocorrectTimeout = null;
 
         document.querySelectorAll('.agenda-input').forEach(input => {
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 clearTimeout(autocorrectTimeout);
                 const currentInput = this;
-                
+
                 // Show checking status
                 updateAutocorrectStatus('checking', 'Checking...');
-                
+
                 autocorrectTimeout = setTimeout(() => {
                     checkWithLanguageTool(currentInput);
                 }, 1000);
             });
 
-            input.addEventListener('focus', function() {
+            input.addEventListener('focus', function () {
                 tooltip.style.display = 'none';
             });
 
-            input.addEventListener('blur', function() {
+            input.addEventListener('blur', function () {
                 setTimeout(() => {
                     tooltip.style.display = 'none';
                 }, 200);
@@ -1145,7 +1262,7 @@
 
         async function checkWithLanguageTool(input) {
             const text = input.value.trim();
-            
+
             if (text.length < 3) {
                 input.classList.remove('has-error', 'has-warning', 'correct');
                 updateAutocorrectStatus('ok', 'Autocorrector ready. Start typing to check your English.');
@@ -1168,14 +1285,14 @@
                     const firstMatch = data.matches[0];
                     input.classList.remove('correct', 'has-warning');
                     input.classList.add('has-error');
-                    
+
                     // Show tooltip
                     showTooltip(input, firstMatch);
                     updateAutocorrectStatus('error', `Found ${data.matches.length} suggestion(s). Hover over the field to see corrections.`);
                 } else {
                     // No errors - check if it looks like a proper sentence
                     input.classList.remove('has-error', 'has-warning');
-                    
+
                     if (text.length > 10 && /^[A-Z]/.test(text) && /[.!?]$/.test(text)) {
                         input.classList.add('correct');
                         updateAutocorrectStatus('ok', '✓ Looks great! Proper sentence structure.');
@@ -1196,14 +1313,14 @@
         function showTooltip(input, match) {
             const message = match.message;
             const replacements = match.replacements.slice(0, 3);
-            
+
             let html = `<div class="correction">💡 Sugerencia:</div>`;
             html += `<div>${message}</div>`;
-            
+
             if (replacements.length > 0) {
                 html += `<div class="explanation">Sugerencias: <strong>${replacements.map(r => r.value).join(', ')}</strong></div>`;
             }
-            
+
             // Translate the message to Spanish using Google Translate
             translateMessage(message).then(esMessage => {
                 if (esMessage) {
@@ -1250,7 +1367,7 @@
             if (state === 'checking') indicator = '<span class="status-indicator checking"></span>';
             else if (state === 'error') indicator = '<span class="status-indicator error"></span>';
             else indicator = '<span class="status-indicator ok"></span>';
-            
+
             status.innerHTML = indicator + ' ' + message;
         }
 
@@ -1265,4 +1382,5 @@
     </script>
 
 </body>
+
 </html>
