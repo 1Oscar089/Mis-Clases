@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masa Molar</title>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-primary: #2980b9;
+            --color-secondary: #d4efdf;
+            --color-accent: #a9dfbf;
+            --color-text: #2c3e50;
+            --color-text-light: #555555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--color-primary);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--color-primary);
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        h2 {
+            color: var(--color-primary);
+            border-left: 5px solid var(--color-accent);
+            padding-left: 10px;
+            margin-top: 35px;
+        }
+
+        h3 {
+            color: var(--color-text);
+        }
+
+        p, li {
+            color: var(--color-text-light);
+        }
+
+        .teoria-box {
+            background-color: var(--color-secondary);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .formula {
+            background-color: #fff;
+            border: 2px solid var(--color-accent);
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 1.1rem;
+            font-family: monospace;
+        }
+
+        .ejemplo {
+            background-color: #f9f9f9;
+            border-left: 4px solid var(--color-primary);
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .ejemplo strong {
+            color: var(--color-primary);
+        }
+
+        .dato-box {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .dato-box strong {
+            color: #856404;
+        }
+
+        .recurso-box {
+            background: linear-gradient(135deg, #2980b9, #1f618d);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .recurso-box h3 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .recurso-box a {
+            display: inline-block;
+            background-color: white;
+            color: var(--color-primary);
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .recurso-box a:hover {
+            background-color: var(--color-secondary);
+        }
+
+        .elemento-ejemplo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .elemento-card {
+            background-color: #fff;
+            border: 2px solid var(--color-accent);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .elemento-card .simbolo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+
+        .elemento-card .nombre {
+            font-size: 0.9rem;
+            color: var(--color-text-light);
+        }
+
+        .elemento-card .masa {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--color-text);
+        }
+
+        .paso {
+            background-color: #fff;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid var(--color-accent);
+            border-radius: 0 5px 5px 0;
+        }
+
+        /* Estilos para el Quiz */
+        #quiz-container {
+            margin-top: 20px;
+        }
+
+        .question-block {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .question-block p {
+            font-weight: bold;
+            color: var(--color-text);
+            margin-top: 0;
+        }
+
+        .options label {
+            display: block;
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #f4f4f4;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .options label:hover {
+            background-color: var(--color-secondary);
+        }
+
+        .options input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .btn {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 10px 5px 10px 0;
+        }
+
+        .btn:hover {
+            background-color: #1f618d;
+        }
+
+        .btn-secondary {
+            background-color: var(--color-accent);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover {
+            background-color: #7dcea0;
+        }
+
+        #quiz-result {
+            margin-top: 20px;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .correct { background-color: #d4efdf; color: #1e8449; }
+        .incorrect { background-color: #fadbd8; color: #922b21; }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.5rem; }
+            .formula { font-size: 0.95rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Masa Molar</h1>
+    </header>
+
+    <h2>¿Qué es la Masa Molar?</h2>
+    <p>Así como al contar granos de café uno por uno se vuelve difícil cuando son muchos, en química contar átomos o moléculas individualmente también es complicado. Por eso usamos la <strong>masa</strong> como forma de "contar" partículas.</p>
+
+    <div class="teoria-box">
+        <h3>Definición</h3>
+        <p>La <strong>masa molar</strong> es la masa de un mol de sustancia y se expresa en <strong>gramos por mol (g/mol)</strong>. Es una propiedad específica de cada sustancia.</p>
+        <div class="formula">
+            Masa molar = masa de 1 mol de sustancia (g/mol)
+        </div>
+    </div>
+
+    <div class="dato-box">
+        <strong>💡 Relación con la tabla periódica:</strong> La masa molar (g/mol) de un elemento equivale numéricamente a su masa atómica relativa (u). Para convertir la masa atómica en masa molar, se multiplica por la constante de masa molar (1 g/mol).
+    </div>
+
+    <h2>Masa Molar de Elementos</h2>
+    <p>En la tabla periódica encontramos las masas atómicas relativas (u) de los elementos químicos. Algunos ejemplos:</p>
+
+    <div class="elemento-ejemplo">
+        <div class="elemento-card">
+            <div class="simbolo">C</div>
+            <div class="nombre">Carbono</div>
+            <div class="masa">12.01 g/mol</div>
+        </div>
+        <div class="elemento-card">
+            <div class="simbolo">Al</div>
+            <div class="nombre">Aluminio</div>
+            <div class="masa">26.982 g/mol</div>
+        </div>
+        <div class="elemento-card">
+            <div class="simbolo">Sb</div>
+            <div class="nombre">Antimonio</div>
+            <div class="masa">121.76 g/mol</div>
+        </div>
+    </div>
+
+    <h2>Elementos que forman Moléculas</h2>
+    <p>Algunos elementos se hallan generalmente como moléculas, como el hidrógeno (H₂), cloro (Cl₂), fósforo (P₄) y azufre (S₈). La masa molar de estas moléculas es la masa molar de los átomos multiplicada por el número de átomos de cada molécula:</p>
+
+    <div class="ejemplo">
+        <strong>H₂:</strong> 2 × 1.008 g/mol = <strong>2.016 g/mol</strong>
+    </div>
+    <div class="ejemplo">
+        <strong>P₄:</strong> 4 × 30.974 g/mol = <strong>123.896 g/mol</strong>
+    </div>
+    <div class="ejemplo">
+        <strong>S₈:</strong> 8 × 32.065 g/mol = <strong>256.52 g/mol</strong>
+    </div>
+
+    <h2>Masa Molar de Compuestos</h2>
+    <p>Para calcular la masa molar de una sustancia compuesta, se multiplican las masas atómicas relativas de los elementos que conforman el compuesto por la cantidad de átomos presentes, y luego se suman los resultados.</p>
+
+    <div class="teoria-box">
+        <h3>Ejemplo: Cloroformo (CHCl₃)</h3>
+        <div class="paso"><strong>Paso 1:</strong> Identificar los átomos: 1 C, 1 H, 3 Cl</div>
+        <div class="paso"><strong>Paso 2:</strong> Buscar masas atómicas: C = 12.01, H = 1.008, Cl = 35.45</div>
+        <div class="paso"><strong>Paso 3:</strong> Multiplicar y sumar:<br>
+        (1 × 12.01) + (1 × 1.008) + (3 × 35.45) = 12.01 + 1.008 + 106.35 = <strong>119.37 g/mol</strong></div>
+    </div>
+
+    <div class="recurso-box">
+        <h3>📊 Recurso Adicional: Tabla Periódica Interactiva</h3>
+        <p>Consulta la tabla periódica completa con símbolo, número atómico, peso atómico y configuración electrónica de todos los elementos.</p>
+        <a href="recursos/tabla_periodica.html" target="_blank">Ver Tabla Periódica</a>
+    </div>
+
+    <h2>Evalúa tu comprensión</h2>
+    <p>Responde las siguientes 5 preguntas. Cada vez que inicies un nuevo cuestionario, las preguntas se seleccionarán al azar de un banco de 20.</p>
+
+    <button class="btn" onclick="generarQuiz()">Iniciar / Nuevo Cuestionario</button>
+    
+    <div id="quiz-container"></div>
+    
+    <button class="btn btn-secondary" id="btn-check" onclick="calificarQuiz()" style="display:none;">Calificar Respuestas</button>
+    
+    <div id="quiz-result"></div>
+
+</div>
+
+<script>
+    const bancoPreguntas = [
+        { q: "¿Qué es la masa molar?", options: ["La masa de un átomo", "La masa de un mol de sustancia", "La masa de una molécula", "La masa de un electrón"], correct: 1 },
+        { q: "¿En qué unidades se expresa la masa molar?", options: ["kg/mol", "g/mol", "mg/mol", "u/mol"], correct: 1 },
+        { q: "¿A qué equivale numéricamente la masa molar de un elemento?", options: ["Su número atómico", "Su masa atómica relativa (u)", "Su configuración electrónica", "Su valencia"], correct: 1 },
+        { q: "¿Cuál es la masa molar del carbono (C)?", options: ["6.01 g/mol", "12.01 g/mol", "24.02 g/mol", "1.008 g/mol"], correct: 1 },
+        { q: "¿Cuál es la masa molar del aluminio (Al)?", options: ["13 g/mol", "26.982 g/mol", "54 g/mol", "12 g/mol"], correct: 1 },
+        { q: "¿Cuál es la masa molar del antimonio (Sb)?", options: ["51 g/mol", "121.76 g/mol", "243.52 g/mol", "32 g/mol"], correct: 1 },
+        { q: "¿Cuál es la masa molar del H₂?", options: ["1.008 g/mol", "2.016 g/mol", "4.032 g/mol", "16 g/mol"], correct: 1 },
+        { q: "¿Cuál es la masa molar del P?", options: ["30.974 g/mol", "61.948 g/mol", "123.896 g/mol", "247.792 g/mol"], correct: 2 },
+        { q: "¿Cuál es la masa molar del S₈?", options: ["32.065 g/mol", "128.26 g/mol", "256.52 g/mol", "512 g/mol"], correct: 2 },
+        { q: "¿Cómo se calcula la masa molar de un elemento molecular?", options: ["Dividiendo la masa atómica entre el número de átomos", "Multiplicando la masa atómica por el número de átomos", "Sumando el número atómico", "Restando electrones"], correct: 1 },
+        { q: "¿Cómo se calcula la masa molar de un compuesto?", options: ["Solo sumando las masas atómicas", "Multiplicando cada masa atómica por la cantidad de átomos y sumando", "Dividiendo entre el número de elementos", "Multiplicando todo por Avogadro"], correct: 1 },
+        { q: "¿Cuántos átomos de cloro hay en CHCl₃?", options: ["1", "2", "3", "4"], correct: 2 },
+        { q: "¿Cuál es la masa molar aproximada del CHCl₃?", options: ["119.37 g/mol", "100 g/mol", "150 g/mol", "80 g/mol"], correct: 0 },
+        { q: "¿Qué constante se usa para convertir masa atómica en masa molar?", options: ["6.022 × 10²³", "1 g/mol", "22.414 L/mol", "8.314 J/mol·K"], correct: 1 },
+        { q: "¿La masa molar es una propiedad específica de?", options: ["Solo los elementos", "Solo los compuestos", "Cada sustancia", "Solo los gases"], correct: 2 },
+        { q: "¿Qué elemento tiene masa molar de aproximadamente 12 g/mol?", options: ["Oxígeno", "Nitrógeno", "Carbono", "Helio"], correct: 2 },
+        { q: "¿El hidrógeno normalmente se encuentra como?", options: ["H", "H₂", "H₃", "H₄"], correct: 1 },
+        { q: "¿El azufre normalmente se encuentra como?", options: ["S", "S₂", "S₄", "S₈"], correct: 3 },
+        { q: "¿El fósforo normalmente se encuentra como?", options: ["P", "P₂", "P₄", "P₈"], correct: 2 },
+        { q: "¿Por qué es útil la masa molar en química?", options: ["Para contar partículas usando la masa", "Para medir temperatura", "Para calcular velocidad", "Para determinar color"], correct: 0 }
+    ];
+
+    let preguntasActuales = [];
+
+    function mezclarArray(array) {
+        let arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function generarQuiz() {
+        const mezcladas = mezclarArray(bancoPreguntas);
+        preguntasActuales = mezcladas.slice(0, 5);
+        
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = '';
+        document.getElementById('quiz-result').style.display = 'none';
+        document.getElementById('btn-check').style.display = 'inline-block';
+
+        preguntasActuales.forEach((pregunta, index) => {
+            let html = `
+                <div class="question-block">
+                    <p>${index + 1}. ${pregunta.q}</p>
+                    <div class="options">
+            `;
+            pregunta.options.forEach((opt, optIndex) => {
+                html += `
+                    <label>
+                        <input type="radio" name="q${index}" value="${optIndex}">
+                        ${opt}
+                    </label>
+                `;
+            });
+            html += `</div></div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function calificarQuiz() {
+        let puntaje = 0;
+        preguntasActuales.forEach((pregunta, index) => {
+            const seleccion = document.querySelector(`input[name="q${index}"]:checked`);
+            if (seleccion && parseInt(seleccion.value) === pregunta.correct) {
+                puntaje++;
+            }
+        });
+
+        const resultDiv = document.getElementById('quiz-result');
+        resultDiv.style.display = 'block';
+        resultDiv.className = puntaje >= 3 ? 'correct' : 'incorrect';
+        
+        let mensaje = `Obtuviste ${puntaje} de 5 respuestas correctas. `;
+        if (puntaje === 5) mensaje += "¡Excelente trabajo!";
+        else if (puntaje >= 3) mensaje += "¡Buen trabajo! Repasa los errores.";
+        else mensaje += "Te sugiero repasar la teoría e intentarlo de nuevo.";
+        
+        resultDiv.innerText = mensaje;
+        document.getElementById('btn-check').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
