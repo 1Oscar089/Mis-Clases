@@ -100,35 +100,6 @@
             color: #856404;
         }
 
-        .recurso-box {
-            background: linear-gradient(135deg, #2980b9, #1f618d);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 25px 0;
-            text-align: center;
-        }
-
-        .recurso-box h3 {
-            color: white;
-            margin-top: 0;
-        }
-
-        .recurso-box a {
-            display: inline-block;
-            background-color: white;
-            color: var(--color-primary);
-            padding: 10px 20px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        .recurso-box a:hover {
-            background-color: var(--color-secondary);
-        }
-
         .elemento-ejemplo {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -169,7 +140,127 @@
             border-radius: 0 5px 5px 0;
         }
 
-        /* Estilos para el Quiz */
+        /* ===== BOTÓN FLOTANTE TABLA PERIÓDICA ===== */
+        .btn-tabla-flotante {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #2980b9, #1f618d);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(41, 128, 185, 0.4);
+            z-index: 50;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-tabla-flotante:hover {
+            background: linear-gradient(135deg, #1f618d, #154360);
+            box-shadow: 0 6px 20px rgba(41, 128, 185, 0.6);
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .btn-tabla-flotante .icono {
+            font-size: 1.3rem;
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-overlay.activo {
+            display: flex;
+        }
+
+        .modal-contenido {
+            background-color: white;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 1400px;
+            height: 90vh;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: modalEntrar 0.3s ease;
+        }
+
+        @keyframes modalEntrar {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #2980b9, #1f618d);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            color: white;
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .modal-cerrar {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .modal-cerrar:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .modal-body {
+            height: calc(100% - 65px);
+            width: 100%;
+        }
+
+        .modal-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* ===== QUIZ ===== */
         #quiz-container {
             margin-top: 20px;
         }
@@ -243,14 +334,53 @@
         .correct { background-color: #d4efdf; color: #1e8449; }
         .incorrect { background-color: #fadbd8; color: #922b21; }
 
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .container { padding: 15px; }
             h1 { font-size: 1.5rem; }
             .formula { font-size: 0.95rem; }
+            
+            .btn-tabla-flotante {
+                right: 10px;
+                padding: 12px 15px;
+                font-size: 0.85rem;
+            }
+            
+            .btn-tabla-flotante .texto-boton {
+                display: none;
+            }
+            
+            .btn-tabla-flotante .icono {
+                font-size: 1.5rem;
+            }
+
+            .modal-contenido {
+                width: 100%;
+                height: 95vh;
+                border-radius: 8px;
+            }
         }
     </style>
 </head>
 <body>
+
+<!-- BOTÓN FLOTANTE -->
+<button class="btn-tabla-flotante" onclick="abrirTabla()">
+    <span class="icono">🧪</span>
+    <span class="texto-boton">Tabla Periódica</span>
+</button>
+
+<!-- MODAL CON IFRAME -->
+<div class="modal-overlay" id="modal-tabla">
+    <div class="modal-contenido">
+        <div class="modal-header">
+            <h3> Tabla Periódica de los Elementos</h3>
+            <button class="modal-cerrar" onclick="cerrarTabla()">✕</button>
+        </div>
+        <div class="modal-body">
+            <iframe src="recursos/tabla_periodica.html" id="iframe-tabla"></iframe>
+        </div>
+    </div>
+</div>
 
 <div class="container">
     <header>
@@ -310,17 +440,11 @@
     <p>Para calcular la masa molar de una sustancia compuesta, se multiplican las masas atómicas relativas de los elementos que conforman el compuesto por la cantidad de átomos presentes, y luego se suman los resultados.</p>
 
     <div class="teoria-box">
-        <h3>Ejemplo: Cloroformo (CHCl₃)</h3>
+        <h3>Ejemplo: Cloroformo (CHCl)</h3>
         <div class="paso"><strong>Paso 1:</strong> Identificar los átomos: 1 C, 1 H, 3 Cl</div>
         <div class="paso"><strong>Paso 2:</strong> Buscar masas atómicas: C = 12.01, H = 1.008, Cl = 35.45</div>
         <div class="paso"><strong>Paso 3:</strong> Multiplicar y sumar:<br>
         (1 × 12.01) + (1 × 1.008) + (3 × 35.45) = 12.01 + 1.008 + 106.35 = <strong>119.37 g/mol</strong></div>
-    </div>
-
-    <div class="recurso-box">
-        <h3>📊 Recurso Adicional: Tabla Periódica Interactiva</h3>
-        <p>Consulta la tabla periódica completa con símbolo, número atómico, peso atómico y configuración electrónica de todos los elementos.</p>
-        <a href="recursos/tabla_periodica.html" target="_blank">Ver Tabla Periódica</a>
     </div>
 
     <h2>Evalúa tu comprensión</h2>
@@ -337,6 +461,32 @@
 </div>
 
 <script>
+    // ===== FUNCIONES DEL MODAL =====
+    function abrirTabla() {
+        document.getElementById('modal-tabla').classList.add('activo');
+        document.body.style.overflow = 'hidden'; // Evita scroll de fondo
+    }
+
+    function cerrarTabla() {
+        document.getElementById('modal-tabla').classList.remove('activo');
+        document.body.style.overflow = ''; // Restaura scroll
+    }
+
+    // Cerrar modal al hacer clic fuera del contenido
+    document.getElementById('modal-tabla').addEventListener('click', function(e) {
+        if (e.target === this) {
+            cerrarTabla();
+        }
+    });
+
+    // Cerrar con tecla Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarTabla();
+        }
+    });
+
+    // ===== QUIZ =====
     const bancoPreguntas = [
         { q: "¿Qué es la masa molar?", options: ["La masa de un átomo", "La masa de un mol de sustancia", "La masa de una molécula", "La masa de un electrón"], correct: 1 },
         { q: "¿En qué unidades se expresa la masa molar?", options: ["kg/mol", "g/mol", "mg/mol", "u/mol"], correct: 1 },
@@ -345,7 +495,7 @@
         { q: "¿Cuál es la masa molar del aluminio (Al)?", options: ["13 g/mol", "26.982 g/mol", "54 g/mol", "12 g/mol"], correct: 1 },
         { q: "¿Cuál es la masa molar del antimonio (Sb)?", options: ["51 g/mol", "121.76 g/mol", "243.52 g/mol", "32 g/mol"], correct: 1 },
         { q: "¿Cuál es la masa molar del H₂?", options: ["1.008 g/mol", "2.016 g/mol", "4.032 g/mol", "16 g/mol"], correct: 1 },
-        { q: "¿Cuál es la masa molar del P?", options: ["30.974 g/mol", "61.948 g/mol", "123.896 g/mol", "247.792 g/mol"], correct: 2 },
+        { q: "¿Cuál es la masa molar del P₄?", options: ["30.974 g/mol", "61.948 g/mol", "123.896 g/mol", "247.792 g/mol"], correct: 2 },
         { q: "¿Cuál es la masa molar del S₈?", options: ["32.065 g/mol", "128.26 g/mol", "256.52 g/mol", "512 g/mol"], correct: 2 },
         { q: "¿Cómo se calcula la masa molar de un elemento molecular?", options: ["Dividiendo la masa atómica entre el número de átomos", "Multiplicando la masa atómica por el número de átomos", "Sumando el número atómico", "Restando electrones"], correct: 1 },
         { q: "¿Cómo se calcula la masa molar de un compuesto?", options: ["Solo sumando las masas atómicas", "Multiplicando cada masa atómica por la cantidad de átomos y sumando", "Dividiendo entre el número de elementos", "Multiplicando todo por Avogadro"], correct: 1 },
@@ -356,7 +506,7 @@
         { q: "¿Qué elemento tiene masa molar de aproximadamente 12 g/mol?", options: ["Oxígeno", "Nitrógeno", "Carbono", "Helio"], correct: 2 },
         { q: "¿El hidrógeno normalmente se encuentra como?", options: ["H", "H₂", "H₃", "H₄"], correct: 1 },
         { q: "¿El azufre normalmente se encuentra como?", options: ["S", "S₂", "S₄", "S₈"], correct: 3 },
-        { q: "¿El fósforo normalmente se encuentra como?", options: ["P", "P₂", "P₄", "P₈"], correct: 2 },
+        { q: "¿El fósforo normalmente se encuentra como?", options: ["P", "P₂", "P", "P₈"], correct: 2 },
         { q: "¿Por qué es útil la masa molar en química?", options: ["Para contar partículas usando la masa", "Para medir temperatura", "Para calcular velocidad", "Para determinar color"], correct: 0 }
     ];
 
