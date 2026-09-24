@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,12 +14,16 @@
             --color-text-light: #555555;
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--color-bg);
             color: var(--color-text);
             margin: 0;
-            padding: 20px;
+            padding: 15px;
         }
 
         .container {
@@ -41,133 +44,141 @@
             font-size: 1.8rem;
         }
 
+        header p {
+            color: var(--color-text-light);
+            margin: 5px 0 0 0;
+        }
+
         .leyenda {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
             justify-content: center;
             margin: 20px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
         }
 
         .leyenda-item {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             font-size: 0.85rem;
         }
 
         .leyenda-color {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             border-radius: 3px;
             border: 1px solid #ccc;
         }
 
+        /* TABLA PRINCIPAL */
+        .tabla-wrapper {
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
         .tabla-periodica {
             display: grid;
-            grid-template-columns: repeat(18, 1fr);
+            grid-template-columns: repeat(18, minmax(55px, 1fr));
             gap: 3px;
-            margin: 20px 0;
-            overflow-x: auto;
+            margin: 10px 0;
         }
 
         .elemento {
             border: 1px solid #ccc;
             border-radius: 4px;
-            padding: 4px;
+            padding: 3px;
             text-align: center;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            min-height: 70px;
+            min-height: 65px;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            align-items: center;
         }
 
         .elemento:hover {
-            transform: scale(1.15);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
             z-index: 10;
             position: relative;
         }
 
         .elemento .numero {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: var(--color-text-light);
+            line-height: 1;
         }
 
         .elemento .simbolo {
             font-size: 1rem;
             font-weight: bold;
             color: var(--color-text);
+            line-height: 1.2;
         }
 
         .elemento .nombre {
-            font-size: 0.55rem;
+            font-size: 0.5rem;
             color: var(--color-text-light);
+            line-height: 1;
         }
 
         .elemento .masa {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             color: var(--color-text-light);
-        }
-
-        /* Colores por tipo */
-        .no-metal {
-            background-color: #a8e6cf;
-        }
-
-        .gas-noble {
-            background-color: #ffd3b6;
-        }
-
-        .alcalino {
-            background-color: #ffaaa5;
-        }
-
-        .alcalinoterreo {
-            background-color: #ff8b94;
-        }
-
-        .metal-transicion {
-            background-color: #dcedc1;
-        }
-
-        .post-transicion {
-            background-color: #a8d8ea;
-        }
-
-        .metaloide {
-            background-color: #ffd3b6;
-        }
-
-        .lantanido {
-            background-color: #ffb7b2;
-        }
-
-        .actinido {
-            background-color: #e2b4bd;
+            line-height: 1;
         }
 
         .vacio {
-            background-color: transparent;
-            border: none;
+            visibility: hidden;
         }
 
+        .marcador {
+            border: 2px dashed #999;
+            background-color: #f5f5f5;
+            font-size: 0.6rem;
+            color: #666;
+        }
+
+        .marcador .simbolo {
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        /* SEPARADOR */
         .separador {
             grid-column: 1 / -1;
-            height: 20px;
+            height: 15px;
         }
 
-        .fila-lantanidos,
-        .fila-actinidos {
+        /* FILAS DE LANTÁNIDOS Y ACTÍNIDOS */
+        .fila-especial {
             display: grid;
-            grid-template-columns: repeat(18, 1fr);
+            grid-template-columns: repeat(18, minmax(55px, 1fr));
             gap: 3px;
-            margin-top: 10px;
+            margin-top: 5px;
         }
 
-        /* Modal */
+        .fila-especial .espacio-vacio {
+            grid-column: 1 / 4;
+        }
+
+        /* COLORES POR TIPO */
+        .no-metal { background-color: #a8e6cf; }
+        .gas-noble { background-color: #ffd3b6; }
+        .alcalino { background-color: #ffaaa5; }
+        .alcalinoterreo { background-color: #ff8b94; }
+        .metal-transicion { background-color: #dcedc1; }
+        .post-transicion { background-color: #a8d8ea; }
+        .metaloide { background-color: #ffd3b6; }
+        .lantanido { background-color: #ffb7b2; }
+        .actinido { background-color: #e2b4bd; }
+
+        /* MODAL */
         .modal {
             display: none;
             position: fixed;
@@ -175,10 +186,11 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 100;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 1000;
             justify-content: center;
             align-items: center;
+            padding: 20px;
         }
 
         .modal.activo {
@@ -188,357 +200,418 @@
         .modal-contenido {
             background-color: white;
             padding: 25px;
-            border-radius: 10px;
-            max-width: 400px;
-            width: 90%;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: modalEntrar 0.3s ease;
+        }
+
+        @keyframes modalEntrar {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
 
         .modal-contenido h2 {
             color: var(--color-primary);
             margin-top: 0;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        .modal-simbolo-grande {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--color-primary);
+            margin: 10px 0;
         }
 
         .modal-contenido .dato {
-            margin: 10px 0;
-            padding: 8px;
+            margin: 8px 0;
+            padding: 10px;
             background-color: var(--color-secondary);
-            border-radius: 5px;
+            border-radius: 6px;
+            font-size: 0.95rem;
         }
 
         .modal-contenido .dato strong {
             color: var(--color-primary);
+            display: inline-block;
+            min-width: 180px;
         }
 
         .cerrar {
             background-color: var(--color-primary);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 12px 20px;
+            border-radius: 6px;
             cursor: pointer;
             margin-top: 15px;
             width: 100%;
+            font-size: 1rem;
+            font-weight: bold;
         }
 
         .cerrar:hover {
             background-color: #1f618d;
         }
 
-        @media (max-width: 768px) {
-            .tabla-periodica {
-                grid-template-columns: repeat(18, minmax(40px, 1fr));
-                font-size: 0.7rem;
+        @media (max-width: 900px) {
+            .tabla-periodica, .fila-especial {
+                grid-template-columns: repeat(18, minmax(42px, 1fr));
             }
+            .elemento { min-height: 50px; padding: 2px; }
+            .elemento .simbolo { font-size: 0.8rem; }
+            .elemento .nombre { display: none; }
+            .elemento .masa { font-size: 0.5rem; }
+        }
 
-            .elemento {
-                min-height: 50px;
+        @media (max-width: 600px) {
+            body { padding: 8px; }
+            h1 { font-size: 1.3rem; }
+            .tabla-periodica, .fila-especial {
+                grid-template-columns: repeat(18, minmax(32px, 1fr));
+                gap: 2px;
             }
-
-            .elemento .simbolo {
-                font-size: 0.8rem;
-            }
-
-            .elemento .nombre {
-                display: none;
-            }
+            .elemento { min-height: 40px; }
+            .elemento .numero { font-size: 0.5rem; }
+            .elemento .simbolo { font-size: 0.65rem; }
+            .elemento .masa { display: none; }
+            .leyenda { gap: 6px; }
+            .leyenda-item { font-size: 0.7rem; }
         }
     </style>
 </head>
-
 <body>
 
-    <div class="container">
-        <!-- En lugar del botón "Volver", usa este script al inicio del body -->
-        <script>
-            // Detectar si está dentro de un iframe
-            if (window.parent !== window) {
-                // Ocultar botón de volver si existe
-                const btnVolver = document.querySelector('.btn-volver');
-                if (btnVolver) btnVolver.style.display = 'none';
-            }
-        </script>
+<div class="container">
+    <header>
+        <h1>Tabla Periódica de los Elementos</h1>
+        <p>Haz clic en cualquier elemento para ver más detalles</p>
+    </header>
 
-        <header>
-            <h1>Tabla Periódica de los Elementos</h1>
-            <p>Haz clic en cualquier elemento para ver más detalles</p>
-        </header>
+    <div class="leyenda">
+        <div class="leyenda-item"><div class="leyenda-color no-metal"></div>No metal</div>
+        <div class="leyenda-item"><div class="leyenda-color gas-noble"></div>Gas noble</div>
+        <div class="leyenda-item"><div class="leyenda-color alcalino"></div>Alcalino</div>
+        <div class="leyenda-item"><div class="leyenda-color alcalinoterreo"></div>Alcalinotérreo</div>
+        <div class="leyenda-item"><div class="leyenda-color metal-transicion"></div>Metal de transición</div>
+        <div class="leyenda-item"><div class="leyenda-color post-transicion"></div>Post-transición</div>
+        <div class="leyenda-item"><div class="leyenda-color metaloide"></div>Metalide</div>
+        <div class="leyenda-item"><div class="leyenda-color lantanido"></div>Lantánido</div>
+        <div class="leyenda-item"><div class="leyenda-color actinido"></div>Actínido</div>
+    </div>
 
-        <div class="leyenda">
-            <div class="leyenda-item">
-                <div class="leyenda-color no-metal"></div>No metal
-            </div>
-            <div class="leyenda-item">
-                <div class="leyenda-color gas-noble"></div>Gas noble
-            </div>
-            <div class="leyenda-item">
-                <div class="leyenda-color alcalino"></div>Alcalino
-            </div>
-            <div class="leyenda-item">
-                <div class="leyenda-color alcalinoterreo"></div>Alcalinotérreo
-            </div>
-            <div class="leyenda-item">
-                <div class="leyenda-color metal-transicion"></div>Metal de transición
-            </div>
-            <div class="leyenda-item">
-                <div class="leyenda-color post-transicion"></div>Post-transición
-            </div>
-            <div class="leyenda-item">
-                <div class="leyenda-color metaloide"></div>Metalide
-            </div>
-            <div class="leyenda-item">
-                <div class="leyenda-color lantanido"></div>Lantánido
-            </div>
-            <div class="leyenda-item">
-                <div class="leyenda-color actinido"></div>Actínido
-            </div>
-        </div>
-
+    <div class="tabla-wrapper">
         <div class="tabla-periodica" id="tabla-principal"></div>
-        <div class="fila-lantanidos" id="fila-lantanidos"></div>
-        <div class="fila-actinidos" id="fila-actinidos"></div>
     </div>
 
-    <div class="modal" id="modal">
-        <div class="modal-contenido">
-            <h2 id="modal-titulo"></h2>
-            <div class="dato"><strong>Número atómico:</strong> <span id="modal-numero"></span></div>
-            <div class="dato"><strong>Símbolo:</strong> <span id="modal-simbolo"></span></div>
-            <div class="dato"><strong>Nombre:</strong> <span id="modal-nombre"></span></div>
-            <div class="dato"><strong>Peso atómico:</strong> <span id="modal-masa"></span> u</div>
-            <div class="dato"><strong>Configuración electrónica:</strong> <span id="modal-config"></span></div>
-            <div class="dato"><strong>Tipo:</strong> <span id="modal-tipo"></span></div>
-            <button class="cerrar" onclick="cerrarModal()">Cerrar</button>
-        </div>
+    <div class="tabla-wrapper">
+        <div class="fila-especial" id="fila-lantanidos"></div>
     </div>
+    <div class="tabla-wrapper">
+        <div class="fila-especial" id="fila-actinidos"></div>
+    </div>
+</div>
 
-    <script>
-        const elementos = [
-            // Fila 1
-            {z: 1, s: "H", n: "Hidrógeno", m: 1.008, c: "1s¹", t: "no-metal", col: 1, fila: 1},
-            {z: 2, s: "He", n: "Helio", m: 4.0026, c: "1s²", t: "gas-noble", col: 18, fila: 1},
-            // Fila 2
-            {z: 3, s: "Li", n: "Litio", m: 6.94, c: "[He] 2s¹", t: "alcalino", col: 1, fila: 2},
-            {z: 4, s: "Be", n: "Berilio", m: 9.0122, c: "[He] 2s²", t: "alcalinoterreo", col: 2, fila: 2},
-            {z: 5, s: "B", n: "Boro", m: 10.81, c: "[He] 2s² 2p¹", t: "metaloide", col: 13, fila: 2},
-            {z: 6, s: "C", n: "Carbono", m: 12.011, c: "[He] 2s² 2p²", t: "no-metal", col: 14, fila: 2},
-            {z: 7, s: "N", n: "Nitrógeno", m: 14.007, c: "[He] 2s² 2p³", t: "no-metal", col: 15, fila: 2},
-            {z: 8, s: "O", n: "Oxígeno", m: 15.999, c: "[He] 2s² 2p⁴", t: "no-metal", col: 16, fila: 2},
-            {z: 9, s: "F", n: "Flúor", m: 18.998, c: "[He] 2s² 2p⁵", t: "no-metal", col: 17, fila: 2},
-            {z: 10, s: "Ne", n: "Neón", m: 20.180, c: "[He] 2s² 2p⁶", t: "gas-noble", col: 18, fila: 2},
-            // Fila 3
-            {z: 11, s: "Na", n: "Sodio", m: 22.990, c: "[Ne] 3s¹", t: "alcalino", col: 1, fila: 3},
-            {z: 12, s: "Mg", n: "Magnesio", m: 24.305, c: "[Ne] 3s²", t: "alcalinoterreo", col: 2, fila: 3},
-            {z: 13, s: "Al", n: "Aluminio", m: 26.982, c: "[Ne] 3s² 3p¹", t: "post-transicion", col: 13, fila: 3},
-            {z: 14, s: "Si", n: "Silicio", m: 28.085, c: "[Ne] 3s² 3p²", t: "metaloide", col: 14, fila: 3},
-            {z: 15, s: "P", n: "Fósforo", m: 30.974, c: "[Ne] 3s² 3p³", t: "no-metal", col: 15, fila: 3},
-            {z: 16, s: "S", n: "Azufre", m: 32.06, c: "[Ne] 3s² 3p⁴", t: "no-metal", col: 16, fila: 3},
-            {z: 17, s: "Cl", n: "Cloro", m: 35.45, c: "[Ne] 3s² 3p⁵", t: "no-metal", col: 17, fila: 3},
-            {z: 18, s: "Ar", n: "Argón", m: 39.948, c: "[Ne] 3s² 3p⁶", t: "gas-noble", col: 18, fila: 3},
-            // Fila 4
-            {z: 19, s: "K", n: "Potasio", m: 39.098, c: "[Ar] 4s¹", t: "alcalino", col: 1, fila: 4},
-            {z: 20, s: "Ca", n: "Calcio", m: 40.078, c: "[Ar] 4s²", t: "alcalinoterreo", col: 2, fila: 4},
-            {z: 21, s: "Sc", n: "Escandio", m: 44.956, c: "[Ar] 3d¹ 4s²", t: "metal-transicion", col: 3, fila: 4},
-            {z: 22, s: "Ti", n: "Titanio", m: 47.867, c: "[Ar] 3d² 4s²", t: "metal-transicion", col: 4, fila: 4},
-            {z: 23, s: "V", n: "Vanadio", m: 50.942, c: "[Ar] 3d³ 4s²", t: "metal-transicion", col: 5, fila: 4},
-            {z: 24, s: "Cr", n: "Cromo", m: 51.996, c: "[Ar] 3d⁵ 4s¹", t: "metal-transicion", col: 6, fila: 4},
-            {z: 25, s: "Mn", n: "Manganeso", m: 54.938, c: "[Ar] 3d⁵ 4s²", t: "metal-transicion", col: 7, fila: 4},
-            {z: 26, s: "Fe", n: "Hierro", m: 55.845, c: "[Ar] 3d⁶ 4s²", t: "metal-transicion", col: 8, fila: 4},
-            {z: 27, s: "Co", n: "Cobalto", m: 58.933, c: "[Ar] 3d⁷ 4s²", t: "metal-transicion", col: 9, fila: 4},
-            {z: 28, s: "Ni", n: "Níquel", m: 58.693, c: "[Ar] 3d 4s²", t: "metal-transicion", col: 10, fila: 4},
-            {z: 29, s: "Cu", n: "Cobre", m: 63.546, c: "[Ar] 3d¹⁰ 4s¹", t: "metal-transicion", col: 11, fila: 4},
-            {z: 30, s: "Zn", n: "Zinc", m: 65.38, c: "[Ar] 3d¹⁰ 4s²", t: "metal-transicion", col: 12, fila: 4},
-            {z: 31, s: "Ga", n: "Galio", m: 69.723, c: "[Ar] 3d¹⁰ 4s² 4p¹", t: "post-transicion", col: 13, fila: 4},
-            {z: 32, s: "Ge", n: "Germanio", m: 72.630, c: "[Ar] 3d¹⁰ 4s² 4p²", t: "metaloide", col: 14, fila: 4},
-            {z: 33, s: "As", n: "Arsénico", m: 74.922, c: "[Ar] 3d¹⁰ 4s² 4p³", t: "metaloide", col: 15, fila: 4},
-            {z: 34, s: "Se", n: "Selenio", m: 78.971, c: "[Ar] 3d¹⁰ 4s² 4p⁴", t: "no-metal", col: 16, fila: 4},
-            {z: 35, s: "Br", n: "Bromo", m: 79.904, c: "[Ar] 3d¹⁰ 4s² 4p⁵", t: "no-metal", col: 17, fila: 4},
-            {z: 36, s: "Kr", n: "Kriptón", m: 83.798, c: "[Ar] 3d¹⁰ 4s² 4p⁶", t: "gas-noble", col: 18, fila: 4},
-            // Fila 5
-            {z: 37, s: "Rb", n: "Rubidio", m: 85.468, c: "[Kr] 5s¹", t: "alcalino", col: 1, fila: 5},
-            {z: 38, s: "Sr", n: "Estroncio", m: 87.62, c: "[Kr] 5s²", t: "alcalinoterreo", col: 2, fila: 5},
-            {z: 39, s: "Y", n: "Itrio", m: 88.906, c: "[Kr] 4d¹ 5s²", t: "metal-transicion", col: 3, fila: 5},
-            {z: 40, s: "Zr", n: "Circonio", m: 91.224, c: "[Kr] 4d² 5s²", t: "metal-transicion", col: 4, fila: 5},
-            {z: 41, s: "Nb", n: "Niobio", m: 92.906, c: "[Kr] 4d⁴ 5s¹", t: "metal-transicion", col: 5, fila: 5},
-            {z: 42, s: "Mo", n: "Molibdeno", m: 95.95, c: "[Kr] 4d⁵ 5s¹", t: "metal-transicion", col: 6, fila: 5},
-            {z: 43, s: "Tc", n: "Tecnecio", m: 98, c: "[Kr] 4d⁵ 5s²", t: "metal-transicion", col: 7, fila: 5},
-            {z: 44, s: "Ru", n: "Rutenio", m: 101.07, c: "[Kr] 4d⁷ 5s¹", t: "metal-transicion", col: 8, fila: 5},
-            {z: 45, s: "Rh", n: "Rodio", m: 102.91, c: "[Kr] 4d⁸ 5s¹", t: "metal-transicion", col: 9, fila: 5},
-            {z: 46, s: "Pd", n: "Paladio", m: 106.42, c: "[Kr] 4d¹⁰", t: "metal-transicion", col: 10, fila: 5},
-            {z: 47, s: "Ag", n: "Plata", m: 107.87, c: "[Kr] 4d¹⁰ 5s¹", t: "metal-transicion", col: 11, fila: 5},
-            {z: 48, s: "Cd", n: "Cadmio", m: 112.41, c: "[Kr] 4d¹ 5s²", t: "metal-transicion", col: 12, fila: 5},
-            {z: 49, s: "In", n: "Indio", m: 114.82, c: "[Kr] 4d¹⁰ 5s² 5p¹", t: "post-transicion", col: 13, fila: 5},
-            {z: 50, s: "Sn", n: "Estaño", m: 118.71, c: "[Kr] 4d¹⁰ 5s² 5p²", t: "post-transicion", col: 14, fila: 5},
-            {z: 51, s: "Sb", n: "Antimonio", m: 121.76, c: "[Kr] 4d¹⁰ 5s² 5p³", t: "metaloide", col: 15, fila: 5},
-            {z: 52, s: "Te", n: "Telurio", m: 127.60, c: "[Kr] 4d¹⁰ 5s² 5p⁴", t: "metaloide", col: 16, fila: 5},
-            {z: 53, s: "I", n: "Yodo", m: 126.90, c: "[Kr] 4d¹⁰ 5s² 5p⁵", t: "no-metal", col: 17, fila: 5},
-            {z: 54, s: "Xe", n: "Xenón", m: 131.29, c: "[Kr] 4d¹ 5s² 5p⁶", t: "gas-noble", col: 18, fila: 5},
-            // Fila 6
-            {z: 55, s: "Cs", n: "Cesio", m: 132.91, c: "[Xe] 6s¹", t: "alcalino", col: 1, fila: 6},
-            {z: 56, s: "Ba", n: "Bario", m: 137.33, c: "[Xe] 6s²", t: "alcalinoterreo", col: 2, fila: 6},
-            {z: 57, s: "La", n: "Lantano", m: 138.91, c: "[Xe] 5d¹ 6s²", t: "lantanido", col: 3, fila: 6, esLantanido: true},
-            {z: 72, s: "Hf", n: "Hafnio", m: 178.49, c: "[Xe] 4f¹⁴ 5d² 6s²", t: "metal-transicion", col: 4, fila: 6},
-            {z: 73, s: "Ta", n: "Tantalio", m: 180.95, c: "[Xe] 4f¹⁴ 5d³ 6s²", t: "metal-transicion", col: 5, fila: 6},
-            {z: 74, s: "W", n: "Wolframio", m: 183.84, c: "[Xe] 4f¹⁴ 5d⁴ 6s²", t: "metal-transicion", col: 6, fila: 6},
-            {z: 75, s: "Re", n: "Renio", m: 186.21, c: "[Xe] 4f¹⁴ 5d⁵ 6s²", t: "metal-transicion", col: 7, fila: 6},
-            {z: 76, s: "Os", n: "Osmio", m: 190.23, c: "[Xe] 4f¹⁴ 5d⁶ 6s²", t: "metal-transicion", col: 8, fila: 6},
-            {z: 77, s: "Ir", n: "Iridio", m: 192.22, c: "[Xe] 4f¹⁴ 5d⁷ 6s²", t: "metal-transicion", col: 9, fila: 6},
-            {z: 78, s: "Pt", n: "Platino", m: 195.08, c: "[Xe] 4f¹⁴ 5d⁹ 6s¹", t: "metal-transicion", col: 10, fila: 6},
-            {z: 79, s: "Au", n: "Oro", m: 196.97, c: "[Xe] 4f¹⁴ 5d¹⁰ 6s¹", t: "metal-transicion", col: 11, fila: 6},
-            {z: 80, s: "Hg", n: "Mercurio", m: 200.59, c: "[Xe] 4f¹⁴ 5d¹⁰ 6s²", t: "metal-transicion", col: 12, fila: 6},
-            {z: 81, s: "Tl", n: "Talio", m: 204.38, c: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹", t: "post-transicion", col: 13, fila: 6},
-            {z: 82, s: "Pb", n: "Plomo", m: 207.2, c: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²", t: "post-transicion", col: 14, fila: 6},
-            {z: 83, s: "Bi", n: "Bismuto", m: 208.98, c: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³", t: "post-transicion", col: 15, fila: 6},
-            {z: 84, s: "Po", n: "Polonio", m: 209, c: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴", t: "post-transicion", col: 16, fila: 6},
-            {z: 85, s: "At", n: "Astato", m: 210, c: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵", t: "metaloide", col: 17, fila: 6},
-            {z: 86, s: "Rn", n: "Radón", m: 222, c: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶", t: "gas-noble", col: 18, fila: 6},
-            // Fila 7
-            {z: 87, s: "Fr", n: "Francio", m: 223, c: "[Rn] 7s¹", t: "alcalino", col: 1, fila: 7},
-            {z: 88, s: "Ra", n: "Radio", m: 226, c: "[Rn] 7s²", t: "alcalinoterreo", col: 2, fila: 7},
-            {z: 89, s: "Ac", n: "Actinio", m: 227, c: "[Rn] 6d¹ 7s²", t: "actinido", col: 3, fila: 7, esActinido: true},
-            {z: 104, s: "Rf", n: "Rutherfordio", m: 267, c: "[Rn] 5f¹⁴ 6d² 7s²", t: "metal-transicion", col: 4, fila: 7},
-            {z: 105, s: "Db", n: "Dubnio", m: 268, c: "[Rn] 5f¹⁴ 6d³ 7s²", t: "metal-transicion", col: 5, fila: 7},
-            {z: 106, s: "Sg", n: "Seaborgio", m: 269, c: "[Rn] 5f¹⁴ 6d⁴ 7s²", t: "metal-transicion", col: 6, fila: 7},
-            {z: 107, s: "Bh", n: "Bohrio", m: 270, c: "[Rn] 5f¹⁴ 6d⁵ 7s²", t: "metal-transicion", col: 7, fila: 7},
-            {z: 108, s: "Hs", n: "Hasio", m: 277, c: "[Rn] 5f¹⁴ 6d⁶ 7s²", t: "metal-transicion", col: 8, fila: 7},
-            {z: 109, s: "Mt", n: "Meitnerio", m: 278, c: "[Rn] 5f¹⁴ 6d⁷ 7s²", t: "metal-transicion", col: 9, fila: 7},
-            {z: 110, s: "Ds", n: "Darmstatio", m: 281, c: "[Rn] 5f¹⁴ 6d⁸ 7s²", t: "metal-transicion", col: 10, fila: 7},
-            {z: 111, s: "Rg", n: "Roentgenio", m: 282, c: "[Rn] 5f¹⁴ 6d⁹ 7s²", t: "metal-transicion", col: 11, fila: 7},
-            {z: 112, s: "Cn", n: "Copernicio", m: 285, c: "[Rn] 5f¹⁴ 6d¹⁰ 7s²", t: "metal-transicion", col: 12, fila: 7},
-            {z: 113, s: "Nh", n: "Nihonio", m: 286, c: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹", t: "post-transicion", col: 13, fila: 7},
-            {z: 114, s: "Fl", n: "Flerovio", m: 289, c: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²", t: "post-transicion", col: 14, fila: 7},
-            {z: 115, s: "Mc", n: "Moscovio", m: 290, c: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³", t: "post-transicion", col: 15, fila: 7},
-            {z: 116, s: "Lv", n: "Livermorio", m: 293, c: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴", t: "post-transicion", col: 16, fila: 7},
-            {z: 117, s: "Ts", n: "Teneso", m: 294, c: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p", t: "post-transicion", col: 17, fila: 7},
-            {z: 118, s: "Og", n: "Oganesón", m: 294, c: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶", t: "gas-noble", col: 18, fila: 7},
-            // Lantánidos (fila separada)
-            {z: 58, s: "Ce", n: "Cerio", m: 140.12, c: "[Xe] 4f¹ 5d¹ 6s²", t: "lantanido", col: 4, filaL: 1},
-            {z: 59, s: "Pr", n: "Praseodimio", m: 140.91, c: "[Xe] 4f³ 6s²", t: "lantanido", col: 5, filaL: 1},
-            {z: 60, s: "Nd", n: "Neodimio", m: 144.24, c: "[Xe] 4f⁴ 6s²", t: "lantanido", col: 6, filaL: 1},
-            {z: 61, s: "Pm", n: "Prometio", m: 145, c: "[Xe] 4f⁵ 6s²", t: "lantanido", col: 7, filaL: 1},
-            {z: 62, s: "Sm", n: "Samario", m: 150.36, c: "[Xe] 4f⁶ 6s²", t: "lantanido", col: 8, filaL: 1},
-            {z: 63, s: "Eu", n: "Europio", m: 151.96, c: "[Xe] 4f⁷ 6s²", t: "lantanido", col: 9, filaL: 1},
-            {z: 64, s: "Gd", n: "Gadolinio", m: 157.25, c: "[Xe] 4f⁷ 5d¹ 6s²", t: "lantanido", col: 10, filaL: 1},
-            {z: 65, s: "Tb", n: "Terbio", m: 158.93, c: "[Xe] 4f⁹ 6s²", t: "lantanido", col: 11, filaL: 1},
-            {z: 66, s: "Dy", n: "Disprosio", m: 162.50, c: "[Xe] 4f¹⁰ 6s²", t: "lantanido", col: 12, filaL: 1},
-            {z: 67, s: "Ho", n: "Holmio", m: 164.93, c: "[Xe] 4f¹¹ 6s²", t: "lantanido", col: 13, filaL: 1},
-            {z: 68, s: "Er", n: "Erbio", m: 167.26, c: "[Xe] 4f¹² 6s²", t: "lantanido", col: 14, filaL: 1},
-            {z: 69, s: "Tm", n: "Tulio", m: 168.93, c: "[Xe] 4f¹³ 6s²", t: "lantanido", col: 15, filaL: 1},
-            {z: 70, s: "Yb", n: "Iterbio", m: 173.05, c: "[Xe] 4f¹⁴ 6s²", t: "lantanido", col: 16, filaL: 1},
-            {z: 71, s: "Lu", n: "Lutecio", m: 174.97, c: "[Xe] 4f¹⁴ 5d¹ 6s²", t: "lantanido", col: 17, filaL: 1},
-            // Actínidos (fila separada)
-            {z: 90, s: "Th", n: "Torio", m: 232.04, c: "[Rn] 6d² 7s²", t: "actinido", col: 4, filaL: 2},
-            {z: 91, s: "Pa", n: "Protactinio", m: 231.04, c: "[Rn] 5f² 6d¹ 7s²", t: "actinido", col: 5, filaL: 2},
-            {z: 92, s: "U", n: "Uranio", m: 238.03, c: "[Rn] 5f³ 6d¹ 7s²", t: "actinido", col: 6, filaL: 2},
-            {z: 93, s: "Np", n: "Neptunio", m: 237, c: "[Rn] 5f⁴ 6d¹ 7s²", t: "actinido", col: 7, filaL: 2},
-            {z: 94, s: "Pu", n: "Plutonio", m: 244, c: "[Rn] 5f⁶ 7s²", t: "actinido", col: 8, filaL: 2},
-            {z: 95, s: "Am", n: "Americio", m: 243, c: "[Rn] 5f⁷ 7s²", t: "actinido", col: 9, filaL: 2},
-            {z: 96, s: "Cm", n: "Curio", m: 247, c: "[Rn] 5f⁷ 6d¹ 7s²", t: "actinido", col: 10, filaL: 2},
-            {z: 97, s: "Bk", n: "Berkelio", m: 247, c: "[Rn] 5f⁹ 7s²", t: "actinido", col: 11, filaL: 2},
-            {z: 98, s: "Cf", n: "Californio", m: 251, c: "[Rn] 5f¹⁰ 7s²", t: "actinido", col: 12, filaL: 2},
-            {z: 99, s: "Es", n: "Einstenio", m: 252, c: "[Rn] 5f¹¹ 7s²", t: "actinido", col: 13, filaL: 2},
-            {z: 100, s: "Fm", n: "Fermio", m: 257, c: "[Rn] 5f¹² 7s²", t: "actinido", col: 14, filaL: 2},
-            {z: 101, s: "Md", n: "Mendelevio", m: 258, c: "[Rn] 5f¹³ 7s²", t: "actinido", col: 15, filaL: 2},
-            {z: 102, s: "No", n: "Nobelio", m: 259, c: "[Rn] 5f¹⁴ 7s²", t: "actinido", col: 16, filaL: 2},
-            {z: 103, s: "Lr", n: "Lawrencio", m: 266, c: "[Rn] 5f¹⁴ 7s² 7p¹", t: "actinido", col: 17, filaL: 2}
-        ];
+<!-- MODAL -->
+<div class="modal" id="modal">
+    <div class="modal-contenido">
+        <div class="modal-simbolo-grande" id="modal-simbolo-grande"></div>
+        <h2 id="modal-titulo"></h2>
+        <div class="dato"><strong>Número atómico:</strong> <span id="modal-numero"></span></div>
+        <div class="dato"><strong>Nombre:</strong> <span id="modal-nombre"></span></div>
+        <div class="dato"><strong>Peso atómico:</strong> <span id="modal-masa"></span> u</div>
+        <div class="dato"><strong>Configuración electrónica:</strong> <span id="modal-config"></span></div>
+        <div class="dato"><strong>Tipo:</strong> <span id="modal-tipo"></span></div>
+        <button class="cerrar" onclick="cerrarModal()">Cerrar</button>
+    </div>
+</div>
 
-        const tiposNombres = {
-            "no-metal": "No metal",
-            "gas-noble": "Gas noble",
-            "alcalino": "Metal alcalino",
-            "alcalinoterreo": "Metal alcalinotérreo",
-            "metal-transicion": "Metal de transición",
-            "post-transicion": "Metal post-transición",
-            "metaloide": "Metaloide",
-            "lantanido": "Lantánido",
-            "actinido": "Actínido"
-        };
+<script>
+    // Datos de los 118 elementos
+    // formato: [numero, simbolo, nombre, masa, configuracion, tipo, fila, columna]
+    const elementosData = [
+        // Fila 1
+        [1,"H","Hidrógeno",1.008,"1s¹","no-metal",1,1],
+        [2,"He","Helio",4.0026,"1s²","gas-noble",1,18],
+        // Fila 2
+        [3,"Li","Litio",6.94,"[He] 2s¹","alcalino",2,1],
+        [4,"Be","Berilio",9.0122,"[He] 2s²","alcalinoterreo",2,2],
+        [5,"B","Boro",10.81,"[He] 2s² 2p¹","metaloide",2,13],
+        [6,"C","Carbono",12.011,"[He] 2s² 2p²","no-metal",2,14],
+        [7,"N","Nitrógeno",14.007,"[He] 2s² 2p³","no-metal",2,15],
+        [8,"O","Oxígeno",15.999,"[He] 2s² 2p⁴","no-metal",2,16],
+        [9,"F","Flúor",18.998,"[He] 2s² 2p⁵","no-metal",2,17],
+        [10,"Ne","Neón",20.180,"[He] 2s² 2p⁶","gas-noble",2,18],
+        // Fila 3
+        [11,"Na","Sodio",22.990,"[Ne] 3s¹","alcalino",3,1],
+        [12,"Mg","Magnesio",24.305,"[Ne] 3s²","alcalinoterreo",3,2],
+        [13,"Al","Aluminio",26.982,"[Ne] 3s² 3p¹","post-transicion",3,13],
+        [14,"Si","Silicio",28.085,"[Ne] 3s² 3p²","metaloide",3,14],
+        [15,"P","Fósforo",30.974,"[Ne] 3s² 3p³","no-metal",3,15],
+        [16,"S","Azufre",32.06,"[Ne] 3s² 3p⁴","no-metal",3,16],
+        [17,"Cl","Cloro",35.45,"[Ne] 3s² 3p⁵","no-metal",3,17],
+        [18,"Ar","Argón",39.948,"[Ne] 3s² 3p⁶","gas-noble",3,18],
+        // Fila 4
+        [19,"K","Potasio",39.098,"[Ar] 4s¹","alcalino",4,1],
+        [20,"Ca","Calcio",40.078,"[Ar] 4s²","alcalinoterreo",4,2],
+        [21,"Sc","Escandio",44.956,"[Ar] 3d¹ 4s²","metal-transicion",4,3],
+        [22,"Ti","Titanio",47.867,"[Ar] 3d² 4s²","metal-transicion",4,4],
+        [23,"V","Vanadio",50.942,"[Ar] 3d³ 4s²","metal-transicion",4,5],
+        [24,"Cr","Cromo",51.996,"[Ar] 3d⁵ 4s¹","metal-transicion",4,6],
+        [25,"Mn","Manganeso",54.938,"[Ar] 3d⁵ 4s²","metal-transicion",4,7],
+        [26,"Fe","Hierro",55.845,"[Ar] 3d⁶ 4s²","metal-transicion",4,8],
+        [27,"Co","Cobalto",58.933,"[Ar] 3d 4s²","metal-transicion",4,9],
+        [28,"Ni","Níquel",58.693,"[Ar] 3d⁸ 4s²","metal-transicion",4,10],
+        [29,"Cu","Cobre",63.546,"[Ar] 3d¹⁰ 4s¹","metal-transicion",4,11],
+        [30,"Zn","Zinc",65.38,"[Ar] 3d¹⁰ 4s²","metal-transicion",4,12],
+        [31,"Ga","Galio",69.723,"[Ar] 3d¹⁰ 4s² 4p¹","post-transicion",4,13],
+        [32,"Ge","Germanio",72.630,"[Ar] 3d¹⁰ 4s² 4p²","metaloide",4,14],
+        [33,"As","Arsénico",74.922,"[Ar] 3d¹⁰ 4s² 4p³","metaloide",4,15],
+        [34,"Se","Selenio",78.971,"[Ar] 3d¹ 4s² 4p⁴","no-metal",4,16],
+        [35,"Br","Bromo",79.904,"[Ar] 3d¹⁰ 4s² 4p⁵","no-metal",4,17],
+        [36,"Kr","Kriptón",83.798,"[Ar] 3d¹⁰ 4s² 4p⁶","gas-noble",4,18],
+        // Fila 5
+        [37,"Rb","Rubidio",85.468,"[Kr] 5s¹","alcalino",5,1],
+        [38,"Sr","Estroncio",87.62,"[Kr] 5s²","alcalinoterreo",5,2],
+        [39,"Y","Itrio",88.906,"[Kr] 4d¹ 5s²","metal-transicion",5,3],
+        [40,"Zr","Circonio",91.224,"[Kr] 4d² 5s²","metal-transicion",5,4],
+        [41,"Nb","Niobio",92.906,"[Kr] 4d 5s¹","metal-transicion",5,5],
+        [42,"Mo","Molibdeno",95.95,"[Kr] 4d⁵ 5s¹","metal-transicion",5,6],
+        [43,"Tc","Tecnecio",98,"[Kr] 4d⁵ 5s²","metal-transicion",5,7],
+        [44,"Ru","Rutenio",101.07,"[Kr] 4d⁷ 5s¹","metal-transicion",5,8],
+        [45,"Rh","Rodio",102.91,"[Kr] 4d⁸ 5s¹","metal-transicion",5,9],
+        [46,"Pd","Paladio",106.42,"[Kr] 4d¹⁰","metal-transicion",5,10],
+        [47,"Ag","Plata",107.87,"[Kr] 4d¹⁰ 5s¹","metal-transicion",5,11],
+        [48,"Cd","Cadmio",112.41,"[Kr] 4d¹⁰ 5s²","metal-transicion",5,12],
+        [49,"In","Indio",114.82,"[Kr] 4d¹⁰ 5s² 5p¹","post-transicion",5,13],
+        [50,"Sn","Estaño",118.71,"[Kr] 4d¹⁰ 5s² 5p²","post-transicion",5,14],
+        [51,"Sb","Antimonio",121.76,"[Kr] 4d¹⁰ 5s² 5p³","metaloide",5,15],
+        [52,"Te","Telurio",127.60,"[Kr] 4d¹⁰ 5s² 5p⁴","metaloide",5,16],
+        [53,"I","Yodo",126.90,"[Kr] 4d¹⁰ 5s² 5p⁵","no-metal",5,17],
+        [54,"Xe","Xenón",131.29,"[Kr] 4d¹⁰ 5s² 5p⁶","gas-noble",5,18],
+        // Fila 6
+        [55,"Cs","Cesio",132.91,"[Xe] 6s¹","alcalino",6,1],
+        [56,"Ba","Bario",137.33,"[Xe] 6s²","alcalinoterreo",6,2],
+        // Marcador de lantánidos en col 3
+        [72,"Hf","Hafnio",178.49,"[Xe] 4f¹⁴ 5d² 6s²","metal-transicion",6,4],
+        [73,"Ta","Tantalio",180.95,"[Xe] 4f¹⁴ 5d³ 6s²","metal-transicion",6,5],
+        [74,"W","Wolframio",183.84,"[Xe] 4f¹⁴ 5d⁴ 6s²","metal-transicion",6,6],
+        [75,"Re","Renio",186.21,"[Xe] 4f¹⁴ 5d⁵ 6s²","metal-transicion",6,7],
+        [76,"Os","Osmio",190.23,"[Xe] 4f¹⁴ 5d⁶ 6s²","metal-transicion",6,8],
+        [77,"Ir","Iridio",192.22,"[Xe] 4f¹⁴ 5d⁷ 6s²","metal-transicion",6,9],
+        [78,"Pt","Platino",195.08,"[Xe] 4f¹ 5d⁹ 6s¹","metal-transicion",6,10],
+        [79,"Au","Oro",196.97,"[Xe] 4f¹⁴ 5d¹⁰ 6s¹","metal-transicion",6,11],
+        [80,"Hg","Mercurio",200.59,"[Xe] 4f¹⁴ 5d¹⁰ 6s²","metal-transicion",6,12],
+        [81,"Tl","Talio",204.38,"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹","post-transicion",6,13],
+        [82,"Pb","Plomo",207.2,"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²","post-transicion",6,14],
+        [83,"Bi","Bismuto",208.98,"[Xe] 4f¹⁴ 5d¹ 6s² 6p³","post-transicion",6,15],
+        [84,"Po","Polonio",209,"[Xe] 4f¹⁴ 5d¹ 6s² 6p⁴","post-transicion",6,16],
+        [85,"At","Astato",210,"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵","metaloide",6,17],
+        [86,"Rn","Radón",222,"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p","gas-noble",6,18],
+        // Fila 7
+        [87,"Fr","Francio",223,"[Rn] 7s¹","alcalino",7,1],
+        [88,"Ra","Radio",226,"[Rn] 7s²","alcalinoterreo",7,2],
+        // Marcador de actínidos en col 3
+        [104,"Rf","Rutherfordio",267,"[Rn] 5f¹⁴ 6d² 7s²","metal-transicion",7,4],
+        [105,"Db","Dubnio",268,"[Rn] 5f¹⁴ 6d³ 7s²","metal-transicion",7,5],
+        [106,"Sg","Seaborgio",269,"[Rn] 5f¹⁴ 6d⁴ 7s²","metal-transicion",7,6],
+        [107,"Bh","Bohrio",270,"[Rn] 5f¹⁴ 6d⁵ 7s²","metal-transicion",7,7],
+        [108,"Hs","Hasio",277,"[Rn] 5f¹⁴ 6d⁶ 7s²","metal-transicion",7,8],
+        [109,"Mt","Meitnerio",278,"[Rn] 5f¹⁴ 6d⁷ 7s²","metal-transicion",7,9],
+        [110,"Ds","Darmstatio",281,"[Rn] 5f¹⁴ 6d⁸ 7s²","metal-transicion",7,10],
+        [111,"Rg","Roentgenio",282,"[Rn] 5f¹⁴ 6d⁹ 7s²","metal-transicion",7,11],
+        [112,"Cn","Copernicio",285,"[Rn] 5f¹⁴ 6d¹⁰ 7s²","metal-transicion",7,12],
+        [113,"Nh","Nihonio",286,"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹","post-transicion",7,13],
+        [114,"Fl","Flerovio",289,"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²","post-transicion",7,14],
+        [115,"Mc","Moscovio",290,"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³","post-transicion",7,15],
+        [116,"Lv","Livermorio",293,"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴","post-transicion",7,16],
+        [117,"Ts","Teneso",294,"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵","post-transicion",7,17],
+        [118,"Og","Oganesón",294,"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶","gas-noble",7,18],
+        // Lantánidos (fila 8 visual, col 4-17)
+        [57,"La","Lantano",138.91,"[Xe] 5d¹ 6s²","lantanido",8,4],
+        [58,"Ce","Cerio",140.12,"[Xe] 4f¹ 5d¹ 6s²","lantanido",8,5],
+        [59,"Pr","Praseodimio",140.91,"[Xe] 4f³ 6s²","lantanido",8,6],
+        [60,"Nd","Neodimio",144.24,"[Xe] 4f⁴ 6s²","lantanido",8,7],
+        [61,"Pm","Prometio",145,"[Xe] 4f⁵ 6s²","lantanido",8,8],
+        [62,"Sm","Samario",150.36,"[Xe] 4f⁶ 6s²","lantanido",8,9],
+        [63,"Eu","Europio",151.96,"[Xe] 4f⁷ 6s²","lantanido",8,10],
+        [64,"Gd","Gadolinio",157.25,"[Xe] 4f 5d¹ 6s²","lantanido",8,11],
+        [65,"Tb","Terbio",158.93,"[Xe] 4f⁹ 6s²","lantanido",8,12],
+        [66,"Dy","Disprosio",162.50,"[Xe] 4f¹⁰ 6s²","lantanido",8,13],
+        [67,"Ho","Holmio",164.93,"[Xe] 4f¹¹ 6s²","lantanido",8,14],
+        [68,"Er","Erbio",167.26,"[Xe] 4f¹² 6s²","lantanido",8,15],
+        [69,"Tm","Tulio",168.93,"[Xe] 4f¹³ 6s²","lantanido",8,16],
+        [70,"Yb","Iterbio",173.05,"[Xe] 4f¹⁴ 6s²","lantanido",8,17],
+        [71,"Lu","Lutecio",174.97,"[Xe] 4f¹ 5d¹ 6s²","lantanido",8,18],
+        // Actínidos (fila 9 visual, col 4-17)
+        [89,"Ac","Actinio",227,"[Rn] 6d¹ 7s²","actinido",9,4],
+        [90,"Th","Torio",232.04,"[Rn] 6d² 7s²","actinido",9,5],
+        [91,"Pa","Protactinio",231.04,"[Rn] 5f² 6d¹ 7s²","actinido",9,6],
+        [92,"U","Uranio",238.03,"[Rn] 5f³ 6d¹ 7s²","actinido",9,7],
+        [93,"Np","Neptunio",237,"[Rn] 5f⁴ 6d¹ 7s²","actinido",9,8],
+        [94,"Pu","Plutonio",244,"[Rn] 5f⁶ 7s²","actinido",9,9],
+        [95,"Am","Americio",243,"[Rn] 5f⁷ 7s²","actinido",9,10],
+        [96,"Cm","Curio",247,"[Rn] 5f⁷ 6d¹ 7s²","actinido",9,11],
+        [97,"Bk","Berkelio",247,"[Rn] 5f⁹ 7s²","actinido",9,12],
+        [98,"Cf","Californio",251,"[Rn] 5f¹⁰ 7s²","actinido",9,13],
+        [99,"Es","Einstenio",252,"[Rn] 5f¹¹ 7s²","actinido",9,14],
+        [100,"Fm","Fermio",257,"[Rn] 5f¹² 7s²","actinido",9,15],
+        [101,"Md","Mendelevio",258,"[Rn] 5f¹³ 7s²","actinido",9,16],
+        [102,"No","Nobelio",259,"[Rn] 5f¹⁴ 7s²","actinido",9,17],
+        [103,"Lr","Lawrencio",266,"[Rn] 5f¹⁴ 7s² 7p¹","actinido",9,18]
+    ];
 
-        function crearElementoHTML(el) {
-            const div = document.createElement('div');
-            div.className = `elemento ${el.t}`;
-            div.innerHTML = `
-            <div class="numero">${el.z}</div>
-            <div class="simbolo">${el.s}</div>
-            <div class="nombre">${el.n}</div>
-            <div class="masa">${el.m}</div>
-        `;
-            div.onclick = () => mostrarModal(el);
-            return div;
-        }
+    const tiposNombres = {
+        "no-metal": "No metal",
+        "gas-noble": "Gas noble",
+        "alcalino": "Metal alcalino",
+        "alcalinoterreo": "Metal alcalinotérreo",
+        "metal-transicion": "Metal de transición",
+        "post-transicion": "Metal post-transición",
+        "metaloide": "Metaloide",
+        "lantanido": "Lantánido",
+        "actinido": "Actínido"
+    };
 
-        // Construir tabla principal
-        const tabla = document.getElementById('tabla-principal');
-        const grid = Array(7).fill(null).map(() => Array(18).fill(null));
+    // Crear grid de 9 filas x 18 columnas
+    const grid = Array(9).fill(null).map(() => Array(18).fill(null));
+    
+    elementosData.forEach(el => {
+        const [z, s, n, m, c, t, fila, col] = el;
+        grid[fila - 1][col - 1] = {z, s, n, m, c, t};
+    });
 
-        elementos.forEach(el => {
-            if (el.fila && !el.esLantanido && !el.esActinido) {
-                grid[el.fila - 1][el.col - 1] = el;
-            }
-        });
-
-        for (let f = 0; f < 7; f++) {
-            for (let c = 0; c < 18; c++) {
-                const el = grid[f][c];
-                if (el) {
-                    tabla.appendChild(crearElementoHTML(el));
+    // Renderizar tabla principal (filas 1-7)
+    const tablaPrincipal = document.getElementById('tabla-principal');
+    for (let f = 0; f < 7; f++) {
+        for (let c = 0; c < 18; c++) {
+            const el = grid[f][c];
+            if (el) {
+                const div = document.createElement('div');
+                div.className = `elemento ${el.t}`;
+                div.innerHTML = `
+                    <div class="numero">${el.z}</div>
+                    <div class="simbolo">${el.s}</div>
+                    <div class="nombre">${el.n}</div>
+                    <div class="masa">${el.m}</div>
+                `;
+                div.onclick = () => mostrarModal(el);
+                tablaPrincipal.appendChild(div);
+            } else {
+                // Verificar si es el marcador de lantánidos o actínidos
+                if (f === 5 && c === 2) { // Fila 6, col 3
+                    const div = document.createElement('div');
+                    div.className = 'elemento marcador lantanido';
+                    div.innerHTML = `
+                        <div class="numero">57-71</div>
+                        <div class="simbolo">La-Lu</div>
+                        <div class="nombre">Lantánidos</div>
+                    `;
+                    div.onclick = () => {
+                        document.getElementById('fila-lantanidos').scrollIntoView({behavior: 'smooth'});
+                    };
+                    tablaPrincipal.appendChild(div);
+                } else if (f === 6 && c === 2) { // Fila 7, col 3
+                    const div = document.createElement('div');
+                    div.className = 'elemento marcador actinido';
+                    div.innerHTML = `
+                        <div class="numero">89-103</div>
+                        <div class="simbolo">Ac-Lr</div>
+                        <div class="nombre">Actínidos</div>
+                    `;
+                    div.onclick = () => {
+                        document.getElementById('fila-actinidos').scrollIntoView({behavior: 'smooth'});
+                    };
+                    tablaPrincipal.appendChild(div);
                 } else {
-                    const vacio = document.createElement('div');
-                    vacio.className = 'elemento vacio';
-                    tabla.appendChild(vacio);
+                    const div = document.createElement('div');
+                    div.className = 'elemento vacio';
+                    tablaPrincipal.appendChild(div);
                 }
             }
         }
+    }
 
-        // Fila de lantánidos
-        const filaLan = document.getElementById('fila-lantanidos');
-        const marcadorLan = document.createElement('div');
-        marcadorLan.className = 'elemento lantanido';
-        marcadorLan.innerHTML = '<div class="numero">57-71</div><div class="simbolo">La-Lu</div><div class="nombre">Lantánidos</div>';
-        marcadorLan.style.gridColumn = '3';
-        tabla.appendChild(marcadorLan);
-
-        const filaAct = document.getElementById('fila-actinidos');
-        const marcadorAct = document.createElement('div');
-        marcadorAct.className = 'elemento actinido';
-        marcadorAct.innerHTML = '<div class="numero">89-103</div><div class="simbolo">Ac-Lr</div><div class="nombre">Actínidos</div>';
-        marcadorAct.style.gridColumn = '3';
-        tabla.appendChild(marcadorAct);
-
-        // Construir filas separadas
-        elementos.filter(e => e.filaL === 1).forEach(el => {
-            const div = crearElementoHTML(el);
-            div.style.gridColumn = el.col;
+    // Renderizar fila de lantánidos (fila 8)
+    const filaLan = document.getElementById('fila-lantanidos');
+    // Espacio vacío para cols 1-3
+    const espacioLan = document.createElement('div');
+    espacioLan.className = 'espacio-vacio';
+    filaLan.appendChild(espacioLan);
+    
+    for (let c = 3; c < 18; c++) {
+        const el = grid[7][c];
+        if (el) {
+            const div = document.createElement('div');
+            div.className = `elemento ${el.t}`;
+            div.innerHTML = `
+                <div class="numero">${el.z}</div>
+                <div class="simbolo">${el.s}</div>
+                <div class="nombre">${el.n}</div>
+                <div class="masa">${el.m}</div>
+            `;
+            div.onclick = () => mostrarModal(el);
             filaLan.appendChild(div);
-        });
+        } else {
+            const div = document.createElement('div');
+            div.className = 'elemento vacio';
+            filaLan.appendChild(div);
+        }
+    }
 
-        elementos.filter(e => e.filaL === 2).forEach(el => {
-            const div = crearElementoHTML(el);
-            div.style.gridColumn = el.col;
+    // Renderizar fila de actínidos (fila 9)
+    const filaAct = document.getElementById('fila-actinidos');
+    const espacioAct = document.createElement('div');
+    espacioAct.className = 'espacio-vacio';
+    filaAct.appendChild(espacioAct);
+    
+    for (let c = 3; c < 18; c++) {
+        const el = grid[8][c];
+        if (el) {
+            const div = document.createElement('div');
+            div.className = `elemento ${el.t}`;
+            div.innerHTML = `
+                <div class="numero">${el.z}</div>
+                <div class="simbolo">${el.s}</div>
+                <div class="nombre">${el.n}</div>
+                <div class="masa">${el.m}</div>
+            `;
+            div.onclick = () => mostrarModal(el);
             filaAct.appendChild(div);
-        });
-
-        function mostrarModal(el) {
-            document.getElementById('modal-titulo').textContent = `${el.s} - ${el.n}`;
-            document.getElementById('modal-numero').textContent = el.z;
-            document.getElementById('modal-simbolo').textContent = el.s;
-            document.getElementById('modal-nombre').textContent = el.n;
-            document.getElementById('modal-masa').textContent = el.m;
-            document.getElementById('modal-config').textContent = el.c;
-            document.getElementById('modal-tipo').textContent = tiposNombres[el.t];
-            document.getElementById('modal').classList.add('activo');
+        } else {
+            const div = document.createElement('div');
+            div.className = 'elemento vacio';
+            filaAct.appendChild(div);
         }
+    }
 
-        function cerrarModal() {
-            document.getElementById('modal').classList.remove('activo');
-        }
+    function mostrarModal(el) {
+        document.getElementById('modal-simbolo-grande').textContent = el.s;
+        document.getElementById('modal-titulo').textContent = el.n;
+        document.getElementById('modal-numero').textContent = el.z;
+        document.getElementById('modal-nombre').textContent = el.n;
+        document.getElementById('modal-masa').textContent = el.m;
+        document.getElementById('modal-config').textContent = el.c;
+        document.getElementById('modal-tipo').textContent = tiposNombres[el.t];
+        document.getElementById('modal').classList.add('activo');
+    }
 
-        document.getElementById('modal').onclick = (e) => {
-            if (e.target.id === 'modal') cerrarModal();
-        };
-    </script>
+    function cerrarModal() {
+        document.getElementById('modal').classList.remove('activo');
+    }
+
+    document.getElementById('modal').addEventListener('click', function(e) {
+        if (e.target === this) cerrarModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') cerrarModal();
+    });
+</script>
 
 </body>
-
 </html>
