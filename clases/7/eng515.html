@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Day in My Life - Daily Routines Reading & Writing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            line-height: 1.6;
+            padding-right: 320px;
+        }
+
+        .translator-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(180deg, #6a1b9a 0%, #8e24aa 100%);
+            padding: 20px 15px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .translator-panel h3 {
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .translator-panel .translator-widget {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .translator-panel textarea {
+            width: 100%;
+            min-height: 100px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .translator-panel textarea:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .translator-panel .lang-labels {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            color: #6a1b9a;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .translator-panel .translate-btn {
+            width: 100%;
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+
+        .translator-panel .translate-btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+        }
+
+        .translator-panel .result-box {
+            background: #f3e5f5;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 80px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .translator-panel .api-info {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 0.85em;
+            margin-top: 15px;
+        }
+
+        .translator-panel .api-info code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            word-break: break-all;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        header .subtitle {
+            font-size: 1em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .section {
+            background: white;
+            margin: 30px 0;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #8e24aa;
+        }
+
+        .section h2 {
+            color: #6a1b9a;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #e1bee7;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #7b1fa2;
+            margin: 20px 0 10px 0;
+        }
+
+        .section .instructions {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #8e24aa;
+        }
+
+        /* Reading Section */
+        .reading-poster {
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            border: 3px solid #8e24aa;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .reading-poster h3 {
+            color: #6a1b9a;
+            text-align: center;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+
+        .reading-poster .content {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .reading-poster .text {
+            flex: 1;
+            min-width: 300px;
+            font-size: 1.1em;
+            line-height: 1.8;
+        }
+
+        .reading-poster .text p {
+            margin: 12px 0;
+        }
+
+        .reading-poster .character {
+            font-size: 8em;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #ede7f6;
+            border-radius: 10px;
+        }
+
+        .play-btn {
+            background: linear-gradient(135deg, #8e24aa 0%, #6a1b9a 100%);
+            color: white;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 1.8em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .play-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .play-btn.playing {
+            background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #6a1b9a;
+            font-weight: bold;
+        }
+
+        .speed-control input[type="range"] {
+            width: 120px;
+            accent-color: #8e24aa;
+        }
+
+        /* List Activity */
+        .list-activity {
+            background: #fafafa;
+            border: 2px solid #e1bee7;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .list-activity textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .list-activity textarea:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        /* Classification Table */
+        .classification-container {
+            margin: 20px 0;
+        }
+
+        .activities-pool {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .activities-pool h4 {
+            color: #6a1b9a;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .activity-chip {
+            display: inline-block;
+            background: white;
+            border: 2px solid #8e24aa;
+            color: #6a1b9a;
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            user-select: none;
+        }
+
+        .activity-chip:hover {
+            background: #8e24aa;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .activity-chip.selected {
+            background: #8e24aa;
+            color: white;
+            opacity: 0.5;
+        }
+
+        .activity-chip.placed {
+            background: #43a047;
+            color: white;
+            border-color: #43a047;
+            opacity: 0.7;
+        }
+
+        .classification-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .classification-table th {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 15px 10px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        .classification-table td {
+            background: white;
+            padding: 15px 10px;
+            vertical-align: top;
+            min-height: 200px;
+            border: 1px solid #e1bee7;
+        }
+
+        .classification-table td .drop-zone {
+            min-height: 180px;
+            background: #fafafa;
+            border: 2px dashed #ce93d8;
+            border-radius: 8px;
+            padding: 10px;
+            transition: all 0.3s;
+        }
+
+        .classification-table td .drop-zone.drag-over {
+            background: #f3e5f5;
+            border-color: #8e24aa;
+        }
+
+        .placed-item {
+            background: #8e24aa;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            margin: 4px;
+            display: inline-block;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        .placed-item:hover {
+            background: #e53935;
+        }
+
+        /* My Agenda Section */
+        .agenda-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+
+        .agenda-table th {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 15px 10px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        .agenda-table td {
+            background: white;
+            padding: 10px;
+            vertical-align: top;
+            border: 1px solid #e1bee7;
+        }
+
+        .agenda-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-family: inherit;
+            margin: 5px 0;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .agenda-input:focus {
+            outline: none;
+            border-color: #8e24aa;
+            box-shadow: 0 0 5px rgba(142, 36, 170, 0.3);
+        }
+
+        .agenda-input.has-error {
+            border-color: #e53935;
+            background: #ffebee;
+        }
+
+        .agenda-input.has-warning {
+            border-color: #ffa000;
+            background: #fff8e1;
+        }
+
+        .agenda-input.correct {
+            border-color: #43a047;
+            background: #e8f5e9;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            max-width: 280px;
+            z-index: 100;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            display: none;
+            pointer-events: none;
+        }
+
+        .tooltip::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 20px;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid #333;
+        }
+
+        .tooltip .correction {
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+
+        .tooltip .explanation {
+            color: #e0e0e0;
+            font-size: 0.9em;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .input-wrapper {
+            position: relative;
+            margin: 5px 0;
+        }
+
+        .btn {
+            background: #8e24aa;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-check {
+            background: #43a047;
+        }
+
+        .btn-check:hover {
+            background: #2e7d32;
+        }
+
+        .btn-reset {
+            background: #e53935;
+        }
+
+        .btn-reset:hover {
+            background: #c62828;
+        }
+
+        .feedback {
+            margin-top: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .feedback.correct {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 2px solid #43a047;
+        }
+
+        .feedback.incorrect {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 2px solid #e53935;
+        }
+
+        .feedback.hint {
+            background: #fff9c4;
+            color: #f57f17;
+            border: 2px solid #fbc02d;
+        }
+
+        .part-badge {
+            display: inline-block;
+            background: #8e24aa;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-right: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-indicator.checking {
+            background: #ffa000;
+            animation: blink 1s infinite;
+        }
+
+        .status-indicator.ok {
+            background: #43a047;
+        }
+
+        .status-indicator.error {
+            background: #e53935;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .autocorrect-status {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding-right: 0;
+            }
+            .translator-panel {
+                position: relative;
+                width: 100%;
+                height: auto;
+                border-radius: 0 0 15px 15px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            .section {
+                padding: 20px;
+            }
+            .classification-table th,
+            .agenda-table th {
+                font-size: 0.85em;
+                padding: 10px 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Fixed Translator Panel -->
+    <div class="translator-panel">
+        <h3>🌐 English → Spanish Translator</h3>
+        
+        <div class="translator-widget">
+            <div class="lang-labels">
+                <span>🇬🇧 English</span>
+                <span>🇪🇸 Español</span>
+            </div>
+            <textarea id="sourceText" placeholder="Type or paste English text here..."></textarea>
+            <button class="translate-btn" onclick="translateText()">Translate ▶</button>
+            <div class="result-box" id="translatedText">Translation will appear here...</div>
+        </div>
+
+        <div class="api-info">
+            <strong>📋 API Info:</strong><br>
+            <small>Using Google Translate API</small><br>
+            <code>translate.googleapis.com</code><br><br>
+            <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
+        </div>
+    </div>
+
+    <header>
+        <h1>📖 A Day in My Life</h1>
+        <p>Unit 5 - Daily Routines: Reading, Classifying & Writing</p>
+        <div class="subtitle">Read about Juan's day, classify activities, and write your own agenda</div>
+    </header>
+
+    <div class="container">
+
+        <!-- SECTION 1: READING TIME -->
+        <div class="section" id="reading">
+            <h2><span class="part-badge">Part I</span> It's Reading Time!</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Read the text about Juan's daily routine. Click the play button to listen to the description at slow speed (0.5x). Then, make a list of Juan's daily activities.
+            </div>
+
+            <div class="reading-poster">
+                <h3>📝 A Day in My Life</h3>
+                <div class="content">
+                    <div class="text" id="juanText">
+                        <p>My name is Juan.</p>
+                        <p>I get up early in the morning and I take a shower. Also, I have breakfast with mom.</p>
+                        <p>In the afternoon, I go to school and I play soccer with my classmates.</p>
+                        <p>I do my homework and I have dinner with my family in the evening.</p>
+                        <p>Finally, I go to bed at night. That's a day in my life! I have fun every day!</p>
+                    </div>
+                    <div class="character">🧑‍🎓</div>
+                </div>
+            </div>
+
+            <div class="audio-controls">
+                <button class="play-btn" id="playBtn" onclick="toggleSpeech()">▶</button>
+                <div class="speed-control">
+                    <span>🐢 Speed:</span>
+                    <input type="range" id="speedRange" min="0.25" max="1.5" step="0.25" value="0.5">
+                    <span id="speedValue">0.5x</span>
+                </div>
+                <button class="btn" onclick="stopSpeech()">⏹ Stop</button>
+            </div>
+
+            <div class="list-activity">
+                <h3 style="color: #6a1b9a; margin-bottom: 15px;">📋 Juan's Daily Activities List</h3>
+                <p style="margin-bottom: 10px; color: #666;">Write a list of all the activities Juan does during the day (one per line):</p>
+                <textarea id="juanList" placeholder="Example:&#10;1. Get up early in the morning&#10;2. Take a shower&#10;3. Have breakfast with mom&#10;..."></textarea>
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="btn btn-check" onclick="checkJuanList()">✓ Check My List</button>
+                    <button class="btn btn-reset" onclick="resetJuanList()">↺ Reset</button>
+                </div>
+                <div id="juanList-feedback" class="feedback"></div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: CLASSIFICATION -->
+        <div class="section" id="classification">
+            <h2><span class="part-badge">Part II</span> Let's Classify Them!</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Click on each daily activity below, then click on the column where it belongs according to the time of day. You can click a placed item to remove it.
+            </div>
+
+            <div class="classification-container">
+                <div class="activities-pool">
+                    <h4>📌 Daily Activities (click to select, then click a column):</h4>
+                    <div id="activitiesPool"></div>
+                </div>
+
+                <table class="classification-table">
+                    <thead>
+                        <tr>
+                            <th>🌅 In the morning</th>
+                            <th>☀️ In the afternoon</th>
+                            <th>🌆 In the evening</th>
+                            <th> At night</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><div class="drop-zone" id="zone-morning" onclick="placeActivity('morning')"></div></td>
+                            <td><div class="drop-zone" id="zone-afternoon" onclick="placeActivity('afternoon')"></div></td>
+                            <td><div class="drop-zone" id="zone-evening" onclick="placeActivity('evening')"></div></td>
+                            <td><div class="drop-zone" id="zone-night" onclick="placeActivity('night')"></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-check" onclick="checkClassification()">✓ Check Classification</button>
+                    <button class="btn btn-reset" onclick="resetClassification()">↺ Reset All</button>
+                </div>
+                <div id="classification-feedback" class="feedback"></div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: MY AGENDA -->
+        <div class="section" id="agenda">
+            <h2><span class="part-badge">Part III</span> My Agenda</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Write 3 daily activities that YOU do in each part of the day. The autocorrector will check your English in real time and show suggestions in Spanish. Green = correct, Yellow = warning, Red = needs correction.
+            </div>
+
+            <div style="text-align: center; margin: 15px 0;">
+                <span class="status-indicator ok"></span> Correct &nbsp;
+                <span class="status-indicator" style="background: #ffa000;"></span> Warning &nbsp;
+                <span class="status-indicator error"></span> Needs correction
+            </div>
+
+            <table class="agenda-table">
+                <thead>
+                    <tr>
+                        <th> In the morning</th>
+                        <th>☀️ In the afternoon</th>
+                        <th>🌆 In the evening</th>
+                        <th>🌙 At night</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning" placeholder="Activity 1..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning" placeholder="Activity 2..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="morning" placeholder="Activity 3..."></div>
+                        </td>
+                        <td>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon" placeholder="Activity 1..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon" placeholder="Activity 2..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="afternoon" placeholder="Activity 3..."></div>
+                        </td>
+                        <td>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening" placeholder="Activity 1..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening" placeholder="Activity 2..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="evening" placeholder="Activity 3..."></div>
+                        </td>
+                        <td>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night" placeholder="Activity 1..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night" placeholder="Activity 2..."></div>
+                            <div class="input-wrapper"><input type="text" class="agenda-input" data-zone="night" placeholder="Activity 3..."></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="autocorrect-status" id="autocorrectStatus">
+                <span class="status-indicator ok"></span> Autocorrector ready. Start typing to check your English.
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-reset" onclick="resetAgenda()"> Clear All</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Tooltip container -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // ============ TRANSLATOR ============
+        async function translateText() {
+            const text = document.getElementById('sourceText').value.trim();
+            const resultBox = document.getElementById('translatedText');
+            
+            if (!text) {
+                resultBox.textContent = '️ Please enter some text to translate.';
+                resultBox.style.color = '#f57f17';
+                return;
+            }
+
+            resultBox.textContent = 'Translating...';
+            resultBox.style.color = '#333';
+
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                let translated = '';
+                if (data && data[0]) {
+                    data[0].forEach(item => {
+                        if (item[0]) translated += item[0];
+                    });
+                }
+                
+                resultBox.textContent = translated || 'No translation available.';
+                resultBox.style.color = '#333';
+            } catch (error) {
+                resultBox.textContent = '❌ Error connecting to translator. Please try again.';
+                resultBox.style.color = '#c62828';
+            }
+        }
+
+        document.getElementById('sourceText').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                translateText();
+            }
+        });
+
+        // ============ TEXT TO SPEECH ============
+        let isSpeaking = false;
+        let currentUtterance = null;
+
+        const juanFullText = "My name is Juan. I get up early in the morning and I take a shower. Also, I have breakfast with mom. In the afternoon, I go to school and I play soccer with my classmates. I do my homework and I have dinner with my family in the evening. Finally, I go to bed at night. That's a day in my life! I have fun every day!";
+
+        document.getElementById('speedRange').addEventListener('input', function() {
+            document.getElementById('speedValue').textContent = this.value + 'x';
+            if (currentUtterance) {
+                currentUtterance.rate = parseFloat(this.value);
+            }
+        });
+
+        function toggleSpeech() {
+            const btn = document.getElementById('playBtn');
+            
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+                btn.textContent = '▶';
+                btn.classList.remove('playing');
+            } else {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    
+                    currentUtterance = new SpeechSynthesisUtterance(juanFullText);
+                    currentUtterance.lang = 'en-US';
+                    currentUtterance.rate = parseFloat(document.getElementById('speedRange').value);
+                    currentUtterance.pitch = 1;
+                    
+                    currentUtterance.onend = function() {
+                        isSpeaking = false;
+                        btn.textContent = '▶';
+                        btn.classList.remove('playing');
+                    };
+                    
+                    currentUtterance.onerror = function() {
+                        isSpeaking = false;
+                        btn.textContent = '▶';
+                        btn.classList.remove('playing');
+                    };
+                    
+                    window.speechSynthesis.speak(currentUtterance);
+                    isSpeaking = true;
+                    btn.textContent = '⏸';
+                    btn.classList.add('playing');
+                } else {
+                    alert('Your browser does not support text-to-speech.');
+                }
+            }
+        }
+
+        function stopSpeech() {
+            window.speechSynthesis.cancel();
+            isSpeaking = false;
+            const btn = document.getElementById('playBtn');
+            btn.textContent = '▶';
+            btn.classList.remove('playing');
+        }
+
+        // ============ JUAN'S LIST ACTIVITY ============
+        const juanActivities = [
+            'get up', 'take a shower', 'have breakfast', 'go to school',
+            'play soccer', 'do homework', 'have dinner', 'go to bed'
+        ];
+
+        function normalizeText(text) {
+            return text.toLowerCase().trim().replace(/\s+/g, ' ');
+        }
+
+        function checkJuanList() {
+            const text = document.getElementById('juanList').value;
+            const lines = text.split('\n').filter(l => normalizeText(l).length > 0);
+            const feedback = document.getElementById('juanList-feedback');
+
+            if (lines.length === 0) {
+                feedback.textContent = '⚠️ Please write at least some activities from the text.';
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            let found = 0;
+            const fullText = normalizeText(text);
+            
+            juanActivities.forEach(activity => {
+                if (fullText.includes(activity)) {
+                    found++;
+                }
+            });
+
+            if (found >= 6) {
+                feedback.textContent = `🎉 Excellent! You found ${found} out of 8 activities from Juan's day! Great reading comprehension!`;
+                feedback.className = 'feedback correct';
+            } else if (found >= 4) {
+                feedback.textContent = `👍 Good job! You found ${found} out of 8 activities. Try to find more by re-reading the text.`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 You found ${found} out of 8 activities. Read the text again carefully and look for verbs like: get up, take, have, go, play, do.`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetJuanList() {
+            document.getElementById('juanList').value = '';
+            document.getElementById('juanList-feedback').style.display = 'none';
+        }
+
+        // ============ CLASSIFICATION ACTIVITY ============
+        const activities = [
+            { id: 1, text: 'Get up early', zone: 'morning' },
+            { id: 2, text: 'Take a shower', zone: 'morning' },
+            { id: 3, text: 'Have breakfast', zone: 'morning' },
+            { id: 4, text: 'Brush my teeth', zone: 'morning' },
+            { id: 5, text: 'Go to school', zone: 'morning' },
+            { id: 6, text: 'Have lunch', zone: 'afternoon' },
+            { id: 7, text: 'Play soccer', zone: 'afternoon' },
+            { id: 8, text: 'Do homework', zone: 'afternoon' },
+            { id: 9, text: 'Study English', zone: 'afternoon' },
+            { id: 10, text: 'Watch TV', zone: 'evening' },
+            { id: 11, text: 'Have dinner', zone: 'evening' },
+            { id: 12, text: 'Read a book', zone: 'evening' },
+            { id: 13, text: 'Talk with family', zone: 'evening' },
+            { id: 14, text: 'Go to bed', zone: 'night' },
+            { id: 15, text: 'Sleep', zone: 'night' }
+        ];
+
+        let selectedActivity = null;
+        const placements = { morning: [], afternoon: [], evening: [], night: [] };
+
+        function renderActivitiesPool() {
+            const pool = document.getElementById('activitiesPool');
+            pool.innerHTML = '';
+            activities.forEach(act => {
+                const chip = document.createElement('span');
+                chip.className = 'activity-chip';
+                chip.textContent = act.text;
+                chip.dataset.id = act.id;
+                
+                // Check if already placed
+                let isPlaced = false;
+                Object.values(placements).forEach(zone => {
+                    if (zone.includes(act.id)) isPlaced = true;
+                });
+                
+                if (isPlaced) {
+                    chip.classList.add('placed');
+                } else if (selectedActivity === act.id) {
+                    chip.classList.add('selected');
+                }
+                
+                chip.onclick = () => selectActivity(act.id);
+                pool.appendChild(chip);
+            });
+        }
+
+        function selectActivity(id) {
+            if (selectedActivity === id) {
+                selectedActivity = null;
+            } else {
+                selectedActivity = id;
+            }
+            renderActivitiesPool();
+        }
+
+        function placeActivity(zone) {
+            if (selectedActivity === null) return;
+            
+            // Remove from any other zone
+            Object.keys(placements).forEach(z => {
+                placements[z] = placements[z].filter(id => id !== selectedActivity);
+            });
+            
+            // Add to selected zone
+            if (!placements[zone].includes(selectedActivity)) {
+                placements[zone].push(selectedActivity);
+            }
+            
+            selectedActivity = null;
+            renderActivitiesPool();
+            renderPlacements();
+        }
+
+        function removeActivity(zone, id) {
+            placements[zone] = placements[zone].filter(aid => aid !== id);
+            renderActivitiesPool();
+            renderPlacements();
+        }
+
+        function renderPlacements() {
+            ['morning', 'afternoon', 'evening', 'night'].forEach(zone => {
+                const zoneEl = document.getElementById('zone-' + zone);
+                zoneEl.innerHTML = '';
+                placements[zone].forEach(id => {
+                    const act = activities.find(a => a.id === id);
+                    const item = document.createElement('span');
+                    item.className = 'placed-item';
+                    item.textContent = act.text;
+                    item.title = 'Click to remove';
+                    item.onclick = (e) => {
+                        e.stopPropagation();
+                        removeActivity(zone, id);
+                    };
+                    zoneEl.appendChild(item);
+                });
+            });
+        }
+
+        function checkClassification() {
+            let correct = 0;
+            let total = 15;
+            let placed = 0;
+
+            Object.keys(placements).forEach(zone => {
+                placements[zone].forEach(id => {
+                    placed++;
+                    const act = activities.find(a => a.id === id);
+                    if (act.zone === zone) {
+                        correct++;
+                    }
+                });
+            });
+
+            const feedback = document.getElementById('classification-feedback');
+
+            if (placed < total) {
+                feedback.textContent = `⚠️ You've placed ${placed} out of 15 activities. Place all of them before checking.`;
+                feedback.className = 'feedback hint';
+                feedback.style.display = 'block';
+                return;
+            }
+
+            if (correct === total) {
+                feedback.textContent = `🎉 Perfect! All ${correct}/${total} activities are in the correct column!`;
+                feedback.className = 'feedback correct';
+            } else if (correct >= 12) {
+                feedback.textContent = `👍 Great job! ${correct}/${total} correct. Review the ones that might be in the wrong column.`;
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `📚 ${correct}/${total} correct. Remember: morning (until 12pm), afternoon (12-6pm), evening (6-10pm), night (10pm onwards).`;
+                feedback.className = 'feedback incorrect';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetClassification() {
+            Object.keys(placements).forEach(zone => {
+                placements[zone] = [];
+            });
+            selectedActivity = null;
+            renderActivitiesPool();
+            renderPlacements();
+            document.getElementById('classification-feedback').style.display = 'none';
+        }
+
+        // Initialize classification
+        renderActivitiesPool();
+        renderPlacements();
+
+        // ============ AUTOCORRECTOR (LanguageTool API) ============
+        const tooltip = document.getElementById('tooltip');
+        let autocorrectTimeout = null;
+
+        document.querySelectorAll('.agenda-input').forEach(input => {
+            input.addEventListener('input', function() {
+                clearTimeout(autocorrectTimeout);
+                const currentInput = this;
+                
+                // Show checking status
+                updateAutocorrectStatus('checking', 'Checking...');
+                
+                autocorrectTimeout = setTimeout(() => {
+                    checkWithLanguageTool(currentInput);
+                }, 1000);
+            });
+
+            input.addEventListener('focus', function() {
+                tooltip.style.display = 'none';
+            });
+
+            input.addEventListener('blur', function() {
+                setTimeout(() => {
+                    tooltip.style.display = 'none';
+                }, 200);
+            });
+        });
+
+        async function checkWithLanguageTool(input) {
+            const text = input.value.trim();
+            
+            if (text.length < 3) {
+                input.classList.remove('has-error', 'has-warning', 'correct');
+                updateAutocorrectStatus('ok', 'Autocorrector ready. Start typing to check your English.');
+                return;
+            }
+
+            try {
+                const response = await fetch('https://api.languagetool.org/v2/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `text=${encodeURIComponent(text)}&language=en-US&enabledOnly=false`
+                });
+
+                const data = await response.json();
+
+                if (data.matches && data.matches.length > 0) {
+                    // Has errors
+                    const firstMatch = data.matches[0];
+                    input.classList.remove('correct', 'has-warning');
+                    input.classList.add('has-error');
+                    
+                    // Show tooltip
+                    showTooltip(input, firstMatch);
+                    updateAutocorrectStatus('error', `Found ${data.matches.length} suggestion(s). Hover over the field to see corrections.`);
+                } else {
+                    // No errors - check if it looks like a proper sentence
+                    input.classList.remove('has-error', 'has-warning');
+                    
+                    if (text.length > 10 && /^[A-Z]/.test(text) && /[.!?]$/.test(text)) {
+                        input.classList.add('correct');
+                        updateAutocorrectStatus('ok', '✓ Looks great! Proper sentence structure.');
+                    } else if (text.length > 5) {
+                        input.classList.add('has-warning');
+                        updateAutocorrectStatus('ok', ' Grammatically OK. Tip: Start with capital letter and end with a period.');
+                    } else {
+                        updateAutocorrectStatus('ok', '✓ No errors detected.');
+                    }
+                    tooltip.style.display = 'none';
+                }
+            } catch (error) {
+                console.log('Autocorrector unavailable:', error);
+                updateAutocorrectStatus('ok', ' Autocorrector temporarily unavailable. Keep writing!');
+            }
+        }
+
+        function showTooltip(input, match) {
+            const message = match.message;
+            const replacements = match.replacements.slice(0, 3);
+            
+            let html = `<div class="correction">💡 Sugerencia:</div>`;
+            html += `<div>${message}</div>`;
+            
+            if (replacements.length > 0) {
+                html += `<div class="explanation">Sugerencias: <strong>${replacements.map(r => r.value).join(', ')}</strong></div>`;
+            }
+            
+            // Translate the message to Spanish using Google Translate
+            translateMessage(message).then(esMessage => {
+                if (esMessage) {
+                    html = `<div class="correction">💡 Corrección:</div>`;
+                    html += `<div>${esMessage}</div>`;
+                    if (replacements.length > 0) {
+                        html += `<div class="explanation">Sugerencias: <strong>${replacements.map(r => r.value).join(', ')}</strong></div>`;
+                    }
+                }
+                tooltip.innerHTML = html;
+            }).catch(() => {
+                tooltip.innerHTML = html;
+            });
+
+            // Position tooltip
+            const rect = input.getBoundingClientRect();
+            tooltip.style.display = 'block';
+            tooltip.style.left = rect.left + 'px';
+            tooltip.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+            tooltip.style.maxWidth = (rect.width) + 'px';
+        }
+
+        async function translateMessage(message) {
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(message)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data && data[0]) {
+                    let translated = '';
+                    data[0].forEach(item => {
+                        if (item[0]) translated += item[0];
+                    });
+                    return translated;
+                }
+            } catch (e) {
+                return null;
+            }
+            return null;
+        }
+
+        function updateAutocorrectStatus(state, message) {
+            const status = document.getElementById('autocorrectStatus');
+            let indicator = '';
+            if (state === 'checking') indicator = '<span class="status-indicator checking"></span>';
+            else if (state === 'error') indicator = '<span class="status-indicator error"></span>';
+            else indicator = '<span class="status-indicator ok"></span>';
+            
+            status.innerHTML = indicator + ' ' + message;
+        }
+
+        function resetAgenda() {
+            document.querySelectorAll('.agenda-input').forEach(input => {
+                input.value = '';
+                input.classList.remove('has-error', 'has-warning', 'correct');
+            });
+            tooltip.style.display = 'none';
+            updateAutocorrectStatus('ok', 'Autocorrector ready. Start typing to check your English.');
+        }
+    </script>
+
+</body>
+</html>
