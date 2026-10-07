@@ -157,7 +157,6 @@
             font-size: 2em; margin-bottom: 5px;
         }
 
-        /* Missing Letters Activity */
         .missing-letters-container {
             background: #fafafa; border: 2px solid #e1bee7;
             border-radius: 12px; padding: 25px; margin: 20px 0;
@@ -192,7 +191,6 @@
             font-size: 0.9em; min-width: 120px;
         }
 
-        /* Race Activity */
         .race-container {
             background: #fafafa; border: 2px solid #e1bee7;
             border-radius: 12px; padding: 25px; margin: 20px 0;
@@ -271,7 +269,6 @@
             background: #e53935; color: white; border-color: #e53935;
         }
 
-        /* Dictation Activity */
         .dictation-container {
             background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
             border-radius: 12px; padding: 25px; margin: 20px 0;
@@ -380,6 +377,29 @@
             font-size: 1.3em; font-weight: bold; display: none;
         }
 
+        .tts-status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .tts-status.error {
+            background: #ffcdd2;
+            color: #c62828;
+            border: 2px solid #e53935;
+            display: block;
+        }
+
+        .tts-status.success {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border: 2px solid #43a047;
+            display: block;
+        }
+
         @media (max-width: 900px) {
             body { padding-right: 0; }
             .translator-panel {
@@ -399,7 +419,7 @@
 <body>
 
     <div class="translator-panel">
-        <h3> English → Spanish Translator</h3>
+        <h3>🌐 English → Spanish Translator</h3>
         <div class="translator-widget">
             <div class="lang-labels">
                 <span>🇬🇧 English</span>
@@ -410,7 +430,7 @@
             <div class="result-box" id="translatedText">Translation will appear here...</div>
         </div>
         <div class="api-info">
-            <strong> API Info:</strong><br>
+            <strong>📋 API Info:</strong><br>
             <small>Using Google Translate API</small><br>
             <code>translate.googleapis.com</code><br><br>
             <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
@@ -418,16 +438,15 @@
     </div>
 
     <header>
-        <h1> Months of the Year</h1>
+        <h1>📅 Months of the Year</h1>
         <p>Unit 5 - Learn the 12 Months</p>
         <div class="subtitle">Missing Letters, Race & Dictation Activities</div>
     </header>
 
     <div class="container">
 
-        <!-- THEORY SECTION -->
         <div class="section" id="theory">
-            <h2> Theory</h2>
+            <h2>📖 Theory</h2>
             <h3>The Months of the Year</h3>
             <p>There are <strong>12 months</strong> in a year. Each month has a different number of days.</p>
 
@@ -454,7 +473,6 @@
             </div>
         </div>
 
-        <!-- ACTIVITY 1: MISSING LETTERS -->
         <div class="section" id="activity1">
             <h2><span class="part-badge">Activity 1</span> Missing Letters</h2>
             <div class="instructions">
@@ -465,12 +483,11 @@
 
             <div style="text-align: center; margin-top: 20px;">
                 <button class="btn btn-check" id="checkAct1Btn">✓ Check Answers</button>
-                <button class="btn btn-reset" id="resetAct1Btn"> Reset</button>
+                <button class="btn btn-reset" id="resetAct1Btn">↺ Reset</button>
             </div>
             <div id="act1-feedback" class="feedback"></div>
         </div>
 
-        <!-- ACTIVITY 2: MONTH RACE -->
         <div class="section" id="activity2">
             <h2><span class="part-badge">Activity 2</span> Month of the Year Race</h2>
             <div class="instructions">
@@ -502,7 +519,6 @@
             </div>
         </div>
 
-        <!-- ACTIVITY 3: MONTH DICTATION -->
         <div class="section" id="activity3">
             <h2><span class="part-badge">Activity 3</span> Month Dictation</h2>
             <div class="instructions">
@@ -510,6 +526,8 @@
             </div>
 
             <div class="dictation-container">
+                <div id="ttsStatus" class="tts-status"></div>
+                
                 <div class="dictation-progress" id="dictationProgress">
                     <p>💡 Click the 🔊 button for each number to hear the month, then type it in the box.</p>
                 </div>
@@ -527,24 +545,20 @@
 
     </div>
 
-    <!-- Hidden audio element for Google TTS -->
-    <audio id="googleTtsAudio" preload="none"></audio>
-
     <script>
     document.addEventListener('DOMContentLoaded', function() {
 
-        // ============ DATA ============
         const monthsData = [
             { name: 'January', abbr: 'Jan', days: 31, emoji: '❄️' },
             { name: 'February', abbr: 'Feb', days: 28, emoji: '💝' },
-            { name: 'March', abbr: 'Mar', days: 31, emoji: '🌸' },
+            { name: 'March', abbr: 'Mar', days: 31, emoji: '' },
             { name: 'April', abbr: 'Apr', days: 30, emoji: '🌷' },
             { name: 'May', abbr: 'May', days: 31, emoji: '🌺' },
             { name: 'June', abbr: 'Jun', days: 30, emoji: '☀️' },
-            { name: 'July', abbr: 'Jul', days: 31, emoji: '🏖️' },
+            { name: 'July', abbr: 'Jul', days: 31, emoji: '️' },
             { name: 'August', abbr: 'Aug', days: 31, emoji: '🌻' },
             { name: 'September', abbr: 'Sep', days: 30, emoji: '🍂' },
-            { name: 'October', abbr: 'Oct', days: 31, emoji: '' },
+            { name: 'October', abbr: 'Oct', days: 31, emoji: '🎃' },
             { name: 'November', abbr: 'Nov', days: 30, emoji: '🦃' },
             { name: 'December', abbr: 'Dec', days: 31, emoji: '🎄' }
         ];
@@ -564,12 +578,11 @@
             { display: 'N _ V _ M B _ R', answer: 'November', hint: '(11th month)' }
         ];
 
-        // ============ TRANSLATOR ============
         async function translateText() {
             const text = document.getElementById('sourceText').value.trim();
             const resultBox = document.getElementById('translatedText');
             if (!text) {
-                resultBox.textContent = '️ Please enter some text to translate.';
+                resultBox.textContent = '⚠️ Please enter some text to translate.';
                 resultBox.style.color = '#f57f17';
                 return;
             }
@@ -605,81 +618,127 @@
             return text.toLowerCase().trim().replace(/\s+/g, ' ');
         }
 
-        // ============ GOOGLE TTS FUNCTION (NEW METHOD) ============
-        // Uses Google Translate TTS endpoint - more reliable than Web Speech API
+        // ============ TTS - FIXED VERSION ============
+        let ttsVoicesLoaded = false;
+        let ttsSelectedVoice = null;
+
+        function loadTTSSounds() {
+            if (!('speechSynthesis' in window)) {
+                showTTSStatus('error', '️ Your browser does not support text-to-speech. Please use Chrome or Edge.');
+                return;
+            }
+
+            const voices = window.speechSynthesis.getVoices();
+            
+            if (voices.length > 0) {
+                ttsVoicesLoaded = true;
+                
+                // Try to find a good English voice
+                const preferredNames = ['Google US English', 'Microsoft David', 'Microsoft Mark', 'Daniel', 'Alex', 'Samantha'];
+                
+                for (let name of preferredNames) {
+                    const found = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
+                    if (found) {
+                        ttsSelectedVoice = found;
+                        console.log('✅ TTS Voice selected:', found.name);
+                        showTTSStatus('success', '✅ Voice loaded: ' + found.name);
+                        return;
+                    }
+                }
+                
+                // Fallback: any English voice
+                const englishVoice = voices.find(v => v.lang.startsWith('en'));
+                if (englishVoice) {
+                    ttsSelectedVoice = englishVoice;
+                    console.log('✅ TTS Voice (fallback):', englishVoice.name);
+                    showTTSStatus('success', '✅ Voice loaded: ' + englishVoice.name);
+                }
+            }
+        }
+
+        function showTTSStatus(type, message) {
+            const status = document.getElementById('ttsStatus');
+            if (status) {
+                status.className = 'tts-status ' + type;
+                status.textContent = message;
+                if (type === 'success') {
+                    setTimeout(() => { status.style.display = 'none'; }, 3000);
+                }
+            }
+        }
+
+        // Load voices when available
+        if ('speechSynthesis' in window) {
+            loadTTSSounds();
+            window.speechSynthesis.onvoiceschanged = loadTTSSounds;
+            // Also try after a delay
+            setTimeout(loadTTSSounds, 1000);
+        }
+
+        // Global speakMonth function - FIXED
         window.speakMonth = function(monthName, rate, btnElement) {
-            const audio = document.getElementById('googleTtsAudio');
-            if (!audio) {
-                console.error('Audio element not found');
+            // Fix: declare originalText at the top level of the function
+            const originalText = btnElement ? btnElement.innerHTML : '🔊 Play';
+            
+            if (!('speechSynthesis' in window)) {
+                showTTSStatus('error', '❌ Text-to-speech is not supported in this browser.');
                 return;
             }
 
             // Visual feedback
             if (btnElement) {
-                const originalText = btnElement.innerHTML;
-                btnElement.innerHTML = ' Playing...';
+                btnElement.innerHTML = '🔊 Playing...';
                 btnElement.classList.add('playing');
             }
 
-            // Google Translate TTS URL
-            // tl=en = English, q=TEXT, client=tw-ob
-            const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(monthName)}`;
-            
-            audio.src = ttsUrl;
-            audio.volume = 1.0;
-            
-            // Try to set playback rate (some browsers support this)
-            if (rate && rate !== 1) {
-                try { audio.playbackRate = rate; } catch(e) {}
-            }
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
 
-            audio.onplay = function() {
-                console.log('Playing:', monthName);
-            };
+            // Small delay to ensure cancel completes
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(monthName);
+                utterance.lang = 'en-US';
+                utterance.rate = rate || 0.7;
+                utterance.pitch = 1;
+                utterance.volume = 1;
 
-            audio.onended = function() {
-                if (btnElement) {
-                    btnElement.innerHTML = originalText || '🔊 Play';
-                    btnElement.classList.remove('playing');
-                }
-            };
-
-            audio.onerror = function(e) {
-                console.error('TTS Error:', e);
-                if (btnElement) {
-                    btnElement.innerHTML = originalText || '🔊 Play';
-                    btnElement.classList.remove('playing');
-                }
-                // Fallback: try Web Speech API
-                if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(monthName);
-                    utterance.lang = 'en-US';
-                    utterance.rate = rate || 0.7;
-                    window.speechSynthesis.speak(utterance);
-                }
-            };
-
-            // Play the audio
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.error('Play failed:', error);
-                    // Fallback to Web Speech API
-                    if ('speechSynthesis' in window) {
-                        const utterance = new SpeechSynthesisUtterance(monthName);
-                        utterance.lang = 'en-US';
-                        utterance.rate = rate || 0.7;
-                        window.speechSynthesis.speak(utterance);
+                // Use the loaded voice if available
+                if (ttsSelectedVoice) {
+                    utterance.voice = ttsSelectedVoice;
+                } else {
+                    // Try to get voices again
+                    const voices = window.speechSynthesis.getVoices();
+                    const englishVoice = voices.find(v => v.lang.startsWith('en'));
+                    if (englishVoice) {
+                        utterance.voice = englishVoice;
                     }
+                }
+
+                utterance.onend = function() {
                     if (btnElement) {
-                        btnElement.innerHTML = originalText || '🔊 Play';
+                        btnElement.innerHTML = originalText;
                         btnElement.classList.remove('playing');
                     }
-                });
-            }
+                };
+
+                utterance.onerror = function(event) {
+                    console.error('Speech error:', event);
+                    if (btnElement) {
+                        btnElement.innerHTML = originalText;
+                        btnElement.classList.remove('playing');
+                    }
+                    showTTSStatus('error', '❌ Speech error. Please try again.');
+                };
+
+                utterance.onstart = function() {
+                    console.log('🔊 Speaking:', monthName);
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }, 100);
         };
 
-        // ============ RENDER MONTHS GRID ============
+        // Render months grid
         const monthsGrid = document.getElementById('monthsGrid');
         if (monthsGrid) {
             monthsData.forEach((m, i) => {
@@ -742,7 +801,7 @@
 
             const fb = document.getElementById('act1-feedback');
             if (correct === total) {
-                fb.textContent = `🎉 Perfect! All ${correct}/${total} months are correct!`;
+                fb.textContent = ` Perfect! All ${correct}/${total} months are correct!`;
                 fb.className = 'feedback correct';
             } else if (correct >= total * 0.7) {
                 fb.textContent = `👍 Good job! ${correct}/${total} correct. Review the ones in red.`;
@@ -848,7 +907,7 @@
 
             if (!allPlaced) {
                 const fb = document.getElementById('act2-feedback');
-                fb.textContent = '⚠️ Please place all 12 months before checking.';
+                fb.textContent = '️ Please place all 12 months before checking.';
                 fb.className = 'feedback hint'; fb.style.display = 'block';
                 return;
             }
@@ -867,7 +926,7 @@
 
             const fb = document.getElementById('act2-feedback');
             if (correct === total) {
-                fb.textContent = ` Perfect! All ${correct}/${total} months are in the correct order!`;
+                fb.textContent = `🎉 Perfect! All ${correct}/${total} months are in the correct order!`;
                 fb.className = 'feedback correct';
             } else if (correct >= 9) {
                 fb.textContent = `👍 Great job! ${correct}/${total} correct. Review the ones in red.`;
@@ -966,17 +1025,17 @@
             const scoreDisplay = document.getElementById('act3-score');
 
             if (correct === total) {
-                fb.textContent = `🎉 Perfect! You got all ${correct}/${total} months correct! Excellent listening!`;
+                fb.textContent = ` Perfect! You got all ${correct}/${total} months correct! Excellent listening!`;
                 fb.className = 'feedback correct';
-                scoreDisplay.textContent = '🏆 Perfect Score: 12/12 (100%)';
+                scoreDisplay.textContent = ' Perfect Score: 12/12 (100%)';
                 scoreDisplay.style.background = 'linear-gradient(135deg, #43a047 0%, #66bb6a 100%)';
             } else if (correct >= 9) {
-                fb.textContent = ` Great job! ${correct}/${total} correct. Review the ones in red.`;
+                fb.textContent = `👍 Great job! ${correct}/${total} correct. Review the ones in red.`;
                 fb.className = 'feedback correct';
                 scoreDisplay.textContent = `⭐ Good Job: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
                 scoreDisplay.style.background = 'linear-gradient(135deg, #ffa000 0%, #ffca28 100%)';
             } else {
-                fb.textContent = `📚 ${correct}/${total} correct. Listen again by clicking the Play buttons and try again!`;
+                fb.textContent = ` ${correct}/${total} correct. Listen again by clicking the Play buttons and try again!`;
                 fb.className = 'feedback incorrect';
                 scoreDisplay.textContent = `📖 Keep Learning: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
                 scoreDisplay.style.background = 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)';
@@ -997,7 +1056,6 @@
         const resetAct3Btn = document.getElementById('resetAct3Btn');
         if (resetAct3Btn) resetAct3Btn.addEventListener('click', resetActivity3);
 
-        // Initialize Activity 3
         generateDictation();
 
     });
