@@ -177,12 +177,6 @@
             flex: 1; min-width: 200px;
         }
 
-        .missing-word .letters .blank {
-            display: inline-block; width: 30px;
-            border-bottom: 3px solid #8e24aa;
-            text-align: center; color: #8e24aa;
-        }
-
         .missing-word input {
             padding: 10px 15px; border: 2px solid #ce93d8;
             border-radius: 8px; font-size: 1.1em;
@@ -409,7 +403,7 @@
         <div class="translator-widget">
             <div class="lang-labels">
                 <span>🇬🇧 English</span>
-                <span>🇪🇸 Español</span>
+                <span>🇪 Español</span>
             </div>
             <textarea id="sourceText" placeholder="Type or paste English text here..."></textarea>
             <button class="translate-btn" id="translateBtn">Translate ▶</button>
@@ -517,7 +511,7 @@
 
             <div class="dictation-container">
                 <div class="dictation-progress" id="dictationProgress">
-                    <p>💡 Click the 🔊 button for each number to hear the month, then type it in the box.</p>
+                    <p>💡 Click the  button for each number to hear the month, then type it in the box.</p>
                 </div>
 
                 <div class="dictation-inputs" id="dictationInputs"></div>
@@ -543,7 +537,7 @@
             { name: 'March', abbr: 'Mar', days: 31, emoji: '🌸' },
             { name: 'April', abbr: 'Apr', days: 30, emoji: '🌷' },
             { name: 'May', abbr: 'May', days: 31, emoji: '🌺' },
-            { name: 'June', abbr: 'Jun', days: 30, emoji: '☀️' },
+            { name: 'June', abbr: 'Jun', days: 30, emoji: '️' },
             { name: 'July', abbr: 'Jul', days: 31, emoji: '🏖️' },
             { name: 'August', abbr: 'Aug', days: 31, emoji: '🌻' },
             { name: 'September', abbr: 'Sep', days: 30, emoji: '🍂' },
@@ -552,6 +546,7 @@
             { name: 'December', abbr: 'Dec', days: 31, emoji: '🎄' }
         ];
 
+        // FIX 1: Ensure 'answer' property is used correctly
         const missingLettersData = [
             { display: '_ A _', answer: 'May', hint: '(5th month)' },
             { display: '_ E _ _ E _ _ E _', answer: 'September', hint: '(9th month)' },
@@ -604,14 +599,14 @@
         }
 
         function normalizeText(text) {
+            if (!text) return '';
             return text.toLowerCase().trim().replace(/\s+/g, ' ');
         }
 
-        // ============ ROBUST TTS FUNCTIONS ============
-        // Global function for onclick handlers
+        // ============ TTS FUNCTIONS (FIX 2: Robust Voice) ============
         window.speakMonth = function(monthName, rate, btnElement) {
             if (!('speechSynthesis' in window)) {
-                alert('Text-to-speech is not supported in this browser. Please try Chrome or Edge.');
+                alert('Text-to-speech is not supported in this browser.');
                 return;
             }
             
@@ -623,22 +618,21 @@
                 setTimeout(() => {
                     btnElement.innerHTML = originalText;
                     btnElement.classList.remove('playing');
-                }, 1500);
+                }, 1000);
             }
 
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(monthName);
             utterance.lang = 'en-US';
             utterance.rate = rate || 0.7;
-            utterance.pitch = 0.9;
+            utterance.pitch = 1;
             
-            // Dynamically get voices at the moment of speaking to ensure they are loaded
+            // Try to find a voice, but don't fail if none found
             const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Daniel'))) || 
-                                   voices.find(v => v.lang.startsWith('en'));
-            
-            if (preferredVoice) {
-                utterance.voice = preferredVoice;
+            if (voices.length > 0) {
+                const preferred = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || 
+                                  voices.find(v => v.lang.startsWith('en'));
+                if (preferred) utterance.voice = preferred;
             }
             
             window.speechSynthesis.speak(utterance);
@@ -687,9 +681,14 @@
         function checkActivity1() {
             let correct = 0, total = missingLettersData.length, allAnswered = true;
 
+            // FIX 1 Applied: Use item.answer and check if input exists
             missingLettersData.forEach((item, i) => {
                 const input = document.getElementById('missing-' + i);
-                if (!normalizeText(input.value)) allAnswered = false;
+                if (input) {
+                    if (!normalizeText(input.value)) allAnswered = false;
+                } else {
+                    allAnswered = false;
+                }
             });
 
             if (!allAnswered) {
@@ -701,10 +700,10 @@
 
             missingLettersData.forEach((item, i) => {
                 const input = document.getElementById('missing-' + i);
-                if (normalizeText(input.value) === item.name.toLowerCase()) {
+                if (input && normalizeText(input.value) === item.answer.toLowerCase()) {
                     correct++;
                     input.classList.remove('incorrect'); input.classList.add('correct');
-                } else {
+                } else if (input) {
                     input.classList.remove('correct'); input.classList.add('incorrect');
                 }
             });
@@ -714,7 +713,7 @@
                 fb.textContent = `🎉 Perfect! All ${correct}/${total} months are correct!`;
                 fb.className = 'feedback correct';
             } else if (correct >= total * 0.7) {
-                fb.textContent = `👍 Good job! ${correct}/${total} correct. Review the ones in red.`;
+                fb.textContent = ` Good job! ${correct}/${total} correct. Review the ones in red.`;
                 fb.className = 'feedback correct';
             } else {
                 fb.textContent = `📚 ${correct}/${total} correct. Remember: months start with a capital letter!`;
@@ -726,7 +725,7 @@
         function resetActivity1() {
             missingLettersData.forEach((_, i) => {
                 const input = document.getElementById('missing-' + i);
-                input.value = ''; input.classList.remove('correct', 'incorrect');
+                if (input) { input.value = ''; input.classList.remove('correct', 'incorrect'); }
             });
             document.getElementById('act1-feedback').style.display = 'none';
         }
@@ -892,9 +891,10 @@
                 
                 const item = document.createElement('div');
                 item.className = 'dictation-input-item';
+                // FIX 2 Applied: Ensure onclick passes 'this' correctly
                 item.innerHTML = `
                     <span class="num">${i + 1}</span>
-                    <button class="btn-play" type="button" onclick="window.speakMonth('${month.name}', 0.7, this)">🔊 Play</button>
+                    <button class="btn-play" type="button" onclick="window.speakMonth('${month.name}', 0.7, this)"> Play</button>
                     <input type="text" id="dictation-${i}" placeholder="Write the month...">
                 `;
                 dictationInputs.appendChild(item);
@@ -906,7 +906,7 @@
 
             for (let i = 0; i < 12; i++) {
                 const input = document.getElementById('dictation-' + i);
-                if (!normalizeText(input.value)) allAnswered = false;
+                if (input && !normalizeText(input.value)) allAnswered = false;
             }
 
             if (!allAnswered) {
@@ -918,14 +918,16 @@
 
             for (let i = 0; i < 12; i++) {
                 const input = document.getElementById('dictation-' + i);
-                const userAnswer = normalizeText(input.value);
-                const expectedMonth = dictationAnswers[i];
+                if (input) {
+                    const userAnswer = normalizeText(input.value);
+                    const expectedMonth = dictationAnswers[i];
 
-                if (userAnswer === expectedMonth) {
-                    correct++;
-                    input.classList.remove('incorrect'); input.classList.add('correct');
-                } else {
-                    input.classList.remove('correct'); input.classList.add('incorrect');
+                    if (userAnswer === expectedMonth) {
+                        correct++;
+                        input.classList.remove('incorrect'); input.classList.add('correct');
+                    } else {
+                        input.classList.remove('correct'); input.classList.add('incorrect');
+                    }
                 }
             }
 
@@ -938,14 +940,14 @@
                 scoreDisplay.textContent = '🏆 Perfect Score: 12/12 (100%)';
                 scoreDisplay.style.background = 'linear-gradient(135deg, #43a047 0%, #66bb6a 100%)';
             } else if (correct >= 9) {
-                fb.textContent = `👍 Great job! ${correct}/${total} correct. Review the ones in red.`;
+                fb.textContent = ` Great job! ${correct}/${total} correct. Review the ones in red.`;
                 fb.className = 'feedback correct';
                 scoreDisplay.textContent = `⭐ Good Job: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
                 scoreDisplay.style.background = 'linear-gradient(135deg, #ffa000 0%, #ffca28 100%)';
             } else {
                 fb.textContent = `📚 ${correct}/${total} correct. Listen again by clicking the Play buttons and try again!`;
                 fb.className = 'feedback incorrect';
-                scoreDisplay.textContent = `📖 Keep Learning: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
+                scoreDisplay.textContent = ` Keep Learning: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
                 scoreDisplay.style.background = 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)';
             }
 
