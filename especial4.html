@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giving Directions - Unit 4</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            line-height: 1.6;
+            padding-right: 320px;
+        }
+
+        .translator-panel {
+            position: fixed; right: 0; top: 0;
+            width: 300px; height: 100vh;
+            background: linear-gradient(180deg, #6a1b9a 0%, #8e24aa 100%);
+            padding: 20px 15px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.2);
+            z-index: 1000; overflow-y: auto;
+        }
+
+        .translator-panel h3 {
+            color: white; text-align: center;
+            margin-bottom: 15px; font-size: 1.2em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .translator-panel .translator-widget {
+            background: white; border-radius: 10px;
+            padding: 15px; margin-bottom: 15px;
+        }
+
+        .translator-panel textarea {
+            width: 100%; min-height: 100px;
+            border: 2px solid #ce93d8; border-radius: 8px;
+            padding: 10px; font-size: 14px;
+            resize: vertical; font-family: inherit;
+        }
+
+        .translator-panel textarea:focus { outline: none; border-color: #8e24aa; }
+
+        .translator-panel .lang-labels {
+            display: flex; justify-content: space-between;
+            margin: 10px 0; color: #6a1b9a;
+            font-weight: bold; font-size: 0.9em;
+        }
+
+        .translator-panel .translate-btn {
+            width: 100%; background: #8e24aa; color: white;
+            border: none; padding: 12px; border-radius: 8px;
+            cursor: pointer; font-size: 1em; font-weight: bold;
+            transition: all 0.3s; margin: 10px 0;
+        }
+
+        .translator-panel .translate-btn:hover {
+            background: #6a1b9a; transform: translateY(-2px);
+        }
+
+        .translator-panel .result-box {
+            background: #f3e5f5; border: 2px solid #ce93d8;
+            border-radius: 8px; padding: 10px;
+            min-height: 80px; font-size: 14px; color: #333;
+        }
+
+        .translator-panel .api-info {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px; padding: 12px;
+            color: white; font-size: 0.85em; margin-top: 15px;
+        }
+
+        .translator-panel .api-info code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px; border-radius: 4px;
+            font-size: 0.8em; word-break: break-all;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+        header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white; padding: 40px 20px; text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0 0 20px 20px; margin-bottom: 30px;
+        }
+
+        header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        header p { font-size: 1.2em; opacity: 0.9; }
+        header .subtitle { font-size: 1em; opacity: 0.8; margin-top: 5px; }
+
+        .section {
+            background: white; margin: 30px 0; padding: 30px;
+            border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #8e24aa;
+        }
+
+        .section h2 {
+            color: #6a1b9a; margin-bottom: 20px; font-size: 1.8em;
+            border-bottom: 2px solid #e1bee7; padding-bottom: 10px;
+        }
+
+        .section h3 { color: #7b1fa2; margin: 20px 0 10px 0; }
+
+        .section .instructions {
+            background: #f3e5f5; padding: 15px; border-radius: 8px;
+            margin-bottom: 20px; border-left: 4px solid #8e24aa;
+        }
+
+        .theory-box {
+            background: #f3e5f5; border-left: 4px solid #8e24aa;
+            padding: 20px; border-radius: 0 10px 10px 0; margin: 20px 0;
+        }
+
+        .theory-box ul { margin-left: 20px; margin-top: 10px; }
+        .theory-box li { margin: 8px 0; }
+
+        /* Flashcards Grid */
+        .flashcards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px; margin: 25px 0;
+        }
+
+        .flashcard {
+            background: white;
+            border: 3px solid #ce93d8;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .flashcard:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            border-color: #8e24aa;
+        }
+
+        .flashcard .icon {
+            font-size: 3.5em;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .flashcard .label {
+            font-weight: bold;
+            color: #6a1b9a;
+            font-size: 1em;
+            background: #f3e5f5;
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+
+        .example-box {
+            background: linear-gradient(135deg, #ede7f6 0%, #e1bee7 100%);
+            border-radius: 10px; padding: 20px; margin: 15px 0;
+            border-left: 4px solid #6a1b9a;
+        }
+
+        .example-box .sentence {
+            font-size: 1.1em; margin: 12px 0; padding: 12px;
+            background: white; border-radius: 8px;
+            border-left: 3px solid #8e24aa;
+        }
+
+        .example-box .sentence .highlight { color: #6a1b9a; font-weight: bold; }
+        .example-box .translation {
+            color: #666; font-style: italic;
+            font-size: 0.95em; margin-left: 15px; margin-top: 5px;
+        }
+
+        /* Exercise styles */
+        .exercise {
+            background: #fafafa; border: 2px solid #e1bee7;
+            border-radius: 12px; padding: 20px; margin: 20px 0;
+        }
+
+        .exercise h4 { color: #6a1b9a; margin-bottom: 15px; font-size: 1.3em; }
+
+        .exercise input, .exercise select {
+            padding: 10px; border: 2px solid #ce93d8;
+            border-radius: 8px; margin: 5px; font-size: 1em; font-family: inherit;
+        }
+
+        .exercise input:focus, .exercise select:focus {
+            outline: none; border-color: #8e24aa;
+        }
+
+        .exercise input.correct, .exercise select.correct {
+            border-color: #43a047; background: #c8e6c9;
+        }
+
+        .exercise input.incorrect, .exercise select.incorrect {
+            border-color: #e53935; background: #ffcdd2;
+        }
+
+        .exercise .input-row {
+            margin: 12px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+
+        .exercise .input-row label {
+            min-width: 200px; color: #333; font-size: 1em;
+        }
+
+        .btn {
+            background: #8e24aa; color: white; border: none;
+            padding: 12px 25px; border-radius: 8px;
+            cursor: pointer; font-size: 1em; margin: 10px 5px;
+            transition: all 0.3s; font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #6a1b9a; transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-check { background: #43a047; }
+        .btn-check:hover { background: #2e7d32; }
+        .btn-reset { background: #e53935; }
+        .btn-reset:hover { background: #c62828; }
+
+        .feedback {
+            margin-top: 10px; padding: 12px 15px;
+            border-radius: 8px; display: none; font-weight: 500;
+        }
+
+        .feedback.correct {
+            background: #c8e6c9; color: #2e7d32; border: 2px solid #43a047;
+        }
+
+        .feedback.incorrect {
+            background: #ffcdd2; color: #c62828; border: 2px solid #e53935;
+        }
+
+        .feedback.hint {
+            background: #fff9c4; color: #f57f17; border: 2px solid #fbc02d;
+        }
+
+        .part-badge {
+            display: inline-block; background: #8e24aa; color: white;
+            padding: 5px 15px; border-radius: 20px;
+            font-size: 0.85em; margin-right: 10px;
+        }
+
+        /* ============ MAP STYLES ============ */
+        .map-container {
+            background: #f0f0f0;
+            border: 3px solid #8e24aa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .map-header h4 {
+            color: #6a1b9a;
+            font-size: 1.3em;
+        }
+
+        .map-info {
+            background: #f3e5f5;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            color: #6a1b9a;
+            font-weight: bold;
+        }
+
+        .map-grid-wrapper {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 2px;
+            background: #999;
+            padding: 2px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .map-cell {
+            background: #e8e8e8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .map-cell.street {
+            background: #bbb;
+        }
+
+        .map-cell.street-h {
+            background: #ccc;
+            border-top: 2px dashed #999;
+            border-bottom: 2px dashed #999;
+        }
+
+        .map-cell.street-v {
+            background: #ccc;
+            border-left: 2px dashed #999;
+            border-right: 2px dashed #999;
+        }
+
+        .map-cell.block {
+            background: #d4e6d4;
+            border: 1px solid #a0c0a0;
+        }
+
+        .map-cell .object-icon {
+            font-size: 1.8em;
+            position: absolute;
+            z-index: 2;
+        }
+
+        .map-cell .object-label {
+            position: absolute;
+            bottom: 2px;
+            font-size: 0.6em;
+            color: #333;
+            font-weight: bold;
+            text-align: center;
+            width: 100%;
+        }
+
+        .map-cell .person {
+            font-size: 2em;
+            position: absolute;
+            z-index: 10;
+            transition: all 0.5s ease;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+        }
+
+        .map-cell .person-direction {
+            position: absolute;
+            font-size: 0.7em;
+            top: -5px;
+            right: -5px;
+            background: #8e24aa;
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 11;
+        }
+
+        .map-cell.highlight {
+            background: #fff9c4 !important;
+            box-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+        }
+
+        .map-cell.correct-cell {
+            background: #c8e6c9 !important;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        .map-cell.incorrect-cell {
+            background: #ffcdd2 !important;
+            box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+        }
+
+        /* Directions Panel */
+        .directions-panel {
+            background: white;
+            border: 2px solid #ce93d8;
+            border-radius: 12px;
+            padding: 20px;
+            min-width: 280px;
+            max-width: 320px;
+        }
+
+        .directions-panel h4 {
+            color: #6a1b9a;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .direction-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .dir-btn {
+            padding: 10px 8px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            background: white;
+            color: #6a1b9a;
+            font-weight: bold;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .dir-btn:hover {
+            background: #8e24aa;
+            color: white;
+            border-color: #8e24aa;
+        }
+
+        .dir-btn:active {
+            transform: scale(0.95);
+        }
+
+        .dir-btn.wide {
+            grid-column: 1 / -1;
+        }
+
+        .directions-log {
+            background: #f3e5f5;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 80px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .directions-log .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid #e1bee7;
+            color: #6a1b9a;
+        }
+
+        .directions-log .log-entry:last-child {
+            border-bottom: none;
+            font-weight: bold;
+        }
+
+        .object-selector {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #e1bee7;
+        }
+
+        .object-selector label {
+            display: block;
+            color: #6a1b9a;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .object-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+
+        .object-selector select:focus {
+            outline: none;
+            border-color: #8e24aa;
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .map-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f3e5f5;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .map-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .map-legend-item .legend-icon {
+            font-size: 1.3em;
+        }
+
+        .score-display {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white; padding: 20px; border-radius: 10px;
+            text-align: center; margin: 20px 0;
+            font-size: 1.3em; font-weight: bold; display: none;
+        }
+
+        @media (max-width: 900px) {
+            body { padding-right: 0; }
+            .translator-panel {
+                position: relative; width: 100%;
+                height: auto; border-radius: 0 0 15px 15px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .map-grid {
+                grid-template-columns: repeat(8, 45px);
+                grid-template-rows: repeat(8, 45px);
+            }
+            .map-grid-wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+            .directions-panel {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.8em; }
+            .section { padding: 20px; }
+            .map-grid {
+                grid-template-columns: repeat(8, 38px);
+                grid-template-rows: repeat(8, 38px);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="translator-panel">
+        <h3>🌐 English → Spanish Translator</h3>
+        <div class="translator-widget">
+            <div class="lang-labels">
+                <span>🇧 English</span>
+                <span>🇪🇸 Español</span>
+            </div>
+            <textarea id="sourceText" placeholder="Type or paste English text here..."></textarea>
+            <button class="translate-btn" id="translateBtn">Translate ▶</button>
+            <div class="result-box" id="translatedText">Translation will appear here...</div>
+        </div>
+        <div class="api-info">
+            <strong>📋 API Info:</strong><br>
+            <small>Using Google Translate API</small><br>
+            <code>translate.googleapis.com</code><br><br>
+            <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
+        </div>
+    </div>
+
+    <header>
+        <h1>🗺️ Giving Directions</h1>
+        <p>Unit 4 - How to Get There</p>
+        <div class="subtitle">Learn to give and follow directions using turn left, turn right, continue straight and more</div>
+    </header>
+
+    <div class="container">
+
+        <!-- THEORY SECTION -->
+        <div class="section" id="theory">
+            <h2>📖 Theory</h2>
+            <h3>Direction Vocabulary</h3>
+            <p>We use these phrases when <strong>giving directions</strong> to a specific place:</p>
+
+            <div class="flashcards-grid">
+                <div class="flashcard">
+                    <span class="icon">↩️</span>
+                    <span class="label">turn left</span>
+                </div>
+                <div class="flashcard">
+                    <span class="icon">↪️</span>
+                    <span class="label">turn right</span>
+                </div>
+                <div class="flashcard">
+                    <span class="icon">⬆️</span>
+                    <span class="label">continue straight</span>
+                </div>
+                <div class="flashcard">
+                    <span class="icon">⬇️</span>
+                    <span class="label">go back (2) blocks</span>
+                </div>
+                <div class="flashcard">
+                    <span class="icon">️↩️</span>
+                    <span class="label">take the second left</span>
+                </div>
+                <div class="flashcard">
+                    <span class="icon">↪️↪️</span>
+                    <span class="label">take the second right</span>
+                </div>
+                <div class="flashcard">
+                    <span class="icon">🔵</span>
+                    <span class="label">take the first exit on the roundabout</span>
+                </div>
+            </div>
+
+            <div class="theory-box">
+                <h3>Important Rules:</h3>
+                <ul>
+                    <li>Use <strong>imperative form</strong> (base verb): "Turn left", "Go straight", NOT "You turn left"</li>
+                    <li>Use <strong>"on the"</strong> for streets: "on the second street", "on the first corner"</li>
+                    <li>Use <strong>"at the"</strong> for specific points: "at the traffic light", "at the roundabout"</li>
+                    <li>Always start with the action verb: <em>Turn, Go, Continue, Take</em></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- EXAMPLES SECTION -->
+        <div class="section" id="examples">
+            <h2>💡 Examples</h2>
+
+            <div class="example-box">
+                <div class="sentence">
+                    <span class="highlight">Turn left</span> on the first street.
+                    <div class="translation">Dobla a la izquierda en la primera calle.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">Turn right</span> on the second corner.
+                    <div class="translation">Dobla a la derecha en la segunda esquina.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">Continue straight</span> for two blocks.
+                    <div class="translation">Continúa derecho por dos cuadras.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">Go back</span> two blocks and <span class="highlight">turn left</span>.
+                    <div class="translation">Regresa dos cuadras y dobla a la izquierda.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">Take the second right</span> on the roundabout.
+                    <div class="translation">Toma la segunda salida en la rotonda.</div>
+                </div>
+                <div class="sentence">
+                    <span class="highlight">Take the first exit</span> on the roundabout.
+                    <div class="translation">Toma la primera salida en la rotonda.</div>
+                </div>
+            </div>
+
+            <div class="theory-box">
+                <h3>Complete Direction Example:</h3>
+                <p><strong>"Excuse me, how do I get to the library?"</strong></p>
+                <ul>
+                    <li>1. <strong>Continue straight</strong> for one block.</li>
+                    <li>2. <strong>Turn right</strong> on the second street.</li>
+                    <li>3. <strong>Continue straight</strong> for two blocks.</li>
+                    <li>4. The library is <strong>on the left</strong>.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ACTIVITY 1: MATCHING -->
+        <div class="section" id="activity1">
+            <h2><span class="part-badge">Activity 1</span> Match the Direction</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Match each direction phrase with its correct meaning in Spanish.
+            </div>
+
+            <div class="exercise" id="exercise1">
+                <div class="input-row">
+                    <label>1. Turn left →</label>
+                    <select id="ex1-1">
+                        <option value="">Select...</option>
+                        <option value="a">Dobla a la derecha</option>
+                        <option value="b">Dobla a la izquierda</option>
+                        <option value="c">Continúa derecho</option>
+                        <option value="d">Regresa dos cuadras</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <label>2. Turn right →</label>
+                    <select id="ex1-2">
+                        <option value="">Select...</option>
+                        <option value="a">Dobla a la derecha</option>
+                        <option value="b">Dobla a la izquierda</option>
+                        <option value="c">Continúa derecho</option>
+                        <option value="d">Toma la primera salida</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <label>3. Continue straight →</label>
+                    <select id="ex1-3">
+                        <option value="">Select...</option>
+                        <option value="a">Dobla a la izquierda</option>
+                        <option value="b">Regresa dos cuadras</option>
+                        <option value="c">Continúa derecho</option>
+                        <option value="d">Toma la segunda derecha</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <label>4. Go back (2) blocks →</label>
+                    <select id="ex1-4">
+                        <option value="">Select...</option>
+                        <option value="a">Continúa derecho</option>
+                        <option value="b">Toma la primera salida</option>
+                        <option value="c">Dobla a la derecha</option>
+                        <option value="d">Regresa dos cuadras</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <label>5. Take the second left →</label>
+                    <select id="ex1-5">
+                        <option value="">Select...</option>
+                        <option value="a">Toma la primera salida</option>
+                        <option value="b">Toma la segunda izquierda</option>
+                        <option value="c">Toma la segunda derecha</option>
+                        <option value="d">Dobla a la izquierda</option>
+                    </select>
+                </div>
+                <div class="input-row">
+                    <label>6. Take the first exit on the roundabout →</label>
+                    <select id="ex1-6">
+                        <option value="">Select...</option>
+                        <option value="a">Toma la segunda salida</option>
+                        <option value="b">Toma la primera salida en la rotonda</option>
+                        <option value="c">Continúa derecho</option>
+                        <option value="d">Regresa dos cuadras</option>
+                    </select>
+                </div>
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="btn btn-check" id="checkEx1Btn">✓ Check Answers</button>
+                    <button class="btn btn-reset" id="resetEx1Btn">↺ Reset</button>
+                </div>
+                <div id="ex1-feedback" class="feedback"></div>
+            </div>
+        </div>
+
+        <!-- ACTIVITY 2: BLINDFOLDED GAME - MAP -->
+        <div class="section" id="activity2">
+            <h2><span class="part-badge">Activity 2</span> Blindfolded Game - City Map</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> You are the guide! Use the direction buttons to move the person 🧍 through the city map. Your goal is to reach a specific object. After moving, select which object you think is at the final position. The map has streets (gray) and blocks (green). Objects are placed on different blocks.
+            </div>
+
+            <div class="map-container">
+                <div class="map-header">
+                    <h4>🗺️ City Map</h4>
+                    <div class="map-info" id="mapInfo">Position: Row 1, Col 1 | Facing: ️ North</div>
+                </div>
+
+                <div class="map-grid-wrapper">
+                    <div class="map-grid" id="mapGrid"></div>
+
+                    <div class="directions-panel">
+                        <h4>🎮 Direction Controls</h4>
+
+                        <div class="direction-buttons">
+                            <button class="dir-btn" onclick="movePerson('straight')">⬆️ Continue straight</button>
+                            <button class="dir-btn" onclick="movePerson('back')">⬇️ Go back 1 block</button>
+                            <button class="dir-btn" onclick="turnPerson('left')">↩️ Turn left</button>
+                            <button class="dir-btn" onclick="turnPerson('right')">↪️ Turn right</button>
+                            <button class="dir-btn wide" onclick="movePerson('straight2')">⬆️⬆️ Continue straight (2 blocks)</button>
+                            <button class="dir-btn wide" onclick="movePerson('back2')">⬇️⬇️ Go back (2 blocks)</button>
+                        </div>
+
+                        <h4 style="margin-top: 10px;">📋 Direction Log:</h4>
+                        <div class="directions-log" id="directionsLog">
+                            <div class="log-entry">Start: Row 1, Col 1 facing North ⬆️</div>
+                        </div>
+
+                        <div class="object-selector">
+                            <label for="objectSelect">🎯 What object is at your final position?</label>
+                            <select id="objectSelect">
+                                <option value="">-- Select an object --</option>
+                                <option value="school">🏫 School</option>
+                                <option value="park">🌳 Park</option>
+                                <option value="hospital">🏥 Hospital</option>
+                                <option value="store">🏪 Store</option>
+                                <option value="library">📚 Library</option>
+                                <option value="restaurant">🍽️ Restaurant</option>
+                                <option value="bank">🏦 Bank</option>
+                                <option value="pharmacy">💊 Pharmacy</option>
+                            </select>
+                        </div>
+
+                        <div class="map-controls">
+                            <button class="btn btn-check" id="checkMapBtn">✓ Check Answer</button>
+                            <button class="btn btn-reset" id="resetMapBtn"> Reset Map</button>
+                            <button class="btn" id="newChallengeBtn"> New Challenge</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="map-legend">
+                    <div class="map-legend-item"><span class="legend-icon">🧍</span> Person (you)</div>
+                    <div class="map-legend-item"><span class="legend-icon">🏫</span> School</div>
+                    <div class="map-legend-item"><span class="legend-icon">🌳</span> Park</div>
+                    <div class="map-legend-item"><span class="legend-icon"></span> Hospital</div>
+                    <div class="map-legend-item"><span class="legend-icon">🏪</span> Store</div>
+                    <div class="map-legend-item"><span class="legend-icon">📚</span> Library</div>
+                    <div class="map-legend-item"><span class="legend-icon">🍽️</span> Restaurant</div>
+                    <div class="map-legend-item"><span class="legend-icon">🏦</span> Bank</div>
+                    <div class="map-legend-item"><span class="legend-icon">💊</span> Pharmacy</div>
+                </div>
+            </div>
+
+            <div id="map-feedback" class="feedback"></div>
+            <div class="score-display" id="map-score"></div>
+        </div>
+
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // ============ TRANSLATOR ============
+        async function translateText() {
+            const text = document.getElementById('sourceText').value.trim();
+            const resultBox = document.getElementById('translatedText');
+            if (!text) {
+                resultBox.textContent = '⚠️ Please enter some text to translate.';
+                resultBox.style.color = '#f57f17';
+                return;
+            }
+            resultBox.textContent = 'Translating...';
+            resultBox.style.color = '#333';
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                let translated = '';
+                if (data && data[0]) {
+                    data[0].forEach(item => { if (item[0]) translated += item[0]; });
+                }
+                resultBox.textContent = translated || 'No translation available.';
+                resultBox.style.color = '#333';
+            } catch (error) {
+                resultBox.textContent = '❌ Error connecting to translator.';
+                resultBox.style.color = '#c62828';
+            }
+        }
+
+        const translateBtn = document.getElementById('translateBtn');
+        if (translateBtn) translateBtn.addEventListener('click', translateText);
+        const sourceText = document.getElementById('sourceText');
+        if (sourceText) {
+            sourceText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); translateText(); }
+            });
+        }
+
+        function normalizeText(text) {
+            return text.toLowerCase().trim().replace(/\s+/g, ' ');
+        }
+
+        // ============ ACTIVITY 1: MATCHING ============
+        function checkExercise1() {
+            const answers = {
+                'ex1-1': 'b',
+                'ex1-2': 'a',
+                'ex1-3': 'c',
+                'ex1-4': 'd',
+                'ex1-5': 'b',
+                'ex1-6': 'b'
+            };
+
+            let correct = 0, total = 6, allAnswered = true;
+
+            for (let id in answers) {
+                const select = document.getElementById(id);
+                if (!select.value) allAnswered = false;
+            }
+
+            if (!allAnswered) {
+                const fb = document.getElementById('ex1-feedback');
+                fb.textContent = '⚠️ Please answer all questions before checking.';
+                fb.className = 'feedback hint'; fb.style.display = 'block';
+                return;
+            }
+
+            for (let id in answers) {
+                const select = document.getElementById(id);
+                if (select.value === answers[id]) {
+                    correct++;
+                    select.classList.remove('incorrect'); select.classList.add('correct');
+                } else {
+                    select.classList.remove('correct'); select.classList.add('incorrect');
+                }
+            }
+
+            const fb = document.getElementById('ex1-feedback');
+            if (correct === total) {
+                fb.textContent = ` Perfect! All ${correct}/${total} correct!`;
+                fb.className = 'feedback correct';
+            } else if (correct >= 4) {
+                fb.textContent = `👍 Good job! ${correct}/${total} correct. Review the ones in red.`;
+                fb.className = 'feedback correct';
+            } else {
+                fb.textContent = `📚 ${correct}/${total} correct. Review the direction vocabulary.`;
+                fb.className = 'feedback incorrect';
+            }
+            fb.style.display = 'block';
+        }
+
+        function resetExercise1() {
+            for (let i = 1; i <= 6; i++) {
+                const select = document.getElementById('ex1-' + i);
+                select.value = '';
+                select.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('ex1-feedback').style.display = 'none';
+        }
+
+        const checkEx1Btn = document.getElementById('checkEx1Btn');
+        if (checkEx1Btn) checkEx1Btn.addEventListener('click', checkExercise1);
+        const resetEx1Btn = document.getElementById('resetEx1Btn');
+        if (resetEx1Btn) resetEx1Btn.addEventListener('click', resetExercise1);
+
+        // ============ MAP GAME ============
+        const GRID_SIZE = 8;
+        const CELL_SIZE = 60;
+
+        // Map layout: 0 = street, 1 = block
+        // Streets are at even indices (0, 2, 4, 6), blocks at odd (1, 3, 5, 7)
+        const mapLayout = [];
+        for (let r = 0; r < GRID_SIZE; r++) {
+            mapLayout[r] = [];
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const isStreetRow = r % 2 === 0;
+                const isStreetCol = c % 2 === 0;
+                if (isStreetRow || isStreetCol) {
+                    mapLayout[r][c] = 0; // street
+                } else {
+                    mapLayout[r][c] = 1; // block
+                }
+            }
+        }
+
+        // Objects placed on blocks (odd row, odd col)
+        const objects = [
+            { name: 'school', emoji: '🏫', row: 1, col: 1 },
+            { name: 'park', emoji: '🌳', row: 1, col: 5 },
+            { name: 'hospital', emoji: '🏥', row: 3, col: 3 },
+            { name: 'store', emoji: '🏪', row: 3, col: 7 },
+            { name: 'library', emoji: '📚', row: 5, col: 1 },
+            { name: 'restaurant', emoji: '🍽️', row: 5, col: 5 },
+            { name: 'bank', emoji: '', row: 7, col: 3 },
+            { name: 'pharmacy', emoji: '💊', row: 7, col: 7 }
+        ];
+
+        // Person state
+        let person = { row: 1, col: 1, direction: 'north' }; // north, east, south, west
+        let directionsLog = [];
+        let currentChallenge = null;
+        let mapScore = 0;
+        let mapAttempts = 0;
+
+        const directionArrows = { north: '⬆️', east: '➡️', south: '️', west: '⬅️' };
+        const directionNames = { north: 'North', east: 'East', south: 'South', west: 'West' };
+
+        function renderMap() {
+            const grid = document.getElementById('mapGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'map-cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+
+                    if (mapLayout[r][c] === 0) {
+                        // Street
+                        const isStreetRow = r % 2 === 0;
+                        const isStreetCol = c % 2 === 0;
+                        if (isStreetRow && isStreetCol) {
+                            cell.classList.add('street'); // intersection
+                        } else if (isStreetRow) {
+                            cell.classList.add('street-h');
+                        } else {
+                            cell.classList.add('street-v');
+                        }
+                    } else {
+                        cell.classList.add('block');
+                    }
+
+                    // Place objects
+                    const obj = objects.find(o => o.row === r && o.col === c);
+                    if (obj) {
+                        const icon = document.createElement('span');
+                        icon.className = 'object-icon';
+                        icon.textContent = obj.emoji;
+                        icon.title = obj.name;
+                        cell.appendChild(icon);
+
+                        const label = document.createElement('span');
+                        label.className = 'object-label';
+                        label.textContent = obj.name;
+                        cell.appendChild(label);
+                    }
+
+                    // Place person
+                    if (person.row === r && person.col === c) {
+                        const personEl = document.createElement('span');
+                        personEl.className = 'person';
+                        personEl.textContent = '🧍';
+                        cell.appendChild(personEl);
+
+                        const dirEl = document.createElement('span');
+                        dirEl.className = 'person-direction';
+                        dirEl.textContent = directionArrows[person.direction];
+                        cell.appendChild(dirEl);
+                    }
+
+                    grid.appendChild(cell);
+                }
+            }
+
+            updateMapInfo();
+        }
+
+        function updateMapInfo() {
+            const info = document.getElementById('mapInfo');
+            if (info) {
+                info.textContent = `Position: Row ${person.row + 1}, Col ${person.col + 1} | Facing: ${directionArrows[person.direction]} ${directionNames[person.direction]}`;
+            }
+        }
+
+        function addLogEntry(text) {
+            directionsLog.push(text);
+            const log = document.getElementById('directionsLog');
+            if (log) {
+                log.innerHTML = '';
+                directionsLog.forEach(entry => {
+                    const div = document.createElement('div');
+                    div.className = 'log-entry';
+                    div.textContent = entry;
+                    log.appendChild(div);
+                });
+                log.scrollTop = log.scrollHeight;
+            }
+        }
+
+        function canMoveTo(row, col) {
+            if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) return false;
+            return true; // Can move to any cell (streets and blocks)
+        }
+
+        function getNextPosition(direction, steps) {
+            let row = person.row;
+            let col = person.col;
+
+            for (let i = 0; i < steps; i++) {
+                switch (direction) {
+                    case 'north': row -= 1; break;
+                    case 'south': row += 1; break;
+                    case 'east': col += 1; break;
+                    case 'west': col -= 1; break;
+                }
+                if (!canMoveTo(row, col)) {
+                    return { row: person.row, col: person.col, blocked: true };
+                }
+            }
+            return { row, col, blocked: false };
+        }
+
+        window.movePerson = function(type) {
+            let steps = 1;
+            let direction = person.direction;
+            let logText = '';
+
+            if (type === 'straight') {
+                steps = 1;
+                logText = `Continue straight (${directionArrows[direction]})`;
+            } else if (type === 'straight2') {
+                steps = 2;
+                logText = `Continue straight 2 blocks (${directionArrows[direction]}${directionArrows[direction]})`;
+            } else if (type === 'back') {
+                steps = 1;
+                const opposite = { north: 'south', south: 'north', east: 'west', west: 'east' };
+                direction = opposite[person.direction];
+                logText = `Go back 1 block (${directionArrows[direction]})`;
+            } else if (type === 'back2') {
+                steps = 2;
+                const opposite = { north: 'south', south: 'north', east: 'west', west: 'east' };
+                direction = opposite[person.direction];
+                logText = `Go back 2 blocks (${directionArrows[direction]}${directionArrows[direction]})`;
+            }
+
+            const next = getNextPosition(direction, steps);
+
+            if (next.blocked) {
+                addLogEntry(`❌ ${logText} - Can't move! Out of bounds.`);
+                return;
+            }
+
+            person.row = next.row;
+            person.col = next.col;
+            addLogEntry(`✅ ${logText} → Now at Row ${person.row + 1}, Col ${person.col + 1}`);
+
+            renderMap();
+        };
+
+        window.turnPerson = function(direction) {
+            const turns = {
+                north: { left: 'west', right: 'east' },
+                east: { left: 'north', right: 'south' },
+                south: { left: 'east', right: 'west' },
+                west: { left: 'south', right: 'north' }
+            };
+
+            person.direction = turns[person.direction][direction];
+            const logText = direction === 'left' ? `Turn left ↩️ → Now facing ${directionArrows[person.direction]}` : `Turn right ↪️ → Now facing ${directionArrows[person.direction]}`;
+            addLogEntry(`✅ ${logText}`);
+            renderMap();
+        };
+
+        function generateChallenge() {
+            // Pick a random object that is NOT the starting position
+            const availableObjects = objects.filter(o => !(o.row === 1 && o.col === 1));
+            const target = availableObjects[Math.floor(Math.random() * availableObjects.length)];
+            currentChallenge = target;
+
+            const info = document.getElementById('mapInfo');
+            if (info) {
+                info.textContent = ` Find: ${target.emoji} ${target.name} | Position: Row ${person.row + 1}, Col ${person.col + 1} | Facing: ${directionArrows[person.direction]}`;
+            }
+        }
+
+        function checkMapAnswer() {
+            const selected = document.getElementById('objectSelect').value;
+            const fb = document.getElementById('map-feedback');
+            const scoreDisplay = document.getElementById('map-score');
+
+            if (!selected) {
+                fb.textContent = '⚠️ Please select an object from the dropdown before checking.';
+                fb.className = 'feedback hint'; fb.style.display = 'block';
+                return;
+            }
+
+            mapAttempts++;
+
+            // Find what object is actually at the person's current position
+            const actualObject = objects.find(o => o.row === person.row && o.col === person.col);
+
+            // Highlight the cell
+            const cells = document.querySelectorAll('.map-cell');
+            cells.forEach(cell => {
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+                if (r === person.row && c === person.col) {
+                    if (selected === (actualObject ? actualObject.name : '')) {
+                        cell.classList.add('correct-cell');
+                    } else {
+                        cell.classList.add('incorrect-cell');
+                    }
+                }
+            });
+
+            if (selected === (actualObject ? actualObject.name : '')) {
+                mapScore++;
+                fb.textContent = ` Correct! You found the ${actualObject.emoji} ${actualObject.name}! Great directions!`;
+                fb.className = 'feedback correct';
+            } else {
+                const actualName = actualObject ? `${actualObject.emoji} ${actualObject.name}` : 'nothing (empty block)';
+                fb.textContent = `❌ Incorrect! At your position (Row ${person.row + 1}, Col ${person.col + 1}) there is ${actualName}. Try a new challenge!`;
+                fb.className = 'feedback incorrect';
+            }
+
+            fb.style.display = 'block';
+            scoreDisplay.textContent = `🏆 Score: ${mapScore}/${mapAttempts} (${Math.round((mapScore/mapAttempts)*100)}%)`;
+            scoreDisplay.style.display = 'block';
+        }
+
+        function resetMap() {
+            person = { row: 1, col: 1, direction: 'north' };
+            directionsLog = ['Start: Row 1, Col 1 facing North ⬆️'];
+            document.getElementById('objectSelect').value = '';
+            document.getElementById('map-feedback').style.display = 'none';
+
+            // Remove highlights
+            document.querySelectorAll('.map-cell').forEach(cell => {
+                cell.classList.remove('correct-cell', 'incorrect-cell', 'highlight');
+            });
+
+            renderMap();
+            addLogEntry('🔄 Map reset. Start: Row 1, Col 1 facing North ⬆️');
+        }
+
+        function newChallenge() {
+            resetMap();
+            generateChallenge();
+        }
+
+        const checkMapBtn = document.getElementById('checkMapBtn');
+        if (checkMapBtn) checkMapBtn.addEventListener('click', checkMapAnswer);
+        const resetMapBtn = document.getElementById('resetMapBtn');
+        if (resetMapBtn) resetMapBtn.addEventListener('click', resetMap);
+        const newChallengeBtn = document.getElementById('newChallengeBtn');
+        if (newChallengeBtn) newChallengeBtn.addEventListener('click', newChallenge);
+
+        // Initialize map
+        renderMap();
+        addLogEntry('Start: Row 1, Col 1 facing North ⬆️');
+        generateChallenge();
+
+    });
+    </script>
+
+</body>
+</html>
