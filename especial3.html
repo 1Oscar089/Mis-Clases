@@ -342,13 +342,18 @@
             color: white; border: none;
             padding: 8px 12px; border-radius: 8px;
             cursor: pointer; font-size: 0.9em; font-weight: bold;
-            transition: all 0.3s; min-width: 80px;
+            transition: all 0.3s; min-width: 90px;
             display: flex; align-items: center; justify-content: center; gap: 5px;
         }
 
         .btn-play:hover {
             background: linear-gradient(135deg, #6a1b9a 0%, #4a148c 100%);
             transform: scale(1.05);
+        }
+
+        .btn-play.playing {
+            background: #43a047 !important;
+            pointer-events: none;
         }
 
         .feedback {
@@ -602,43 +607,50 @@
             return text.toLowerCase().trim().replace(/\s+/g, ' ');
         }
 
-        // ============ TTS FUNCTIONS ============
-        let maleVoice = null;
-
-        function loadVoices() {
-            const voices = window.speechSynthesis.getVoices();
-            const maleVoiceNames = ['Microsoft David', 'Microsoft Mark', 'Daniel', 'Alex', 'Google UK English Male', 'Google US English', 'Rishi', 'Fred', 'Tom'];
-            for (let name of maleVoiceNames) {
-                const found = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
-                if (found) { maleVoice = found; return; }
-            }
-            const femaleVoiceNames = ['Samantha', 'Victoria', 'Zira', 'Karen', 'Moira', 'Tessa', 'Fiona', 'Susan', 'Allison'];
-            const englishVoices = voices.filter(v => v.lang.startsWith('en'));
-            for (let voice of englishVoices) {
-                if (!femaleVoiceNames.some(name => voice.name.includes(name))) { maleVoice = voice; return; }
-            }
-            if (englishVoices.length > 0) maleVoice = englishVoices[0];
-        }
-
-        if ('speechSynthesis' in window) {
-            loadVoices();
-            window.speechSynthesis.onvoiceschanged = loadVoices;
-        }
-
+        // ============ ROBUST TTS FUNCTIONS ============
         // Global function for onclick handlers
-        window.speakMonth = function(monthName, rate) {
+        window.speakMonth = function(monthName, rate, btnElement) {
             if (!('speechSynthesis' in window)) {
-                alert('Text-to-speech is not supported in your browser.');
+                alert('Text-to-speech is not supported in this browser. Please try Chrome or Edge.');
                 return;
             }
+            
+            // Visual feedback
+            if (btnElement) {
+                const originalText = btnElement.innerHTML;
+                btnElement.innerHTML = '🔊 Playing...';
+                btnElement.classList.add('playing');
+                setTimeout(() => {
+                    btnElement.innerHTML = originalText;
+                    btnElement.classList.remove('playing');
+                }, 1500);
+            }
+
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(monthName);
             utterance.lang = 'en-US';
             utterance.rate = rate || 0.7;
             utterance.pitch = 0.9;
-            if (maleVoice) utterance.voice = maleVoice;
+            
+            // Dynamically get voices at the moment of speaking to ensure they are loaded
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Daniel'))) || 
+                                   voices.find(v => v.lang.startsWith('en'));
+            
+            if (preferredVoice) {
+                utterance.voice = preferredVoice;
+            }
+            
             window.speechSynthesis.speak(utterance);
         };
+
+        // Pre-load voices
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = function() {
+                window.speechSynthesis.getVoices();
+            };
+        }
 
         // ============ RENDER MONTHS GRID ============
         const monthsGrid = document.getElementById('monthsGrid');
@@ -652,7 +664,7 @@
                     <div class="name">${m.name}</div>
                     <div class="abbr">${m.abbr} · ${m.days} days</div>
                 `;
-                card.addEventListener('click', () => window.speakMonth(m.name, 0.7));
+                card.addEventListener('click', function() { window.speakMonth(m.name, 0.7, this); });
                 monthsGrid.appendChild(card);
             });
         }
@@ -882,7 +894,7 @@
                 item.className = 'dictation-input-item';
                 item.innerHTML = `
                     <span class="num">${i + 1}</span>
-                    <button class="btn-play" type="button" onclick="window.speakMonth('${month.name}', 0.7)">🔊 Play</button>
+                    <button class="btn-play" type="button" onclick="window.speakMonth('${month.name}', 0.7, this)">🔊 Play</button>
                     <input type="text" id="dictation-${i}" placeholder="Write the month...">
                 `;
                 dictationInputs.appendChild(item);
