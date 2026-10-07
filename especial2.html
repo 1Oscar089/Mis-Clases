@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unidades Químicas de Concentración</title>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-primary: #2980b9;
+            --color-secondary: #d4efdf;
+            --color-accent: #a9dfbf;
+            --color-text: #2c3e50;
+            --color-text-light: #555555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 3px solid var(--color-primary);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--color-primary);
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        header p {
+            color: var(--color-text-light);
+            margin-top: 8px;
+        }
+
+        h2 {
+            color: var(--color-primary);
+            border-left: 5px solid var(--color-accent);
+            padding-left: 10px;
+            margin-top: 35px;
+        }
+
+        p {
+            color: var(--color-text-light);
+        }
+
+        .teoria-box {
+            background-color: var(--color-secondary);
+            padding: 18px 22px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .formula-box {
+            background-color: #ffffff;
+            border: 2px solid var(--color-accent);
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 1.2rem;
+            font-family: "Georgia", serif;
+            color: var(--color-text);
+        }
+
+        .formula-box .sub {
+            font-size: 0.75em;
+            vertical-align: sub;
+        }
+
+        .formula-box .sup {
+            font-size: 0.75em;
+            vertical-align: super;
+        }
+
+        .variable-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0 0 0;
+        }
+
+        .variable-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+            color: var(--color-text-light);
+        }
+
+        .variable-list li:last-child {
+            border-bottom: none;
+        }
+
+        .variable-list strong {
+            color: var(--color-primary);
+        }
+
+        .resumen-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .resumen-table th {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .resumen-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            color: var(--color-text-light);
+        }
+
+        .resumen-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.5rem; }
+            .formula-box { font-size: 1rem; padding: 15px; }
+            .resumen-table { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Unidades Químicas de Concentración</h1>
+        <p>Definiciones y fórmulas fundamentales</p>
+    </header>
+
+    <div class="teoria-box">
+        <p>Las unidades químicas de concentración expresan la relación cuantitativa entre la cantidad de soluto y la cantidad de solvente o de solución. A diferencia de las unidades físicas (como el porcentaje en masa), estas unidades se basan en el concepto de <strong>mol</strong> y en las propiedades químicas de las sustancias.</p>
+    </div>
+
+    <h2>1. Molaridad (M)</h2>
+    <p>Es la relación entre el número de moles de soluto y el volumen total de la solución expresado en litros. Es la unidad de concentración más utilizada en química analítica.</p>
+    
+    <div class="formula-box">
+        M = <span class="fraction"><span class="numerator">n<sub>soluto</sub> (mol)</span> / <span class="denominator">V<sub>solución</sub> (L)</span></span>
+    </div>
+    
+    <ul class="variable-list">
+        <li><strong>M:</strong> Molaridad (mol/L o M)</li>
+        <li><strong>n<sub>soluto</sub>:</strong> Número de moles del soluto</li>
+        <li><strong>V<sub>solución</sub>:</strong> Volumen total de la solución en litros</li>
+    </ul>
+
+    <h2>2. Normalidad (N)</h2>
+    <p>Es la relación entre el número de equivalentes-gramo de soluto y el volumen total de la solución expresado en litros. Depende de la reacción química específica en la que participa el soluto (número de protones, electrones o cargas intercambiadas).</p>
+    
+    <div class="formula-box">
+        N = <span class="fraction"><span class="numerator">Eq-g<sub>soluto</sub></span> / <span class="denominator">V<sub>solución</sub> (L)</span></span>
+    </div>
+    
+    <ul class="variable-list">
+        <li><strong>N:</strong> Normalidad (eq/L o N)</li>
+        <li><strong>Eq-g<sub>soluto</sub>:</strong> Número de equivalentes-gramo del soluto</li>
+        <li><strong>V<sub>solución</sub>:</strong> Volumen total de la solución en litros</li>
+    </ul>
+    <p style="margin-top: 10px; font-size: 0.95rem;"><em>Relación con la molaridad:</em> <strong>N = M × θ</strong>, donde <strong>θ</strong> es el número de equivalentes (número de H⁺, OH⁻, o carga iónica total).</p>
+
+    <h2>3. Molalidad (m)</h2>
+    <p>Es la relación entre el número de moles de soluto y la masa del <strong>solvente</strong> (no de la solución) expresada en kilogramos. A diferencia de la molaridad, la molalidad no varía con los cambios de temperatura, ya que la masa no depende de la temperatura.</p>
+    
+    <div class="formula-box">
+        m = <span class="fraction"><span class="numerator">n<sub>soluto</sub> (mol)</span> / <span class="denominator">m<sub>solvente</sub> (kg)</span></span>
+    </div>
+    
+    <ul class="variable-list">
+        <li><strong>m:</strong> Molalidad (mol/kg o m)</li>
+        <li><strong>n<sub>soluto</sub>:</strong> Número de moles del soluto</li>
+        <li><strong>m<sub>solvente</sub>:</strong> Masa del solvente puro en kilogramos</li>
+    </ul>
+
+    <h2>4. Fracción Molar (X)</h2>
+    <p>Es una magnitud adimensional que expresa la relación entre el número de moles de un componente específico (soluto o solvente) y el número total de moles de todos los componentes presentes en la solución. La suma de las fracciones molares de todos los componentes es siempre igual a 1.</p>
+    
+    <div class="formula-box">
+        X<sub>i</sub> = <span class="fraction"><span class="numerator">n<sub>i</sub></span> / <span class="denominator">n<sub>total</sub></span></span>
+    </div>
+    
+    <ul class="variable-list">
+        <li><strong>X<sub>i</sub>:</strong> Fracción molar del componente i (adimensional)</li>
+        <li><strong>n<sub>i</sub>:</strong> Número de moles del componente i</li>
+        <li><strong>n<sub>total</sub>:</strong> Suma total de moles (n<sub>soluto</sub> + n<sub>solvente</sub>)</li>
+    </ul>
+    <p style="margin-top: 10px; font-size: 0.95rem;"><em>Propiedad:</em> <strong>X<sub>soluto</sub> + X<sub>solvente</sub> = 1</strong></p>
+
+    <h2>Resumen Comparativo</h2>
+    <table class="resumen-table">
+        <thead>
+            <tr>
+                <th>Unidad</th>
+                <th>Símbolo</th>
+                <th>Relación cuantitativa</th>
+                <th>Dependencia de la T°</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Molaridad</strong></td>
+                <td>M</td>
+                <td>moles de soluto / Litros de <em>solución</em></td>
+                <td>Sí (el volumen cambia)</td>
+            </tr>
+            <tr>
+                <td><strong>Normalidad</strong></td>
+                <td>N</td>
+                <td>Eq-g de soluto / Litros de <em>solución</em></td>
+                <td>Sí (el volumen cambia)</td>
+            </tr>
+            <tr>
+                <td><strong>Molalidad</strong></td>
+                <td>m</td>
+                <td>moles de soluto / Kilogramos de <em>solvente</em></td>
+                <td>No (la masa es constante)</td>
+            </tr>
+            <tr>
+                <td><strong>Fracción Molar</strong></td>
+                <td>X</td>
+                <td>moles del componente / moles <em>totales</em></td>
+                <td>No (los moles son constantes)</td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+
+</body>
+</html>
