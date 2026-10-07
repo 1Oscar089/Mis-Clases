@@ -399,18 +399,18 @@
 <body>
 
     <div class="translator-panel">
-        <h3>🌐 English → Spanish Translator</h3>
+        <h3> English → Spanish Translator</h3>
         <div class="translator-widget">
             <div class="lang-labels">
                 <span>🇬🇧 English</span>
-                <span>🇪 Español</span>
+                <span>🇪🇸 Español</span>
             </div>
             <textarea id="sourceText" placeholder="Type or paste English text here..."></textarea>
             <button class="translate-btn" id="translateBtn">Translate ▶</button>
             <div class="result-box" id="translatedText">Translation will appear here...</div>
         </div>
         <div class="api-info">
-            <strong>📋 API Info:</strong><br>
+            <strong> API Info:</strong><br>
             <small>Using Google Translate API</small><br>
             <code>translate.googleapis.com</code><br><br>
             <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
@@ -418,7 +418,7 @@
     </div>
 
     <header>
-        <h1>📅 Months of the Year</h1>
+        <h1> Months of the Year</h1>
         <p>Unit 5 - Learn the 12 Months</p>
         <div class="subtitle">Missing Letters, Race & Dictation Activities</div>
     </header>
@@ -427,7 +427,7 @@
 
         <!-- THEORY SECTION -->
         <div class="section" id="theory">
-            <h2>📖 Theory</h2>
+            <h2> Theory</h2>
             <h3>The Months of the Year</h3>
             <p>There are <strong>12 months</strong> in a year. Each month has a different number of days.</p>
 
@@ -465,7 +465,7 @@
 
             <div style="text-align: center; margin-top: 20px;">
                 <button class="btn btn-check" id="checkAct1Btn">✓ Check Answers</button>
-                <button class="btn btn-reset" id="resetAct1Btn">↺ Reset</button>
+                <button class="btn btn-reset" id="resetAct1Btn"> Reset</button>
             </div>
             <div id="act1-feedback" class="feedback"></div>
         </div>
@@ -511,7 +511,7 @@
 
             <div class="dictation-container">
                 <div class="dictation-progress" id="dictationProgress">
-                    <p>💡 Click the  button for each number to hear the month, then type it in the box.</p>
+                    <p>💡 Click the 🔊 button for each number to hear the month, then type it in the box.</p>
                 </div>
 
                 <div class="dictation-inputs" id="dictationInputs"></div>
@@ -527,6 +527,9 @@
 
     </div>
 
+    <!-- Hidden audio element for Google TTS -->
+    <audio id="googleTtsAudio" preload="none"></audio>
+
     <script>
     document.addEventListener('DOMContentLoaded', function() {
 
@@ -537,16 +540,15 @@
             { name: 'March', abbr: 'Mar', days: 31, emoji: '🌸' },
             { name: 'April', abbr: 'Apr', days: 30, emoji: '🌷' },
             { name: 'May', abbr: 'May', days: 31, emoji: '🌺' },
-            { name: 'June', abbr: 'Jun', days: 30, emoji: '️' },
+            { name: 'June', abbr: 'Jun', days: 30, emoji: '☀️' },
             { name: 'July', abbr: 'Jul', days: 31, emoji: '🏖️' },
             { name: 'August', abbr: 'Aug', days: 31, emoji: '🌻' },
             { name: 'September', abbr: 'Sep', days: 30, emoji: '🍂' },
-            { name: 'October', abbr: 'Oct', days: 31, emoji: '🎃' },
+            { name: 'October', abbr: 'Oct', days: 31, emoji: '' },
             { name: 'November', abbr: 'Nov', days: 30, emoji: '🦃' },
             { name: 'December', abbr: 'Dec', days: 31, emoji: '🎄' }
         ];
 
-        // FIX 1: Ensure 'answer' property is used correctly
         const missingLettersData = [
             { display: '_ A _', answer: 'May', hint: '(5th month)' },
             { display: '_ E _ _ E _ _ E _', answer: 'September', hint: '(9th month)' },
@@ -567,7 +569,7 @@
             const text = document.getElementById('sourceText').value.trim();
             const resultBox = document.getElementById('translatedText');
             if (!text) {
-                resultBox.textContent = '⚠️ Please enter some text to translate.';
+                resultBox.textContent = '️ Please enter some text to translate.';
                 resultBox.style.color = '#f57f17';
                 return;
             }
@@ -603,48 +605,79 @@
             return text.toLowerCase().trim().replace(/\s+/g, ' ');
         }
 
-        // ============ TTS FUNCTIONS (FIX 2: Robust Voice) ============
+        // ============ GOOGLE TTS FUNCTION (NEW METHOD) ============
+        // Uses Google Translate TTS endpoint - more reliable than Web Speech API
         window.speakMonth = function(monthName, rate, btnElement) {
-            if (!('speechSynthesis' in window)) {
-                alert('Text-to-speech is not supported in this browser.');
+            const audio = document.getElementById('googleTtsAudio');
+            if (!audio) {
+                console.error('Audio element not found');
                 return;
             }
-            
+
             // Visual feedback
             if (btnElement) {
                 const originalText = btnElement.innerHTML;
-                btnElement.innerHTML = '🔊 Playing...';
+                btnElement.innerHTML = ' Playing...';
                 btnElement.classList.add('playing');
-                setTimeout(() => {
-                    btnElement.innerHTML = originalText;
-                    btnElement.classList.remove('playing');
-                }, 1000);
             }
 
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(monthName);
-            utterance.lang = 'en-US';
-            utterance.rate = rate || 0.7;
-            utterance.pitch = 1;
+            // Google Translate TTS URL
+            // tl=en = English, q=TEXT, client=tw-ob
+            const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(monthName)}`;
             
-            // Try to find a voice, but don't fail if none found
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length > 0) {
-                const preferred = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || 
-                                  voices.find(v => v.lang.startsWith('en'));
-                if (preferred) utterance.voice = preferred;
+            audio.src = ttsUrl;
+            audio.volume = 1.0;
+            
+            // Try to set playback rate (some browsers support this)
+            if (rate && rate !== 1) {
+                try { audio.playbackRate = rate; } catch(e) {}
             }
-            
-            window.speechSynthesis.speak(utterance);
-        };
 
-        // Pre-load voices
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.getVoices();
-            window.speechSynthesis.onvoiceschanged = function() {
-                window.speechSynthesis.getVoices();
+            audio.onplay = function() {
+                console.log('Playing:', monthName);
             };
-        }
+
+            audio.onended = function() {
+                if (btnElement) {
+                    btnElement.innerHTML = originalText || '🔊 Play';
+                    btnElement.classList.remove('playing');
+                }
+            };
+
+            audio.onerror = function(e) {
+                console.error('TTS Error:', e);
+                if (btnElement) {
+                    btnElement.innerHTML = originalText || '🔊 Play';
+                    btnElement.classList.remove('playing');
+                }
+                // Fallback: try Web Speech API
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(monthName);
+                    utterance.lang = 'en-US';
+                    utterance.rate = rate || 0.7;
+                    window.speechSynthesis.speak(utterance);
+                }
+            };
+
+            // Play the audio
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.error('Play failed:', error);
+                    // Fallback to Web Speech API
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(monthName);
+                        utterance.lang = 'en-US';
+                        utterance.rate = rate || 0.7;
+                        window.speechSynthesis.speak(utterance);
+                    }
+                    if (btnElement) {
+                        btnElement.innerHTML = originalText || '🔊 Play';
+                        btnElement.classList.remove('playing');
+                    }
+                });
+            }
+        };
 
         // ============ RENDER MONTHS GRID ============
         const monthsGrid = document.getElementById('monthsGrid');
@@ -681,7 +714,6 @@
         function checkActivity1() {
             let correct = 0, total = missingLettersData.length, allAnswered = true;
 
-            // FIX 1 Applied: Use item.answer and check if input exists
             missingLettersData.forEach((item, i) => {
                 const input = document.getElementById('missing-' + i);
                 if (input) {
@@ -713,7 +745,7 @@
                 fb.textContent = `🎉 Perfect! All ${correct}/${total} months are correct!`;
                 fb.className = 'feedback correct';
             } else if (correct >= total * 0.7) {
-                fb.textContent = ` Good job! ${correct}/${total} correct. Review the ones in red.`;
+                fb.textContent = `👍 Good job! ${correct}/${total} correct. Review the ones in red.`;
                 fb.className = 'feedback correct';
             } else {
                 fb.textContent = `📚 ${correct}/${total} correct. Remember: months start with a capital letter!`;
@@ -835,7 +867,7 @@
 
             const fb = document.getElementById('act2-feedback');
             if (correct === total) {
-                fb.textContent = `🎉 Perfect! All ${correct}/${total} months are in the correct order!`;
+                fb.textContent = ` Perfect! All ${correct}/${total} months are in the correct order!`;
                 fb.className = 'feedback correct';
             } else if (correct >= 9) {
                 fb.textContent = `👍 Great job! ${correct}/${total} correct. Review the ones in red.`;
@@ -891,10 +923,9 @@
                 
                 const item = document.createElement('div');
                 item.className = 'dictation-input-item';
-                // FIX 2 Applied: Ensure onclick passes 'this' correctly
                 item.innerHTML = `
                     <span class="num">${i + 1}</span>
-                    <button class="btn-play" type="button" onclick="window.speakMonth('${month.name}', 0.7, this)"> Play</button>
+                    <button class="btn-play" type="button" onclick="window.speakMonth('${month.name}', 0.7, this)">🔊 Play</button>
                     <input type="text" id="dictation-${i}" placeholder="Write the month...">
                 `;
                 dictationInputs.appendChild(item);
@@ -947,7 +978,7 @@
             } else {
                 fb.textContent = `📚 ${correct}/${total} correct. Listen again by clicking the Play buttons and try again!`;
                 fb.className = 'feedback incorrect';
-                scoreDisplay.textContent = ` Keep Learning: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
+                scoreDisplay.textContent = `📖 Keep Learning: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
                 scoreDisplay.style.background = 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)';
             }
 
