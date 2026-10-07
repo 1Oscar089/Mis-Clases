@@ -283,63 +283,19 @@
             border-radius: 12px; padding: 25px; margin: 20px 0;
         }
 
-        .dictation-controls {
-            display: flex; align-items: center; justify-content: center;
-            gap: 15px; margin: 20px 0; flex-wrap: wrap;
-        }
-
-        .dictation-btn {
-            background: linear-gradient(135deg, #8e24aa 0%, #6a1b9a 100%);
-            color: white; border: none; padding: 15px 30px;
-            border-radius: 30px; font-size: 1.1em; font-weight: bold;
-            cursor: pointer; transition: all 0.3s;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        .dictation-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-        }
-
-        .dictation-btn.playing {
-            background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .dictation-btn:disabled {
-            opacity: 0.5; cursor: not-allowed;
-        }
-
-        .speed-control {
-            display: flex; align-items: center; gap: 10px;
-            color: #6a1b9a; font-weight: bold;
-        }
-
-        .speed-control input[type="range"] {
-            width: 120px; accent-color: #8e24aa;
-        }
-
         .dictation-progress {
             text-align: center; margin: 15px 0;
-            font-size: 1.2em; color: #6a1b9a; font-weight: bold;
-        }
-
-        .dictation-progress .current-month {
-            background: #8e24aa; color: white;
-            padding: 8px 20px; border-radius: 20px;
-            display: inline-block; margin: 10px 0;
-            font-size: 1.3em;
+            font-size: 1.1em; color: #6a1b9a; font-weight: bold;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #ce93d8;
         }
 
         .dictation-inputs {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 12px; margin: 20px 0;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px; margin: 20px 0;
         }
 
         .dictation-input-item {
@@ -380,6 +336,20 @@
         .btn-check:hover { background: #2e7d32; }
         .btn-reset { background: #e53935; }
         .btn-reset:hover { background: #c62828; }
+
+        .btn-play {
+            background: linear-gradient(135deg, #8e24aa 0%, #6a1b9a 100%);
+            color: white; border: none;
+            padding: 8px 12px; border-radius: 8px;
+            cursor: pointer; font-size: 0.9em; font-weight: bold;
+            transition: all 0.3s; min-width: 80px;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+
+        .btn-play:hover {
+            background: linear-gradient(135deg, #6a1b9a 0%, #4a148c 100%);
+            transform: scale(1.05);
+        }
 
         .feedback {
             margin-top: 10px; padding: 12px 15px;
@@ -423,6 +393,7 @@
             header h1 { font-size: 1.8em; }
             .section { padding: 20px; }
             .months-grid { grid-template-columns: repeat(2, 1fr); }
+            .dictation-inputs { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -443,7 +414,7 @@
             <strong>📋 API Info:</strong><br>
             <small>Using Google Translate API</small><br>
             <code>translate.googleapis.com</code><br><br>
-            <strong> Tip:</strong> Type any text and click translate to get the Spanish equivalent.
+            <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
         </div>
     </div>
 
@@ -536,22 +507,12 @@
         <div class="section" id="activity3">
             <h2><span class="part-badge">Activity 3</span> Month Dictation</h2>
             <div class="instructions">
-                <strong>Instructions:</strong> Click "Start Dictation" to hear the 12 months spoken in random order. Listen carefully and write each month you hear in the corresponding box. You can replay each month individually or listen to all of them.
+                <strong>Instructions:</strong> Click the 🔊 <strong>Play</strong> button next to each number to hear a month. Listen carefully and write the month you hear in the corresponding box. The months are in random order.
             </div>
 
             <div class="dictation-container">
-                <div class="dictation-controls">
-                    <button class="dictation-btn" id="startDictationBtn">🎧 Start Dictation</button>
-                    <button class="dictation-btn" id="stopDictationBtn" style="background: linear-gradient(135deg, #e53935 0%, #c62828 100%);">⏹ Stop</button>
-                    <div class="speed-control">
-                        <span>🐢 Speed:</span>
-                        <input type="range" id="dictationSpeed" min="0.3" max="1.2" step="0.1" value="0.7">
-                        <span id="dictationSpeedValue">0.7x</span>
-                    </div>
-                </div>
-
                 <div class="dictation-progress" id="dictationProgress">
-                    <p>Click "Start Dictation" to begin. The months will be spoken in random order.</p>
+                    <p>💡 Click the 🔊 button for each number to hear the month, then type it in the box.</p>
                 </div>
 
                 <div class="dictation-inputs" id="dictationInputs"></div>
@@ -574,15 +535,15 @@
         const monthsData = [
             { name: 'January', abbr: 'Jan', days: 31, emoji: '❄️' },
             { name: 'February', abbr: 'Feb', days: 28, emoji: '💝' },
-            { name: 'March', abbr: 'Mar', days: 31, emoji: '' },
+            { name: 'March', abbr: 'Mar', days: 31, emoji: '🌸' },
             { name: 'April', abbr: 'Apr', days: 30, emoji: '🌷' },
             { name: 'May', abbr: 'May', days: 31, emoji: '🌺' },
             { name: 'June', abbr: 'Jun', days: 30, emoji: '☀️' },
-            { name: 'July', abbr: 'Jul', days: 31, emoji: '️' },
+            { name: 'July', abbr: 'Jul', days: 31, emoji: '🏖️' },
             { name: 'August', abbr: 'Aug', days: 31, emoji: '🌻' },
             { name: 'September', abbr: 'Sep', days: 30, emoji: '🍂' },
             { name: 'October', abbr: 'Oct', days: 31, emoji: '🎃' },
-            { name: 'November', abbr: 'Nov', days: 30, emoji: '' },
+            { name: 'November', abbr: 'Nov', days: 30, emoji: '🦃' },
             { name: 'December', abbr: 'Dec', days: 31, emoji: '🎄' }
         ];
 
@@ -641,23 +602,6 @@
             return text.toLowerCase().trim().replace(/\s+/g, ' ');
         }
 
-        // ============ RENDER MONTHS GRID ============
-        const monthsGrid = document.getElementById('monthsGrid');
-        if (monthsGrid) {
-            monthsData.forEach((m, i) => {
-                const card = document.createElement('div');
-                card.className = 'month-card';
-                card.innerHTML = `
-                    <div class="emoji">${m.emoji}</div>
-                    <div class="number">${i + 1}</div>
-                    <div class="name">${m.name}</div>
-                    <div class="abbr">${m.abbr} · ${m.days} days</div>
-                `;
-                card.addEventListener('click', () => speakMonth(m.name));
-                monthsGrid.appendChild(card);
-            });
-        }
-
         // ============ TTS FUNCTIONS ============
         let maleVoice = null;
 
@@ -681,16 +625,36 @@
             window.speechSynthesis.onvoiceschanged = loadVoices;
         }
 
-        function speakMonth(monthName, rate, onEnd) {
-            if (!('speechSynthesis' in window)) return;
+        // Global function for onclick handlers
+        window.speakMonth = function(monthName, rate) {
+            if (!('speechSynthesis' in window)) {
+                alert('Text-to-speech is not supported in your browser.');
+                return;
+            }
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(monthName);
             utterance.lang = 'en-US';
             utterance.rate = rate || 0.7;
             utterance.pitch = 0.9;
             if (maleVoice) utterance.voice = maleVoice;
-            if (onEnd) utterance.onend = onEnd;
             window.speechSynthesis.speak(utterance);
+        };
+
+        // ============ RENDER MONTHS GRID ============
+        const monthsGrid = document.getElementById('monthsGrid');
+        if (monthsGrid) {
+            monthsData.forEach((m, i) => {
+                const card = document.createElement('div');
+                card.className = 'month-card';
+                card.innerHTML = `
+                    <div class="emoji">${m.emoji}</div>
+                    <div class="number">${i + 1}</div>
+                    <div class="name">${m.name}</div>
+                    <div class="abbr">${m.abbr} · ${m.days} days</div>
+                `;
+                card.addEventListener('click', () => window.speakMonth(m.name, 0.7));
+                monthsGrid.appendChild(card);
+            });
         }
 
         // ============ ACTIVITY 1: MISSING LETTERS ============
@@ -797,7 +761,6 @@
             if (selectedRaceMonth === name) {
                 selectedRaceMonth = null;
             } else {
-                // Check if already placed
                 if (racePlacements.includes(name)) {
                     selectedRaceMonth = null;
                     return;
@@ -810,7 +773,6 @@
         function placeRaceMonth(position, slot) {
             if (!selectedRaceMonth) return;
 
-            // Remove from previous position
             const prevPos = racePlacements.indexOf(selectedRaceMonth);
             if (prevPos !== -1) {
                 racePlacements[prevPos] = null;
@@ -818,7 +780,6 @@
                 if (prevSlot) { prevSlot.textContent = '?'; prevSlot.classList.remove('filled', 'correct-slot', 'incorrect-slot'); }
             }
 
-            // Remove whatever was in this position
             if (racePlacements[position]) {
                 const oldName = racePlacements[position];
                 const oldChip = document.querySelector(`.race-chip[data-name="${oldName}"]`);
@@ -894,23 +855,7 @@
         if (resetAct2Btn) resetAct2Btn.addEventListener('click', resetActivity2);
 
         // ============ ACTIVITY 3: DICTATION ============
-        let dictationOrder = [];
-        let currentDictationIndex = 0;
-        let isDictating = false;
-        let dictationTimeout = null;
-
-        const dictationInputs = document.getElementById('dictationInputs');
-        if (dictationInputs) {
-            for (let i = 0; i < 12; i++) {
-                const item = document.createElement('div');
-                item.className = 'dictation-input-item';
-                item.innerHTML = `
-                    <span class="num">${i + 1}</span>
-                    <input type="text" id="dictation-${i}" placeholder="Write month #${i + 1}...">
-                `;
-                dictationInputs.appendChild(item);
-            }
-        }
+        let dictationAnswers = [];
 
         function shuffleArray(arr) {
             const a = [...arr];
@@ -921,80 +866,26 @@
             return a;
         }
 
-        function startDictation() {
-            if (isDictating) return;
-            if (!('speechSynthesis' in window)) {
-                alert('Your browser does not support text-to-speech.');
-                return;
-            }
-
-            isDictating = true;
-            currentDictationIndex = 0;
-            dictationOrder = shuffleArray(monthsData.map(m => m.name));
-
-            const startBtn = document.getElementById('startDictationBtn');
-            if (startBtn) { startBtn.classList.add('playing'); startBtn.disabled = true; }
-
-            const progress = document.getElementById('dictationProgress');
-            if (progress) {
-                progress.innerHTML = `<p>Listening to month <strong>${currentDictationIndex + 1}</strong> of 12...</p><div class="current-month" id="currentMonthDisplay">?</div>`;
-            }
-
-            speakNextMonth();
-        }
-
-        function speakNextMonth() {
-            if (currentDictationIndex >= 12 || !isDictating) {
-                finishDictation();
-                return;
-            }
-
-            const monthName = dictationOrder[currentDictationIndex];
-            const speed = parseFloat(document.getElementById('dictationSpeed').value);
-
-            const progress = document.getElementById('dictationProgress');
-            const display = document.getElementById('currentMonthDisplay');
-            if (progress) progress.innerHTML = `<p>Listening to month <strong>${currentDictationIndex + 1}</strong> of 12...</p>`;
-            if (display) display.textContent = '🔊 Listening...';
-
-            speakMonth(monthName, speed, () => {
-                // After speaking, wait 2 seconds then speak again, then move to next
-                dictationTimeout = setTimeout(() => {
-                    speakMonth(monthName, speed, () => {
-                        dictationTimeout = setTimeout(() => {
-                            currentDictationIndex++;
-                            if (currentDictationIndex < 12 && isDictating) {
-                                speakNextMonth();
-                            } else {
-                                finishDictation();
-                            }
-                        }, 1500);
-                    });
-                }, 2000);
-            });
-        }
-
-        function finishDictation() {
-            isDictating = false;
-            const startBtn = document.getElementById('startDictationBtn');
-            if (startBtn) { startBtn.classList.remove('playing'); startBtn.disabled = false; }
-
-            const progress = document.getElementById('dictationProgress');
-            if (progress) {
-                progress.innerHTML = `<p>✅ Dictation complete! Write down all 12 months you heard, then click "Check Answers".</p><p style="font-size:0.9em; color:#666;">Order heard: ${dictationOrder.join(', ')}</p>`;
-            }
-        }
-
-        function stopDictation() {
-            isDictating = false;
-            clearTimeout(dictationTimeout);
-            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-            const startBtn = document.getElementById('startDictationBtn');
-            if (startBtn) { startBtn.classList.remove('playing'); startBtn.disabled = false; }
-
-            const progress = document.getElementById('dictationProgress');
-            if (progress) {
-                progress.innerHTML = `<p>⏹ Dictation stopped. Click "Start Dictation" to begin again.</p>`;
+        function generateDictation() {
+            const dictationInputs = document.getElementById('dictationInputs');
+            if (!dictationInputs) return;
+            
+            dictationInputs.innerHTML = '';
+            dictationAnswers = [];
+            let shuffled = shuffleArray([...monthsData]);
+            
+            for (let i = 0; i < 12; i++) {
+                const month = shuffled[i];
+                dictationAnswers.push(month.name.toLowerCase());
+                
+                const item = document.createElement('div');
+                item.className = 'dictation-input-item';
+                item.innerHTML = `
+                    <span class="num">${i + 1}</span>
+                    <button class="btn-play" type="button" onclick="window.speakMonth('${month.name}', 0.7)">🔊 Play</button>
+                    <input type="text" id="dictation-${i}" placeholder="Write the month...">
+                `;
+                dictationInputs.appendChild(item);
             }
         }
 
@@ -1008,7 +899,7 @@
 
             if (!allAnswered) {
                 const fb = document.getElementById('act3-feedback');
-                fb.textContent = '⚠️ Please write all 12 months before checking.';
+                fb.textContent = '⚠️ Please write all 12 months before checking. Click the 🔊 Play button for each number to hear the month.';
                 fb.className = 'feedback hint'; fb.style.display = 'block';
                 return;
             }
@@ -1016,9 +907,9 @@
             for (let i = 0; i < 12; i++) {
                 const input = document.getElementById('dictation-' + i);
                 const userAnswer = normalizeText(input.value);
-                const expectedMonth = dictationOrder[i];
+                const expectedMonth = dictationAnswers[i];
 
-                if (userAnswer === expectedMonth.toLowerCase()) {
+                if (userAnswer === expectedMonth) {
                     correct++;
                     input.classList.remove('incorrect'); input.classList.add('correct');
                 } else {
@@ -1035,12 +926,12 @@
                 scoreDisplay.textContent = '🏆 Perfect Score: 12/12 (100%)';
                 scoreDisplay.style.background = 'linear-gradient(135deg, #43a047 0%, #66bb6a 100%)';
             } else if (correct >= 9) {
-                fb.textContent = ` Great job! ${correct}/${total} correct. Review the ones in red.`;
+                fb.textContent = `👍 Great job! ${correct}/${total} correct. Review the ones in red.`;
                 fb.className = 'feedback correct';
                 scoreDisplay.textContent = `⭐ Good Job: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
                 scoreDisplay.style.background = 'linear-gradient(135deg, #ffa000 0%, #ffca28 100%)';
             } else {
-                fb.textContent = ` ${correct}/${total} correct. Listen again and try to catch all the months!`;
+                fb.textContent = `📚 ${correct}/${total} correct. Listen again by clicking the Play buttons and try again!`;
                 fb.className = 'feedback incorrect';
                 scoreDisplay.textContent = `📖 Keep Learning: ${correct}/12 (${Math.round((correct/total)*100)}%)`;
                 scoreDisplay.style.background = 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)';
@@ -1051,33 +942,18 @@
         }
 
         function resetActivity3() {
-            for (let i = 0; i < 12; i++) {
-                const input = document.getElementById('dictation-' + i);
-                input.value = ''; input.classList.remove('correct', 'incorrect');
-            }
-            dictationOrder = [];
-            currentDictationIndex = 0;
             document.getElementById('act3-feedback').style.display = 'none';
             document.getElementById('act3-score').style.display = 'none';
-            const progress = document.getElementById('dictationProgress');
-            if (progress) progress.innerHTML = '<p>Click "Start Dictation" to begin. The months will be spoken in random order.</p>';
+            generateDictation();
         }
 
-        const startDictationBtn = document.getElementById('startDictationBtn');
-        if (startDictationBtn) startDictationBtn.addEventListener('click', startDictation);
-        const stopDictationBtn = document.getElementById('stopDictationBtn');
-        if (stopDictationBtn) stopDictationBtn.addEventListener('click', stopDictation);
         const checkAct3Btn = document.getElementById('checkAct3Btn');
         if (checkAct3Btn) checkAct3Btn.addEventListener('click', checkActivity3);
         const resetAct3Btn = document.getElementById('resetAct3Btn');
         if (resetAct3Btn) resetAct3Btn.addEventListener('click', resetActivity3);
 
-        const dictationSpeed = document.getElementById('dictationSpeed');
-        if (dictationSpeed) {
-            dictationSpeed.addEventListener('input', function() {
-                document.getElementById('dictationSpeedValue').textContent = this.value + 'x';
-            });
-        }
+        // Initialize Activity 3
+        generateDictation();
 
     });
     </script>
