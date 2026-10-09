@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit 4 - Getting Around Town (9th Grade)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            line-height: 1.6;
+            padding-right: 320px;
+        }
+
+        .translator-panel {
+            position: fixed; right: 0; top: 0;
+            width: 300px; height: 100vh;
+            background: linear-gradient(180deg, #6a1b9a 0%, #8e24aa 100%);
+            padding: 20px 15px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.2);
+            z-index: 1000; overflow-y: auto;
+        }
+
+        .translator-panel h3 {
+            color: white; text-align: center;
+            margin-bottom: 15px; font-size: 1.2em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .translator-panel .translator-widget {
+            background: white; border-radius: 10px;
+            padding: 15px; margin-bottom: 15px;
+        }
+
+        .translator-panel textarea {
+            width: 100%; min-height: 100px;
+            border: 2px solid #ce93d8; border-radius: 8px;
+            padding: 10px; font-size: 14px;
+            resize: vertical; font-family: inherit;
+        }
+
+        .translator-panel textarea:focus { outline: none; border-color: #8e24aa; }
+
+        .translator-panel .lang-labels {
+            display: flex; justify-content: space-between;
+            margin: 10px 0; color: #6a1b9a;
+            font-weight: bold; font-size: 0.9em;
+        }
+
+        .translator-panel .translate-btn {
+            width: 100%; background: #8e24aa; color: white;
+            border: none; padding: 12px; border-radius: 8px;
+            cursor: pointer; font-size: 1em; font-weight: bold;
+            transition: all 0.3s; margin: 10px 0;
+        }
+
+        .translator-panel .translate-btn:hover {
+            background: #6a1b9a; transform: translateY(-2px);
+        }
+
+        .translator-panel .result-box {
+            background: #f3e5f5; border: 2px solid #ce93d8;
+            border-radius: 8px; padding: 10px;
+            min-height: 80px; font-size: 14px; color: #333;
+        }
+
+        .translator-panel .api-info {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px; padding: 12px;
+            color: white; font-size: 0.85em; margin-top: 15px;
+        }
+
+        .translator-panel .api-info code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px; border-radius: 4px;
+            font-size: 0.8em; word-break: break-all;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+        header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white; padding: 40px 20px; text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0 0 20px 20px; margin-bottom: 30px;
+        }
+
+        header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        header p { font-size: 1.2em; opacity: 0.9; }
+        header .subtitle { font-size: 1em; opacity: 0.8; margin-top: 5px; }
+
+        .section {
+            background: white; margin: 30px 0; padding: 30px;
+            border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #8e24aa;
+        }
+
+        .section h2 {
+            color: #6a1b9a; margin-bottom: 20px; font-size: 1.8em;
+            border-bottom: 2px solid #e1bee7; padding-bottom: 10px;
+        }
+
+        .section h3 { color: #7b1fa2; margin: 20px 0 10px 0; }
+
+        .section .instructions {
+            background: #f3e5f5; padding: 15px; border-radius: 8px;
+            margin-bottom: 20px; border-left: 4px solid #8e24aa;
+        }
+
+        .theory-box {
+            background: #f3e5f5; border-left: 4px solid #8e24aa;
+            padding: 20px; border-radius: 0 10px 10px 0; margin: 20px 0;
+        }
+
+        .theory-box ul { margin-left: 20px; margin-top: 10px; }
+        .theory-box li { margin: 8px 0; }
+
+        /* Map Styles */
+        .map-container {
+            position: relative;
+            background: #e0e0e0;
+            border: 4px solid #333;
+            border-radius: 10px;
+            margin: 20px auto;
+            padding: 10px;
+        }
+
+        .map-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .street-label {
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 2px 8px;
+            font-size: 0.8em;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .block {
+            background: white;
+            border: 2px solid #999;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #6a1b9a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .block .icon { font-size: 2em; margin-bottom: 5px; }
+
+        .street-h {
+            background: #555;
+            height: 20px;
+            border-radius: 10px;
+            position: relative;
+        }
+        
+        .street-v {
+            background: #555;
+            width: 20px;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .street-dashed {
+            background: repeating-linear-gradient(90deg, #fff, #fff 10px, #555 10px, #555 20px);
+            height: 4px;
+            width: 100%;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .street-dashed-v {
+            background: repeating-linear-gradient(0deg, #fff, #fff 10px, #555 10px, #555 20px);
+            width: 4px;
+            height: 100%;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Activity 1 Specific */
+        .map-activity-1 {
+            display: grid;
+            grid-template-columns: 1fr 20px 1fr 20px 1fr;
+            grid-template-rows: 1fr 20px 1fr 20px 1fr;
+            gap: 5px;
+            background: #ddd;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .map-activity-1 .block { grid-column: span 1; }
+        /* This is getting complex to grid perfectly. I'll use a simpler flex/absolute layout for the map visual */
+        
+        .simple-map {
+            display: grid;
+            grid-template-columns: 100px 1fr 100px 1fr 100px;
+            grid-template-rows: 100px 40px 100px 40px 100px;
+            gap: 5px;
+            background: #ccc;
+            padding: 10px;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .simple-map .block { background: white; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-direction: column; font-size: 0.8em;}
+        .simple-map .street { background: #555; border-radius: 5px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.7em; font-weight: bold;}
+        .simple-map .street-h { grid-column: 1 / -1; }
+        .simple-map .street-v { grid-row: 1 / -1; writing-mode: vertical-rl; text-orientation: mixed;}
+
+        /* Activity 2 Specific */
+        .memory-map {
+            display: grid;
+            grid-template-columns: 1fr 30px 1fr 30px 1fr;
+            grid-template-rows: 1fr 30px 1fr;
+            gap: 5px;
+            background: #eee;
+            padding: 10px;
+            border: 2px solid #333;
+        }
+        .memory-map .place { background: white; border: 1px solid #999; padding: 10px; text-align: center; border-radius: 5px; font-weight: bold;}
+        .memory-map .street-label-h { background: #8e24aa; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8em; border-radius: 5px;}
+        .memory-map .street-label-v { background: #8e24aa; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8em; border-radius: 5px; writing-mode: vertical-rl;}
+
+        /* Activity 3 Specific */
+        .listening-map {
+            position: relative;
+            background: #f0f0f0;
+            border: 2px solid #333;
+            height: 400px;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .listening-map .road-h {
+            position: absolute; background: #555; height: 30px; width: 100%;
+            display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;
+        }
+        .listening-map .road-v {
+            position: absolute; background: #555; width: 30px; height: 100%;
+            display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; writing-mode: vertical-rl;
+        }
+        .listening-map .place-box {
+            position: absolute; background: white; border: 2px solid #8e24aa; padding: 5px; border-radius: 5px; font-size: 0.8em; text-align: center;
+        }
+        .listening-map .input-spot {
+            position: absolute; background: #fff9c4; border: 2px dashed #fbc02d; padding: 5px; border-radius: 5px;
+        }
+        .listening-map .input-spot input { width: 80px; border: 1px solid #ccc; padding: 2px; font-size: 0.8em;}
+        .listening-map .number-circle {
+            position: absolute; background: #43a047; color: white; width: 20px; height: 20px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: bold;
+        }
+
+        .btn {
+            background: #8e24aa; color: white; border: none;
+            padding: 12px 25px; border-radius: 8px;
+            cursor: pointer; font-size: 1em; margin: 10px 5px;
+            transition: all 0.3s; font-weight: bold;
+        }
+        .btn:hover { background: #6a1b9a; transform: translateY(-2px); }
+        .btn-check { background: #43a047; }
+        .btn-check:hover { background: #2e7d32; }
+        .btn-reset { background: #e53935; }
+        .btn-reset:hover { background: #c62828; }
+
+        .exercise {
+            background: #fafafa; border: 2px solid #e1bee7;
+            border-radius: 12px; padding: 20px; margin: 20px 0;
+        }
+        .exercise h4 { color: #6a1b9a; margin-bottom: 15px; font-size: 1.3em; }
+        .exercise input, .exercise select {
+            padding: 10px; border: 2px solid #ce93d8; border-radius: 8px; margin: 5px; font-size: 1em;
+        }
+        .exercise input.correct { border-color: #43a047; background: #c8e6c9; }
+        .exercise input.incorrect { border-color: #e53935; background: #ffcdd2; }
+
+        .feedback {
+            margin-top: 10px; padding: 12px 15px; border-radius: 8px; display: none; font-weight: 500;
+        }
+        .feedback.correct { background: #c8e6c9; color: #2e7d32; border: 2px solid #43a047; }
+        .feedback.incorrect { background: #ffcdd2; color: #c62828; border: 2px solid #e53935; }
+        .feedback.hint { background: #fff9c4; color: #f57f17; border: 2px solid #fbc02d; }
+
+        .part-badge {
+            display: inline-block; background: #8e24aa; color: white;
+            padding: 5px 15px; border-radius: 20px; font-size: 0.85em; margin-right: 10px;
+        }
+
+        @media (max-width: 900px) {
+            body { padding-right: 0; }
+            .translator-panel { position: relative; width: 100%; height: auto; border-radius: 0 0 15px 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="translator-panel">
+        <h3> English → Spanish Translator</h3>
+        <div class="translator-widget">
+            <div class="lang-labels">
+                <span>🇬🇧 English</span>
+                <span>🇪🇸 Español</span>
+            </div>
+            <textarea id="sourceText" placeholder="Type or paste English text here..."></textarea>
+            <button class="translate-btn" id="translateBtn">Translate ▶</button>
+            <div class="result-box" id="translatedText">Translation will appear here...</div>
+        </div>
+        <div class="api-info">
+            <strong> API Info:</strong><br>
+            <small>Using Google Translate API</small><br>
+            <code>translate.googleapis.com</code><br><br>
+            <strong>💡 Tip:</strong> Type any text and click translate to get the Spanish equivalent.
+        </div>
+    </div>
+
+    <header>
+        <h1>️ Unit 4: Getting Around Town</h1>
+        <p>9th Grade - Giving Directions & Places in Town</p>
+        <div class="subtitle">Learn to navigate the city and describe locations</div>
+    </header>
+
+    <div class="container">
+
+        <!-- VOCABULARY SECTION -->
+        <div class="section" id="vocab">
+            <h2> Vocabulary: Places in Town</h2>
+            <div class="theory-box">
+                <ul>
+                    <li><strong>Hospital:</strong> A place for medical treatment. 🏥</li>
+                    <li><strong>Bank:</strong> A place to keep money. 🏦</li>
+                    <li><strong>School:</strong> A place for education. 🏫</li>
+                    <li><strong>Police Station:</strong> Headquarters for police. 👮</li>
+                    <li><strong>Fire Station:</strong> Headquarters for firefighters. 🚒</li>
+                    <li><strong>Theater:</strong> A place for movies or plays. 🎭</li>
+                    <li><strong>Local Market:</strong> A place to buy food and goods. 🛒</li>
+                    <li><strong>Mail / Post Office:</strong> A place to send letters. ️</li>
+                    <li><strong>Gas Station:</strong> A place to get fuel for cars. ⛽</li>
+                    <li><strong>Super Market:</strong> A large grocery store. 🛍️</li>
+                    <li><strong>Park:</strong> A green area for relaxation. 🌳</li>
+                </ul>
+            </div>
+            
+            <div class="theory-box">
+                <h3>Direction Phrases:</h3>
+                <ul>
+                    <li><strong>Turn left / Turn right:</strong> Change direction.</li>
+                    <li><strong>Go straight / Continue straight:</strong> Keep moving forward.</li>
+                    <li><strong>Next to:</strong> Beside something.</li>
+                    <li><strong>Between:</strong> In the middle of two things.</li>
+                    <li><strong>On the corner of:</strong> At the intersection.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ACTIVITY 1: HOW DO I GET TO THE BANK? -->
+        <div class="section" id="activity1">
+            <h2><span class="part-badge">Activity 1</span> How Do I Get to the Bank?</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Look at the map. You are at the <strong>Hospital</strong> (top left). You need to get to the <strong>Factory</strong> (middle left, below the hospital). 
+                <br>Read the example directions in the text: <em>"Turn right on Rafael Cabrera Street. Then turn left on Los Amates Avenue..."</em>
+                <br><br>
+                <strong>Task:</strong> Select the correct sequence of directions to get from the <strong>School</strong> to the <strong>Mail</strong> using the map below (Activity 2 map logic applied here for simplicity).
+            </div>
+
+            <div class="exercise">
+                <h4>Scenario: You are at the School. You want to go to the Mail (Post Office).</h4>
+                <p>Look at the map in Activity 2 to visualize the streets: <strong>Los Amates Avenue</strong> (horizontal), <strong>La Sabana Street</strong> (vertical left), <strong>Rafael Cabrera Street</strong> (vertical right).</p>
+                
+                <p><strong>Step 1:</strong> From the School, go down La Sabana Street.</p>
+                <select id="act1-step1">
+                    <option value="">Select direction...</option>
+                    <option value="straight">Go straight on La Sabana Street</option>
+                    <option value="left">Turn left on La Sabana Street</option>
+                    <option value="right">Turn right on La Sabana Street</option>
+                </select>
+
+                <p><strong>Step 2:</strong> When you reach Los Amates Avenue, turn...</p>
+                <select id="act1-step2">
+                    <option value="">Select direction...</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                </select>
+
+                <p><strong>Step 3:</strong> Continue until you reach Rafael Cabrera Street. The Mail is on the...</p>
+                <select id="act1-step3">
+                    <option value="">Select location...</option>
+                    <option value="left">Left corner</option>
+                    <option value="right">Right corner</option>
+                </select>
+
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="btn btn-check" id="checkAct1Btn">✓ Check Directions</button>
+                    <button class="btn btn-reset" id="resetAct1Btn"> Reset</button>
+                </div>
+                <div id="act1-feedback" class="feedback"></div>
+            </div>
+        </div>
+
+        <!-- ACTIVITY 2: MEMORY GAME -->
+        <div class="section" id="activity2">
+            <h2><span class="part-badge">Activity 2</span> Memory Game: Directions</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Memorize the map below for 5 seconds. Then, the map will hide, and you must answer how to get to specific places.
+                <br><em>Map Layout: Top Row (School, Police Station, Fire Station). Bottom Row (Local Market, Theater, Mail). Streets: Los Amates Ave (middle), La Sabana St (left vertical), Rafael Cabrera St (right vertical).</em>
+            </div>
+
+            <div class="exercise">
+                <div id="memoryMapContainer" style="text-align: center;">
+                    <div class="memory-map" id="memoryMap">
+                        <div class="place">🏫 School</div>
+                        <div class="street-label-v">La Sabana St</div>
+                        <div class="place"> Police Station</div>
+                        <div class="street-label-v">Rafael Cabrera St</div>
+                        <div class="place">🚒 Fire Station</div>
+                        
+                        <div class="street-label-h" style="grid-column: 1/-1;">Los Amates Avenue</div>
+                        
+                        <div class="place"> Local Market</div>
+                        <div class="street-label-v" style="visibility: hidden;">La Sabana St</div>
+                        <div class="place">🎭 Theater</div>
+                        <div class="street-label-v" style="visibility: hidden;">Rafael Cabrera St</div>
+                        <div class="place">✉️ Mail</div>
+                    </div>
+                    <p id="timerText" style="font-weight: bold; color: #6a1b9a; margin-top: 10px;">Click "Start Memory Game" to begin.</p>
+                </div>
+
+                <div id="memoryQuestions" style="display: none; margin-top: 20px;">
+                    <h4>Question: How do I get to the <strong>Mail</strong> from the <strong>School</strong>?</h4>
+                    <p><em>Hint: Think about the streets La Sabana and Rafael Cabrera.</em></p>
+                    <input type="text" id="act2-answer" placeholder="e.g., Go straight on... then turn..." style="width: 100%; max-width: 500px;">
+                    
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button class="btn btn-check" id="checkAct2Btn">✓ Check Answer</button>
+                        <button class="btn btn-reset" id="resetAct2Btn">↺ Play Again</button>
+                    </div>
+                    <div id="act2-feedback" class="feedback"></div>
+                </div>
+
+                <div style="text-align: center; margin-top: 10px;">
+                    <button class="btn" id="startMemoryBtn">🧠 Start Memory Game (5s)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTIVITY 3: LISTENING MAP -->
+        <div class="section" id="activity3">
+            <h2><span class="part-badge">Activity 3</span> Listen and Write: Places in Town</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Click the "Play Audio" button to hear the description of the town map. Write the name of the place in the corresponding numbered box (1-9). 
+                <br><em>Note: The audio will describe what is at each number location.</em>
+            </div>
+
+            <div class="exercise">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button class="btn" id="playAudioBtn" style="background: #1565c0;">🔊 Play Audio Description</button>
+                    <button class="btn btn-reset" id="stopAudioBtn">⏹ Stop</button>
+                </div>
+
+                <div class="listening-map" id="listeningMap">
+                    <!-- Roads -->
+                    <div class="road-h" style="top: 35%;">Rosales Avenue</div>
+                    <div class="road-v" style="left: 30%;">Visto Hermosa Street</div>
+                    <div class="road-v" style="left: 70%;">Santo Lucio Street</div>
+
+                    <!-- Fixed Places -->
+                    <div class="place-box" style="top: 10%; left: 10%;">⛽ Gas Station</div>
+                    <div class="place-box" style="top: 10%; right: 10%;">🎭 Theater</div>
+                    <div class="place-box" style="top: 45%; right: 5%;">️ Super Market</div>
+                    <div class="place-box" style="bottom: 5%; right: 10%;">🏫 C.E. Tanique</div>
+                    <div class="place-box" style="bottom: 25%; left: 40%; width: 20%; background: #c8e6c9;">🌳 Park</div>
+
+                    <!-- Input Spots (Numbered) -->
+                    <!-- Row 1 (Above Rosales) -->
+                    <div class="number-circle" style="top: 5%; left: 35%;">1</div>
+                    <div class="input-spot" style="top: 2%; left: 38%;"><input type="text" id="spot1" placeholder="Place 1"></div>
+
+                    <div class="number-circle" style="top: 5%; left: 45%;">2</div>
+                    <div class="input-spot" style="top: 2%; left: 48%;"><input type="text" id="spot2" placeholder="Place 2"></div>
+
+                    <div class="number-circle" style="top: 5%; left: 55%;">3</div>
+                    <div class="input-spot" style="top: 2%; left: 58%;"><input type="text" id="spot3" placeholder="Place 3"></div>
+
+                    <div class="number-circle" style="top: 5%; left: 75%;">4</div>
+                    <div class="input-spot" style="top: 2%; left: 78%;"><input type="text" id="spot4" placeholder="Place 4"></div>
+
+                    <!-- Row 2 (Left of Visto Hermosa) -->
+                    <div class="number-circle" style="top: 40%; left: 5%;">5</div>
+                    <div class="input-spot" style="top: 38%; left: 8%;"><input type="text" id="spot5" placeholder="Place 5"></div>
+
+                    <div class="number-circle" style="top: 60%; left: 5%;">6</div>
+                    <div class="input-spot" style="top: 58%; left: 8%;"><input type="text" id="spot6" placeholder="Place 6"></div>
+
+                    <!-- Row 3 (Below Park) -->
+                    <div class="number-circle" style="bottom: 5%; left: 35%;">7</div>
+                    <div class="input-spot" style="bottom: 2%; left: 38%;"><input type="text" id="spot7" placeholder="Place 7"></div>
+
+                    <div class="number-circle" style="bottom: 5%; left: 45%;">8</div>
+                    <div class="input-spot" style="bottom: 2%; left: 48%;"><input type="text" id="spot8" placeholder="Place 8"></div>
+
+                    <!-- Row 4 (Right of Super Market) -->
+                    <div class="number-circle" style="top: 45%; right: 2%;">9</div>
+                    <div class="input-spot" style="top: 43%; right: 5%;"><input type="text" id="spot9" placeholder="Place 9"></div>
+                </div>
+
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="btn btn-check" id="checkAct3Btn">✓ Check Answers</button>
+                    <button class="btn btn-reset" id="resetAct3Btn">↺ Reset</button>
+                </div>
+                <div id="act3-feedback" class="feedback"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // ============ TRANSLATOR ============
+        async function translateText() {
+            const text = document.getElementById('sourceText').value.trim();
+            const resultBox = document.getElementById('translatedText');
+            if (!text) {
+                resultBox.textContent = '⚠️ Please enter some text to translate.';
+                resultBox.style.color = '#f57f17';
+                return;
+            }
+            resultBox.textContent = 'Translating...';
+            resultBox.style.color = '#333';
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=es&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                let translated = '';
+                if (data && data[0]) {
+                    data[0].forEach(item => { if (item[0]) translated += item[0]; });
+                }
+                resultBox.textContent = translated || 'No translation available.';
+                resultBox.style.color = '#333';
+            } catch (error) {
+                resultBox.textContent = '❌ Error connecting to translator.';
+                resultBox.style.color = '#c62828';
+            }
+        }
+
+        const translateBtn = document.getElementById('translateBtn');
+        if (translateBtn) translateBtn.addEventListener('click', translateText);
+        const sourceText = document.getElementById('sourceText');
+        if (sourceText) {
+            sourceText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); translateText(); }
+            });
+        }
+
+        function normalizeText(text) {
+            if (!text) return '';
+            return text.toLowerCase().trim().replace(/\s+/g, ' ').replace(/\.$/, '');
+        }
+
+        // ============ ACTIVITY 1: DIRECTIONS ============
+        function checkActivity1() {
+            const s1 = document.getElementById('act1-step1').value;
+            const s2 = document.getElementById('act1-step2').value;
+            const s3 = document.getElementById('act1-step3').value;
+            const fb = document.getElementById('act1-feedback');
+
+            if (!s1 || !s2 || !s3) {
+                fb.textContent = '⚠️ Please complete all steps.';
+                fb.className = 'feedback hint'; fb.style.display = 'block';
+                return;
+            }
+
+            // Logic: School (Top-Left) to Mail (Mid-Right).
+            // Map: School | Police | Fire
+            //        ---------------- (Los Amates)
+            //        Market | Theater | Mail
+            // Path: Go down La Sabana (straight/south), Turn Right on Los Amates (East), Go to Rafael Cabrera, Mail is on the right.
+            // Actually, simpler: School is top-left. Mail is mid-right.
+            // Go straight on La Sabana (down) -> reach Market. Turn Right (East) on Los Amates? No, Los Amates is between rows.
+            // Let's assume standard logic: Go straight on La Sabana Street (South), Turn Right on Los Amates Avenue (East), Continue to Rafael Cabrera Street. Mail is on the right corner.
+            
+            let correct = 0;
+            if (s1 === 'straight') correct++;
+            if (s2 === 'right') correct++;
+            if (s3 === 'right') correct++;
+
+            if (correct === 3) {
+                fb.textContent = ' Perfect! You found the way to the Mail.';
+                fb.className = 'feedback correct';
+            } else {
+                fb.textContent = `📚 ${correct}/3 steps correct. Try again. Hint: Go straight down La Sabana, turn Right on Los Amates.`;
+                fb.className = 'feedback incorrect';
+            }
+            fb.style.display = 'block';
+        }
+
+        function resetActivity1() {
+            document.getElementById('act1-step1').value = '';
+            document.getElementById('act1-step2').value = '';
+            document.getElementById('act1-step3').value = '';
+            document.getElementById('act1-feedback').style.display = 'none';
+        }
+
+        const checkAct1Btn = document.getElementById('checkAct1Btn');
+        if (checkAct1Btn) checkAct1Btn.addEventListener('click', checkActivity1);
+        const resetAct1Btn = document.getElementById('resetAct1Btn');
+        if (resetAct1Btn) resetAct1Btn.addEventListener('click', resetActivity1);
+
+
+        // ============ ACTIVITY 2: MEMORY GAME ============
+        let memoryTimer;
+        const mapDiv = document.getElementById('memoryMap');
+        const timerText = document.getElementById('timerText');
+        const questionsDiv = document.getElementById('memoryQuestions');
+        const startBtn = document.getElementById('startMemoryBtn');
+
+        if (startBtn) {
+            startBtn.addEventListener('click', function() {
+                mapDiv.style.opacity = '1';
+                mapDiv.style.pointerEvents = 'auto';
+                questionsDiv.style.display = 'none';
+                timerText.textContent = 'Memorize the map! 5...';
+                
+                let count = 5;
+                memoryTimer = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        timerText.textContent = `Memorize the map! ${count}...`;
+                    } else {
+                        clearInterval(memoryTimer);
+                        mapDiv.style.opacity = '0.1'; // Hide map visually but keep layout
+                        mapDiv.style.pointerEvents = 'none';
+                        timerText.textContent = 'Time is up! Answer the question below.';
+                        questionsDiv.style.display = 'block';
+                    }
+                }, 1000);
+            });
+        }
+
+        function checkActivity2() {
+            const answer = normalizeText(document.getElementById('act2-answer').value);
+            const fb = document.getElementById('act2-feedback');
+            
+            // Expected: Go straight on La Sabana Street, turn right on Los Amates Avenue...
+            // Or: Go down La Sabana, turn right...
+            const keywords = ['la sabana', 'right', 'los amates'];
+            const hasKeywords = keywords.every(k => answer.includes(k));
+
+            if (answer.length < 10) {
+                fb.textContent = '️ Please write a complete direction.';
+                fb.className = 'feedback hint'; fb.style.display = 'block';
+                return;
+            }
+
+            if (hasKeywords || answer.includes('straight') && answer.includes('right')) {
+                fb.textContent = '🎉 Great job! That is the correct path.';
+                fb.className = 'feedback correct';
+            } else {
+                fb.textContent = '📚 Not quite. Try: "Go straight on La Sabana Street, then turn right on Los Amates Avenue."';
+                fb.className = 'feedback incorrect';
+            }
+            fb.style.display = 'block';
+        }
+
+        function resetActivity2() {
+            document.getElementById('act2-answer').value = '';
+            document.getElementById('act2-feedback').style.display = 'none';
+            mapDiv.style.opacity = '1';
+            mapDiv.style.pointerEvents = 'auto';
+            questionsDiv.style.display = 'none';
+            timerText.textContent = 'Click "Start Memory Game" to begin.';
+        }
+
+        const checkAct2Btn = document.getElementById('checkAct2Btn');
+        if (checkAct2Btn) checkAct2Btn.addEventListener('click', checkActivity2);
+        const resetAct2Btn = document.getElementById('resetAct2Btn');
+        if (resetAct2Btn) resetAct2Btn.addEventListener('click', resetActivity2);
+
+
+        // ============ ACTIVITY 3: LISTENING MAP ============
+        // Simulated Audio Script
+        const audioScript = `
+            Hello students. Listen carefully and write the places on the map.
+            Number 1. Next to the gas station, on Rosales Avenue, there is the Library.
+            Number 2. Between the library and the theater, there is the Bank.
+            Number 3. Next to the bank, there is the Post Office.
+            Number 4. On the corner of Rosales Avenue and Santo Lucio Street, there is the Hotel.
+            Number 5. To the left of Visto Hermosa Street, there is the Restaurant.
+            Number 6. Below the restaurant, there is the Museum.
+            Number 7. Below the park, on Visto Hermosa Street, there is the Pharmacy.
+            Number 8. Next to the pharmacy, there is the School.
+            Number 9. Next to the Super Market, there is the Church.
+        `;
+
+        let utterance = null;
+
+        function playAudio() {
+            if (!('speechSynthesis' in window)) {
+                alert('Text-to-speech not supported.');
+                return;
+            }
+            window.speechSynthesis.cancel();
+            utterance = new SpeechSynthesisUtterance(audioScript);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function stopAudio() {
+            window.speechSynthesis.cancel();
+        }
+
+        const playBtn = document.getElementById('playAudioBtn');
+        if (playBtn) playBtn.addEventListener('click', playAudio);
+        const stopBtn = document.getElementById('stopAudioBtn');
+        if (stopBtn) stopBtn.addEventListener('click', stopAudio);
+
+        function checkActivity3() {
+            // Answers based on the script above
+            const answers = {
+                'spot1': 'library',
+                'spot2': 'bank',
+                'spot3': 'post office',
+                'spot4': 'hotel',
+                'spot5': 'restaurant',
+                'spot6': 'museum',
+                'spot7': 'pharmacy',
+                'spot8': 'school',
+                'spot9': 'church'
+            };
+
+            let correct = 0;
+            let total = 9;
+            let allAnswered = true;
+
+            for (let id in answers) {
+                const input = document.getElementById(id);
+                if (!normalizeText(input.value)) allAnswered = false;
+            }
+
+            if (!allAnswered) {
+                const fb = document.getElementById('act3-feedback');
+                fb.textContent = '⚠️ Please fill in all numbered spots (1-9).';
+                fb.className = 'feedback hint'; fb.style.display = 'block';
+                return;
+            }
+
+            for (let id in answers) {
+                const input = document.getElementById(id);
+                if (normalizeText(input.value) === answers[id]) {
+                    correct++;
+                    input.classList.remove('incorrect'); input.classList.add('correct');
+                } else {
+                    input.classList.remove('correct'); input.classList.add('incorrect');
+                }
+            }
+
+            const fb = document.getElementById('act3-feedback');
+            if (correct === total) {
+                fb.textContent = `🎉 Perfect! You identified all ${correct}/${total} places correctly.`;
+                fb.className = 'feedback correct';
+            } else if (correct >= 6) {
+                fb.textContent = `👍 Good job! ${correct}/${total} correct. Check the red boxes.`;
+                fb.className = 'feedback correct';
+            } else {
+                fb.textContent = `📚 ${correct}/${total} correct. Listen to the audio again.`;
+                fb.className = 'feedback incorrect';
+            }
+            fb.style.display = 'block';
+        }
+
+        function resetActivity3() {
+            for (let i = 1; i <= 9; i++) {
+                const input = document.getElementById('spot' + i);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            }
+            document.getElementById('act3-feedback').style.display = 'none';
+        }
+
+        const checkAct3Btn = document.getElementById('checkAct3Btn');
+        if (checkAct3Btn) checkAct3Btn.addEventListener('click', checkActivity3);
+        const resetAct3Btn = document.getElementById('resetAct3Btn');
+        if (resetAct3Btn) resetAct3Btn.addEventListener('click', resetActivity3);
+
+    });
+    </script>
+</body>
+</html>
