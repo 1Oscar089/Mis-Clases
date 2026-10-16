@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dates Practice - Calendar, Audio & El Salvador</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+        header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white; padding: 40px 20px; text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0 0 20px 20px; margin-bottom: 30px;
+        }
+
+        header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        header p { font-size: 1.2em; opacity: 0.9; }
+        header .subtitle { font-size: 1em; opacity: 0.8; margin-top: 5px; }
+
+        .section {
+            background: white; margin: 30px 0; padding: 30px;
+            border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid #8e24aa;
+        }
+
+        .section h2 {
+            color: #6a1b9a; margin-bottom: 20px; font-size: 1.8em;
+            border-bottom: 2px solid #e1bee7; padding-bottom: 10px;
+        }
+
+        .section h3 { color: #7b1fa2; margin: 20px 0 10px 0; }
+
+        .section .instructions {
+            background: #f3e5f5; padding: 15px; border-radius: 8px;
+            margin-bottom: 20px; border-left: 4px solid #8e24aa;
+        }
+
+        .theory-box {
+            background: #f3e5f5; border-left: 4px solid #8e24aa;
+            padding: 20px; border-radius: 0 10px 10px 0; margin: 20px 0;
+        }
+
+        .theory-box ul { margin-left: 20px; margin-top: 10px; }
+        .theory-box li { margin: 8px 0; }
+
+        /* Calendar Styles */
+        .calendar-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .calendar {
+            background: white;
+            border: 2px solid #ce93d8;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header {
+            background: linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin: -15px -15px 10px -15px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+
+        .calendar-day-header {
+            background: #ede7f6;
+            padding: 8px 2px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.8em;
+            color: #6a1b9a;
+            border-radius: 4px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fafafa;
+            border-radius: 4px;
+            font-size: 0.9em;
+            cursor: default;
+        }
+
+        .calendar-day.marked {
+            background: #e53935;
+            color: white;
+            font-weight: bold;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(229, 57, 53, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .calendar-day.empty { background: transparent; }
+
+        .calendar-item {
+            background: #fafafa;
+            border: 2px solid #e1bee7;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .calendar-item .item-number {
+            background: #8e24aa;
+            color: white;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .calendar-item input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-top: 10px;
+            font-family: inherit;
+        }
+
+        .calendar-item input:focus { outline: none; border-color: #8e24aa; }
+        .calendar-item input.correct { border-color: #43a047; background: #c8e6c9; }
+        .calendar-item input.incorrect { border-color: #e53935; background: #ffcdd2; }
+
+        /* Audio Styles */
+        .audio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .audio-item {
+            background: #fafafa;
+            border: 2px solid #e1bee7;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .audio-item .audio-number {
+            background: #8e24aa;
+            color: white;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .play-btn {
+            background: linear-gradient(135deg, #8e24aa 0%, #6a1b9a 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            margin: 10px 0;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .play-btn.playing {
+            background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+            animation: pulse 1s infinite;
+        }
+
+        .audio-item input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-top: 10px;
+            font-family: inherit;
+        }
+
+        .audio-item input:focus { outline: none; border-color: #8e24aa; }
+        .audio-item input.correct { border-color: #43a047; background: #c8e6c9; }
+        .audio-item input.incorrect { border-color: #e53935; background: #ffcdd2; }
+
+        /* El Salvador Events */
+        .events-list {
+            margin: 20px 0;
+        }
+
+        .event-item {
+            background: #fafafa;
+            border: 2px solid #e1bee7;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .event-item .event-number {
+            background: #8e24aa;
+            color: white;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .event-item .event-text {
+            font-size: 1.1em;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .event-item .event-flag {
+            font-size: 1.5em;
+            margin-right: 5px;
+        }
+
+        .event-item input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ce93d8;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .event-item input:focus { outline: none; border-color: #8e24aa; }
+        .event-item input.correct { border-color: #43a047; background: #c8e6c9; }
+        .event-item input.incorrect { border-color: #e53935; background: #ffcdd2; }
+
+        .btn {
+            background: #8e24aa; color: white; border: none;
+            padding: 12px 25px; border-radius: 8px;
+            cursor: pointer; font-size: 1em; margin: 10px 5px;
+            transition: all 0.3s; font-weight: bold;
+        }
+
+        .btn:hover { background: #6a1b9a; transform: translateY(-2px); }
+        .btn-check { background: #43a047; }
+        .btn-check:hover { background: #2e7d32; }
+        .btn-check:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .btn-reset { background: #e53935; }
+        .btn-reset:hover { background: #c62828; }
+
+        .feedback {
+            margin-top: 10px; padding: 12px 15px;
+            border-radius: 8px; display: none; font-weight: 500;
+        }
+
+        .feedback.correct { background: #c8e6c9; color: #2e7d32; border: 2px solid #43a047; }
+        .feedback.incorrect { background: #ffcdd2; color: #c62828; border: 2px solid #e53935; }
+        .feedback.hint { background: #fff9c4; color: #f57f17; border: 2px solid #fbc02d; }
+
+        .part-badge {
+            display: inline-block; background: #8e24aa; color: white;
+            padding: 5px 15px; border-radius: 20px;
+            font-size: 0.85em; margin-right: 10px;
+        }
+
+        .validation-status {
+            background: #fff9c4;
+            border: 2px solid #fbc02d;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+            color: #f57f17;
+        }
+
+        .validation-status.ready {
+            background: #c8e6c9;
+            border-color: #43a047;
+            color: #2e7d32;
+        }
+
+        .activity-score {
+            background: #ede7f6;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #6a1b9a;
+            text-align: center;
+        }
+
+        .total-score {
+            background: linear-gradient(135deg, #43a047 0%, #66bb6a 100%);
+            color: white; padding: 25px; border-radius: 12px;
+            text-align: center; margin: 30px 0;
+            font-size: 1.5em; font-weight: bold;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .date-format-hint {
+            background: #e3f2fd;
+            border-left: 4px solid #1565c0;
+            padding: 12px;
+            border-radius: 0 8px 8px 0;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .date-format-hint strong { color: #1565c0; }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.8em; }
+            .section { padding: 20px; }
+            .calendar-grid { font-size: 0.8em; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📅 Dates Practice</h1>
+        <p>Calendar, Audio & Important Dates of El Salvador</p>
+        <div class="subtitle">Learn to write and recognize dates in English</div>
+    </header>
+
+    <div class="container">
+
+        <!-- THEORY SECTION -->
+        <div class="section" id="theory">
+            <h2>📖 Theory: How to Write Dates</h2>
+
+            <div class="theory-box">
+                <h3>Date Format in English:</h3>
+                <ul>
+                    <li><strong>Month + Day (ordinal) + Year</strong>: September 15th, 1821</li>
+                    <li><strong>Day (ordinal) + of + Month + Year</strong>: The 15th of September, 1821</li>
+                    <li>In American English: <strong>Month Day, Year</strong> → September 15, 1821</li>
+                    <li>In British English: <strong>Day Month Year</strong> → 15 September 1821</li>
+                </ul>
+            </div>
+
+            <div class="theory-box">
+                <h3>Months of the Year:</h3>
+                <p style="margin-top: 10px;"><strong>January, February, March, April, May, June, July, August, September, October, November, December</strong></p>
+                <p style="margin-top: 10px; font-style: italic; color: #666;">💡 Remember: Months always start with a capital letter!</p>
+            </div>
+
+            <div class="theory-box">
+                <h3>Ordinal Numbers for Days:</h3>
+                <ul>
+                    <li>1st (first), 2nd (second), 3rd (third)</li>
+                    <li>4th-20th: fourth, fifth, sixth... twentieth</li>
+                    <li>21st (twenty-first), 22nd (twenty-second), 23rd (twenty-third)</li>
+                    <li>30th (thirtieth), 31st (thirty-first)</li>
+                </ul>
+            </div>
+
+            <div class="date-format-hint">
+                <strong>💡 Accepted formats for this practice:</strong><br>
+                • "September 15th" / "September 15" / "15th of September"<br>
+                • "the fifteenth of September"<br>
+                • "September the fifteenth"<br>
+                • For years: "eighteen twenty-one" or "1821"
+            </div>
+        </div>
+
+        <!-- ACTIVITY 1: CALENDAR -->
+        <div class="section" id="activity1">
+            <h2><span class="part-badge">Activity 1</span>  Calendar: Write the Marked Date</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Look at each calendar. The marked day (in red) shows a specific date. Write the complete date in English using the format: <strong>"Month Day(th), Year"</strong>.
+                <br>⚠️ <strong>All answers must be correct before you can submit!</strong>
+            </div>
+
+            <div class="validation-status" id="act1-status">
+                ⏳ Complete all 5 calendars correctly to unlock submission
+            </div>
+
+            <div class="calendar-container" id="calendarContainer">
+                <!-- Calendars will be generated by JS -->
+            </div>
+
+            <div class="activity-score" id="act1-score">Score: 0/5</div>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn btn-check" id="submitAct1Btn" disabled>✓ Submit Activity 1</button>
+                <button class="btn btn-reset" id="resetAct1Btn">↺ Reset</button>
+            </div>
+            <div id="act1-feedback" class="feedback"></div>
+        </div>
+
+        <!-- ACTIVITY 2: AUDIO -->
+        <div class="section" id="activity2">
+            <h2><span class="part-badge">Activity 2</span> 🎧 Listen and Write the Date</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Click the 🔊 button to listen to the date. Write what you hear in English. You can listen as many times as you need.
+                <br>⚠️ <strong>All answers must be correct before you can submit!</strong>
+            </div>
+
+            <div class="validation-status" id="act2-status">
+                ⏳ Complete all 5 audio exercises correctly to unlock submission
+            </div>
+
+            <div class="audio-grid" id="audioGrid">
+                <!-- Audio items will be generated by JS -->
+            </div>
+
+            <div class="activity-score" id="act2-score">Score: 0/5</div>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn btn-check" id="submitAct2Btn" disabled>✓ Submit Activity 2</button>
+                <button class="btn btn-reset" id="resetAct2Btn">↺ Reset</button>
+            </div>
+            <div id="act2-feedback" class="feedback"></div>
+        </div>
+
+        <!-- ACTIVITY 3: EL SALVADOR DATES -->
+        <div class="section" id="activity3">
+            <h2><span class="part-badge">Activity 3</span> 🇸🇻 Important Dates of El Salvador</h2>
+            <div class="instructions">
+                <strong>Instructions:</strong> Read each important event from El Salvador and write the date when it is celebrated. Use the format: <strong>"Month Day(th)"</strong>.
+                <br>⚠️ <strong>All answers must be correct before you can submit!</strong>
+            </div>
+
+            <div class="validation-status" id="act3-status">
+                ⏳ Complete all 5 events correctly to unlock submission
+            </div>
+
+            <div class="events-list" id="eventsList">
+                <!-- Events will be generated by JS -->
+            </div>
+
+            <div class="activity-score" id="act3-score">Score: 0/5</div>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn btn-check" id="submitAct3Btn" disabled>✓ Submit Activity 3</button>
+                <button class="btn btn-reset" id="resetAct3Btn">↺ Reset</button>
+            </div>
+            <div id="act3-feedback" class="feedback"></div>
+        </div>
+
+        <!-- TOTAL SCORE -->
+        <div class="total-score" id="totalScore"></div>
+
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // ============ DATA ============
+
+        // Activity 1: Calendars (month, year, marked day)
+        const calendarsData = [
+            { month: 'January', year: 2025, day: 15, answers: ["january 15th", "january 15", "15th of january", "the fifteenth of january", "january the fifteenth", "jan 15th", "jan 15"] },
+            { month: 'March', year: 2025, day: 8, answers: ["march 8th", "march 8", "8th of march", "the eighth of march", "march the eighth", "mar 8th", "mar 8"] },
+            { month: 'July', year: 2025, day: 4, answers: ["july 4th", "july 4", "4th of july", "the fourth of july", "july the fourth", "jul 4th", "jul 4"] },
+            { month: 'October', year: 2025, day: 31, answers: ["october 31st", "october 31", "31st of october", "the thirty-first of october", "october the thirty-first", "oct 31st", "oct 31"] },
+            { month: 'December', year: 2025, day: 25, answers: ["december 25th", "december 25", "25th of december", "the twenty-fifth of december", "december the twenty-fifth", "dec 25th", "dec 25"] }
+        ];
+
+        // Activity 2: Audio dates
+        const audioData = [
+            { month: 'February', day: 14, year: 2025, answers: ["february 14th", "february 14", "14th of february", "the fourteenth of february", "february the fourteenth", "feb 14th", "feb 14"] },
+            { month: 'May', day: 1, year: 2025, answers: ["may 1st", "may 1", "1st of may", "the first of may", "may the first"] },
+            { month: 'August', day: 6, year: 2025, answers: ["august 6th", "august 6", "6th of august", "the sixth of august", "august the sixth", "aug 6th", "aug 6"] },
+            { month: 'November', day: 2, year: 2025, answers: ["november 2nd", "november 2", "2nd of november", "the second of november", "november the second", "nov 2nd", "nov 2"] },
+            { month: 'September', day: 15, year: 2025, answers: ["september 15th", "september 15", "15th of september", "the fifteenth of september", "september the fifteenth", "sep 15th", "sep 15"] }
+        ];
+
+        // Activity 3: El Salvador important dates
+        const elSalvadorEvents = [
+            { event: "Independence Day (Día de la Independencia)", flag: "🇸", answers: ["september 15th", "september 15", "15th of september", "the fifteenth of september", "sep 15th", "sep 15"] },
+            { event: "Labor Day (Día del Trabajo)", flag: "👷", answers: ["may 1st", "may 1", "1st of may", "the first of may", "may 1st"] },
+            { event: "Day of the Dead (Día de los Difuntos)", flag: "️", answers: ["november 2nd", "november 2", "2nd of november", "the second of november", "nov 2nd", "nov 2"] },
+            { event: "Christmas Day (Navidad)", flag: "🎄", answers: ["december 25th", "december 25", "25th of december", "the twenty-fifth of december", "dec 25th", "dec 25"] },
+            { event: "New Year's Day (Año Nuevo)", flag: "", answers: ["january 1st", "january 1", "1st of january", "the first of january", "jan 1st", "jan 1"] }
+        ];
+
+        // ============ HELPER FUNCTIONS ============
+        function normalizeText(text) {
+            if (!text) return '';
+            return text.toLowerCase().trim().replace(/\s+/g, ' ').replace(/\.$/, '').replace(/['']/g, "'");
+        }
+
+        function getDaysInMonth(month, year) {
+            const monthNum = new Date(Date.parse(month + " 1, " + year)).getMonth() + 1;
+            return new Date(year, monthNum, 0).getDate();
+        }
+
+        function getFirstDayOfMonth(month, year) {
+            const monthNum = new Date(Date.parse(month + " 1, " + year)).getMonth();
+            return new Date(year, monthNum, 1).getDay();
+        }
+
+        // ============ ACTIVITY 1: CALENDARS ============
+        const calendarContainer = document.getElementById('calendarContainer');
+        const act1Status = document.getElementById('act1-status');
+        const act1Score = document.getElementById('act1-score');
+        const submitAct1Btn = document.getElementById('submitAct1Btn');
+        let act1Correct = 0;
+
+        const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        calendarsData.forEach((cal, index) => {
+            const daysInMonth = getDaysInMonth(cal.month, cal.year);
+            const firstDay = getFirstDayOfMonth(cal.month, cal.year);
+
+            let daysHTML = '';
+            dayHeaders.forEach(d => {
+                daysHTML += `<div class="calendar-day-header">${d}</div>`;
+            });
+
+            for (let i = 0; i < firstDay; i++) {
+                daysHTML += `<div class="calendar-day empty"></div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const isMarked = day === cal.day ? 'marked' : '';
+                daysHTML += `<div class="calendar-day ${isMarked}">${day}</div>`;
+            }
+
+            const item = document.createElement('div');
+            item.className = 'calendar-item';
+            item.innerHTML = `
+                <div class="item-number">${index + 1}</div>
+                <div class="calendar">
+                    <div class="calendar-header">${cal.month} ${cal.year}</div>
+                    <div class="calendar-grid">${daysHTML}</div>
+                </div>
+                <div style="font-size: 0.9em; color: #666; margin-top: 10px; font-style: italic;">
+                     The red day is marked. What date is it?
+                </div>
+                <input type="text" id="cal-${index}" placeholder="Example: January 15th, 2025" data-index="${index}">
+            `;
+            calendarContainer.appendChild(item);
+        });
+
+        function checkCalendarAnswer(index) {
+            const input = document.getElementById(`cal-${index}`);
+            const userAnswer = normalizeText(input.value);
+            const correctAnswers = calendarsData[index].answers;
+
+            if (userAnswer === '') {
+                input.classList.remove('correct', 'incorrect');
+                return false;
+            }
+
+            const isCorrect = correctAnswers.some(ans => normalizeText(ans) === userAnswer);
+
+            if (isCorrect) {
+                input.classList.remove('incorrect');
+                input.classList.add('correct');
+                return true;
+            } else {
+                input.classList.remove('correct');
+                input.classList.add('incorrect');
+                return false;
+            }
+        }
+
+        function updateActivity1Status() {
+            let allCorrect = true;
+            act1Correct = 0;
+
+            calendarsData.forEach((_, index) => {
+                if (checkCalendarAnswer(index)) {
+                    act1Correct++;
+                } else {
+                    allCorrect = false;
+                }
+            });
+
+            act1Score.textContent = `Score: ${act1Correct}/5`;
+
+            if (allCorrect) {
+                act1Status.textContent = '✅ All calendars correct! You can submit now.';
+                act1Status.classList.add('ready');
+                submitAct1Btn.disabled = false;
+            } else {
+                act1Status.textContent = `⏳ ${act1Correct}/5 correct. Fix the incorrect answers to unlock submission.`;
+                act1Status.classList.remove('ready');
+                submitAct1Btn.disabled = true;
+            }
+        }
+
+        calendarsData.forEach((_, index) => {
+            const input = document.getElementById(`cal-${index}`);
+            input.addEventListener('input', () => {
+                checkCalendarAnswer(index);
+                updateActivity1Status();
+            });
+        });
+
+        submitAct1Btn.addEventListener('click', function() {
+            const fb = document.getElementById('act1-feedback');
+            fb.textContent = `🎉 Activity 1 completed! Score: ${act1Correct}/5 (100%)`;
+            fb.className = 'feedback correct';
+            fb.style.display = 'block';
+            submitAct1Btn.disabled = true;
+            checkTotalScore();
+        });
+
+        document.getElementById('resetAct1Btn').addEventListener('click', function() {
+            calendarsData.forEach((_, index) => {
+                const input = document.getElementById(`cal-${index}`);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            });
+            act1Correct = 0;
+            act1Score.textContent = 'Score: 0/5';
+            act1Status.textContent = '⏳ Complete all 5 calendars correctly to unlock submission';
+            act1Status.classList.remove('ready');
+            submitAct1Btn.disabled = true;
+            document.getElementById('act1-feedback').style.display = 'none';
+        });
+
+        // ============ ACTIVITY 2: AUDIO ============
+        const audioGrid = document.getElementById('audioGrid');
+        const act2Status = document.getElementById('act2-status');
+        const act2Score = document.getElementById('act2-score');
+        const submitAct2Btn = document.getElementById('submitAct2Btn');
+        let act2Correct = 0;
+
+        function speakDate(month, day, year, btnElement) {
+            if (!('speechSynthesis' in window)) {
+                alert('Text-to-speech not supported.');
+                return;
+            }
+
+            const dateText = `${month} ${day}, ${year}`;
+
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(dateText);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.7;
+            utterance.pitch = 0.9;
+
+            if (btnElement) {
+                btnElement.classList.add('playing');
+                btnElement.innerHTML = '🔊 Playing...';
+            }
+
+            utterance.onend = function() {
+                if (btnElement) {
+                    btnElement.classList.remove('playing');
+                    btnElement.innerHTML = '🔊 Play';
+                }
+            };
+
+            utterance.onerror = function() {
+                if (btnElement) {
+                    btnElement.classList.remove('playing');
+                    btnElement.innerHTML = '🔊 Play';
+                }
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        audioData.forEach((audio, index) => {
+            const item = document.createElement('div');
+            item.className = 'audio-item';
+            item.innerHTML = `
+                <div class="audio-number">${index + 1}</div>
+                <div style="margin: 10px 0;">
+                    <button class="play-btn" id="playBtn-${index}">🔊 Play</button>
+                </div>
+                <input type="text" id="audio-${index}" placeholder="Write the date you heard..." data-index="${index}">
+            `;
+            audioGrid.appendChild(item);
+
+            document.getElementById(`playBtn-${index}`).addEventListener('click', function() {
+                speakDate(audio.month, audio.day, audio.year, this);
+            });
+        });
+
+        function checkAudioAnswer(index) {
+            const input = document.getElementById(`audio-${index}`);
+            const userAnswer = normalizeText(input.value);
+            const correctAnswers = audioData[index].answers;
+
+            if (userAnswer === '') {
+                input.classList.remove('correct', 'incorrect');
+                return false;
+            }
+
+            const isCorrect = correctAnswers.some(ans => normalizeText(ans) === userAnswer);
+
+            if (isCorrect) {
+                input.classList.remove('incorrect');
+                input.classList.add('correct');
+                return true;
+            } else {
+                input.classList.remove('correct');
+                input.classList.add('incorrect');
+                return false;
+            }
+        }
+
+        function updateActivity2Status() {
+            let allCorrect = true;
+            act2Correct = 0;
+
+            audioData.forEach((_, index) => {
+                if (checkAudioAnswer(index)) {
+                    act2Correct++;
+                } else {
+                    allCorrect = false;
+                }
+            });
+
+            act2Score.textContent = `Score: ${act2Correct}/5`;
+
+            if (allCorrect) {
+                act2Status.textContent = '✅ All audio exercises correct! You can submit now.';
+                act2Status.classList.add('ready');
+                submitAct2Btn.disabled = false;
+            } else {
+                act2Status.textContent = `⏳ ${act2Correct}/5 correct. Fix the incorrect answers to unlock submission.`;
+                act2Status.classList.remove('ready');
+                submitAct2Btn.disabled = true;
+            }
+        }
+
+        audioData.forEach((_, index) => {
+            const input = document.getElementById(`audio-${index}`);
+            input.addEventListener('input', () => {
+                checkAudioAnswer(index);
+                updateActivity2Status();
+            });
+        });
+
+        submitAct2Btn.addEventListener('click', function() {
+            const fb = document.getElementById('act2-feedback');
+            fb.textContent = `🎉 Activity 2 completed! Score: ${act2Correct}/5 (100%)`;
+            fb.className = 'feedback correct';
+            fb.style.display = 'block';
+            submitAct2Btn.disabled = true;
+            checkTotalScore();
+        });
+
+        document.getElementById('resetAct2Btn').addEventListener('click', function() {
+            audioData.forEach((_, index) => {
+                const input = document.getElementById(`audio-${index}`);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            });
+            act2Correct = 0;
+            act2Score.textContent = 'Score: 0/5';
+            act2Status.textContent = '⏳ Complete all 5 audio exercises correctly to unlock submission';
+            act2Status.classList.remove('ready');
+            submitAct2Btn.disabled = true;
+            document.getElementById('act2-feedback').style.display = 'none';
+        });
+
+        // ============ ACTIVITY 3: EL SALVADOR EVENTS ============
+        const eventsList = document.getElementById('eventsList');
+        const act3Status = document.getElementById('act3-status');
+        const act3Score = document.getElementById('act3-score');
+        const submitAct3Btn = document.getElementById('submitAct3Btn');
+        let act3Correct = 0;
+
+        elSalvadorEvents.forEach((event, index) => {
+            const item = document.createElement('div');
+            item.className = 'event-item';
+            item.innerHTML = `
+                <div>
+                    <span class="event-number">${index + 1}</span>
+                    <span class="event-flag">${event.flag}</span>
+                    <span class="event-text">${event.event}</span>
+                </div>
+                <input type="text" id="event-${index}" placeholder="Write the date (e.g., September 15th)..." data-index="${index}">
+            `;
+            eventsList.appendChild(item);
+        });
+
+        function checkEventAnswer(index) {
+            const input = document.getElementById(`event-${index}`);
+            const userAnswer = normalizeText(input.value);
+            const correctAnswers = elSalvadorEvents[index].answers;
+
+            if (userAnswer === '') {
+                input.classList.remove('correct', 'incorrect');
+                return false;
+            }
+
+            const isCorrect = correctAnswers.some(ans => normalizeText(ans) === userAnswer);
+
+            if (isCorrect) {
+                input.classList.remove('incorrect');
+                input.classList.add('correct');
+                return true;
+            } else {
+                input.classList.remove('correct');
+                input.classList.add('incorrect');
+                return false;
+            }
+        }
+
+        function updateActivity3Status() {
+            let allCorrect = true;
+            act3Correct = 0;
+
+            elSalvadorEvents.forEach((_, index) => {
+                if (checkEventAnswer(index)) {
+                    act3Correct++;
+                } else {
+                    allCorrect = false;
+                }
+            });
+
+            act3Score.textContent = `Score: ${act3Correct}/5`;
+
+            if (allCorrect) {
+                act3Status.textContent = '✅ All events correct! You can submit now.';
+                act3Status.classList.add('ready');
+                submitAct3Btn.disabled = false;
+            } else {
+                act3Status.textContent = `⏳ ${act3Correct}/5 correct. Fix the incorrect answers to unlock submission.`;
+                act3Status.classList.remove('ready');
+                submitAct3Btn.disabled = true;
+            }
+        }
+
+        elSalvadorEvents.forEach((_, index) => {
+            const input = document.getElementById(`event-${index}`);
+            input.addEventListener('input', () => {
+                checkEventAnswer(index);
+                updateActivity3Status();
+            });
+        });
+
+        submitAct3Btn.addEventListener('click', function() {
+            const fb = document.getElementById('act3-feedback');
+            fb.textContent = ` Activity 3 completed! Score: ${act3Correct}/5 (100%)`;
+            fb.className = 'feedback correct';
+            fb.style.display = 'block';
+            submitAct3Btn.disabled = true;
+            checkTotalScore();
+        });
+
+        document.getElementById('resetAct3Btn').addEventListener('click', function() {
+            elSalvadorEvents.forEach((_, index) => {
+                const input = document.getElementById(`event-${index}`);
+                input.value = '';
+                input.classList.remove('correct', 'incorrect');
+            });
+            act3Correct = 0;
+            act3Score.textContent = 'Score: 0/5';
+            act3Status.textContent = '⏳ Complete all 5 events correctly to unlock submission';
+            act3Status.classList.remove('ready');
+            submitAct3Btn.disabled = true;
+            document.getElementById('act3-feedback').style.display = 'none';
+        });
+
+        // ============ TOTAL SCORE ============
+        function checkTotalScore() {
+            const totalScore = document.getElementById('totalScore');
+            const total = act1Correct + act2Correct + act3Correct;
+            const maxTotal = 15;
+            const percentage = Math.round((total / maxTotal) * 100);
+
+            if (total === maxTotal) {
+                totalScore.textContent = `🏆 PERFECT SCORE! ${total}/${maxTotal} (${percentage}%) - Excellent work!`;
+                totalScore.style.display = 'block';
+                totalScore.style.background = 'linear-gradient(135deg, #43a047 0%, #66bb6a 100%)';
+            } else if (total >= 12) {
+                totalScore.textContent = `⭐ Great Job! ${total}/${maxTotal} (${percentage}%)`;
+                totalScore.style.display = 'block';
+                totalScore.style.background = 'linear-gradient(135deg, #ffa000 0%, #ffca28 100%)';
+            } else if (total >= 8) {
+                totalScore.textContent = `👍 Good Work! ${total}/${maxTotal} (${percentage}%)`;
+                totalScore.style.display = 'block';
+                totalScore.style.background = 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)';
+            }
+        }
+
+    });
+    </script>
+
+</body>
+</html>
