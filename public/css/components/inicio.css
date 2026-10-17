@@ -1,0 +1,19 @@
+/* ============================================================
+   inicio.css — Vista de inicio (css/components/inicio.css)
+   TODO: estilos del inicio (próximamente)
+   ============================================================ */
+
+.inicio-vista {
+  min-height: 100vh;
+  background: #ffffff; /* fondo blanco */
+}
+
+/* Barra de desarrollo TEMPORAL (solo si se descomenta el botón Salir
+   en js/components/inicio.js): */
+/*
+.inicio-dev-barra {
+  position: fixed;
+  bottom: 0.75rem;
+  right: 0.75rem;
+}
+*/
