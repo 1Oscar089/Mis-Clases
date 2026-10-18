@@ -12,6 +12,10 @@
 //   { nombre, rol, email, foto, nie (solo estudiante), grados, creadoEn }
 // - Primera vez: el estudiante elige SU grado; el docente elige TODOS
 //   los grados que imparte. Se guarda en users/{uid}.grados (array).
+//
+// Convención del proyecto: este módulo lleva su CSS implícito (inyectado
+// desde aquí) para no crear archivos .css extra. Vista 100% responsiva
+// (celular / tablet / PC) y SIN scroll para ningún lado.
 // ============================================================
 
 import { auth, db } from "../data/initFirebase.js";
@@ -81,10 +85,8 @@ function notify(mensaje, variant = "danger") {
     alerta.setAttribute("closable", "");
     alerta.setAttribute("duration", "4000");
     alerta.textContent = mensaje;
-    // Nota: NO agregamos sl-after-hide + remove() manual; Shoelace limpia
-    // el toast él solo (quitarlo a mano provoca NotFoundError: removeChild).
+    // Nota: NO remover el toast a mano (NotFoundError: removeChild).
     document.body.append(alerta);
-    // Esperar a que sl-alert esté cargado antes de .toast() para no crashear
     customElements.whenDefined("sl-alert").then(() => alerta.toast());
   } catch (e) {
     console.warn("[aviso]", mensaje);
@@ -111,41 +113,132 @@ function mensajeDeError(e) {
   return codigos[e?.code] || "Ocurrió un error: " + (e?.code || e?.message || e);
 }
 
+/* ---------------- CSS implícito de la vista ---------------- */
+
 function inyectarEstilos() {
   if (document.getElementById("auth-estilos")) return;
   const estilo = document.createElement("style");
   estilo.id = "auth-estilos";
   estilo.textContent = `
+    /* Sin scroll en la página mientras el login está en pantalla */
+    body:has(.auth-vista) { overflow: hidden; height: 100dvh; margin: 0; }
+    body:has(.auth-vista) > #app { margin: 0; }
+
     .auth-vista {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      align-content: center;
-      padding: 1rem;
-      background: #ffffff;
-    }
-    .auth-tarjeta { width: min(400px, 100%); }
-    .auth-tarjeta h1 {
-      margin: 0;
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: #7c3aed; /* morado */
-    }
-    .auth-intro {
-      margin: 0 0 1.25rem;
-      color: var(--sl-color-neutral-600);
-    }
-    .auth-google {
-      display: inline-flex;
+      box-sizing: border-box;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.6rem;
+      padding: 1.25rem;
+      background: #ffffff;
+      background-image:
+        radial-gradient(circle at 10% 15%, rgba(124, 58, 237, .12), transparent 30%),
+        radial-gradient(circle at 90% 85%, rgba(249, 115, 22, .10), transparent 32%),
+        radial-gradient(circle at 85% 10%, rgba(37, 99, 235, .09), transparent 26%),
+        radial-gradient(circle at 12% 90%, rgba(22, 163, 74, .09), transparent 26%);
     }
-    .auth-nota {
-      margin: 1rem 0 0;
+
+    .auth-caja {
+      box-sizing: border-box;
+      width: min(420px, 100%);
+      max-height: calc(100dvh - 2.5rem);
+      background: #ffffff;
+      border: 1px solid #ece9f6;
+      border-radius: 1.5rem;
+      box-shadow: 0 18px 50px rgba(17, 12, 46, .12);
+      padding: 2rem 1.75rem;
       text-align: center;
-      font-size: 0.8rem;
-      color: var(--sl-color-neutral-500);
+    }
+
+    .auth-logo {
+      width: 58px;
+      height: 58px;
+      margin: 0 auto .55rem;
+      border-radius: 1rem;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 1.6rem;
+      font-family: system-ui, sans-serif;
+      box-shadow: 0 8px 20px rgba(124, 58, 237, .35);
+    }
+
+    .auth-puntos {
+      display: flex;
+      gap: .35rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .auth-puntos span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .auth-titulo {
+      margin: 0 0 .35rem;
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #7c3aed; /* morado */
+    }
+
+    .auth-sub {
+      margin: 0 0 1.5rem;
+      color: #6b7280;
+      font-size: .95rem;
+      line-height: 1.45;
+    }
+
+    .auth-btn::part(base) {
+      width: 100%;
+      height: 48px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      font-weight: 600;
+      color: #1f2937;
+      transition: box-shadow .2s ease, border-color .2s ease;
+    }
+    .auth-btn::part(base):hover {
+      border-color: #d1d5db;
+      box-shadow: 0 6px 18px rgba(17, 12, 46, .10);
+    }
+    .auth-btn::part(base):active { transform: scale(.99); }
+    .auth-btn::part(label) {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      font-size: 1rem;
+    }
+
+    .auth-nota {
+      margin: 1.25rem 0 0;
+      font-size: .8rem;
+      color: #9ca3af;
+    }
+    .auth-nota strong { color: #7c3aed; font-weight: 600; }
+
+    /* Diálogo de grados: responsivo */
+    .sl-dialog-grados { --width: min(440px, 92vw); }
+    .sl-dialog-grados::part(panel) { border-radius: 1.25rem; }
+
+    /* Pantallas cortas (celular horizontal) → compactar sin scroll */
+    @media (max-height: 560px) {
+      .auth-vista { padding: .75rem; }
+      .auth-caja { padding: 1.1rem 1.25rem; border-radius: 1.1rem; }
+      .auth-logo { width: 42px; height: 42px; font-size: 1.15rem; }
+      .auth-sub { margin-bottom: 1rem; }
+      .auth-nota { margin-top: .85rem; }
+    }
+
+    /* Celulares angostos */
+    @media (max-width: 360px) {
+      .auth-caja { padding: 1.5rem 1.1rem; }
+      .auth-titulo { font-size: 1.25rem; }
     }
   `;
   document.head.append(estilo);
@@ -157,19 +250,27 @@ function renderLogin() {
   if (!contenedor) return;
   contenedor.innerHTML = `
     <div class="auth-vista">
-      <sl-card class="auth-tarjeta">
-        <h1 slot="header">Mis Clases Online</h1>
+      <div class="auth-caja">
+        <div class="auth-logo">M</div>
+        <div class="auth-puntos">
+          <span style="background:#ef4444"></span>
+          <span style="background:#f97316"></span>
+          <span style="background:#7c3aed"></span>
+          <span style="background:#2563eb"></span>
+          <span style="background:#16a34a"></span>
+        </div>
 
-        <p class="auth-intro">
-          Ingresa con tu cuenta institucional de Google para continuar.
-        </p>
+        <h1 class="auth-titulo">MIS CLASES ONLINE</h1>
+        <p class="auth-sub">Revisa clases, recursos, tareas, examenes, entre otros.</p>
 
-        <sl-button id="auth-google" variant="neutral" outline size="large"
-                   style="width: 100%;">
-          <span class="auth-google">${LOGO_GOOGLE} Iniciar sesión con Google</span>
+        <sl-button id="auth-google" class="auth-btn" size="large">
+          <span class="auth-btn-int">${LOGO_GOOGLE} Continuar con Google</span>
         </sl-button>
-      </sl-card>
-      <p class="auth-nota">Acceso exclusivo con cuentas ${DOMINIO_PERMITIDO}</p>
+
+        <p class="auth-nota">
+          Acceso exclusivo con cuentas <strong>${DOMINIO_PERMITIDO}</strong>
+        </p>
+      </div>
     </div>`;
 
   contenedor.querySelector("#auth-google").addEventListener("click", ingresarConGoogle);
@@ -257,6 +358,7 @@ function pedirGrados(perfil) {
     const esEstudiante = perfil.rol === "estudiante";
 
     const dialogo = document.createElement("sl-dialog");
+    dialogo.className = "sl-dialog-grados";
     dialogo.setAttribute("label", esEstudiante ? "Selecciona tu grado" : "Grados que impartes");
     dialogo.innerHTML = `
       <p>
@@ -269,13 +371,14 @@ function pedirGrados(perfil) {
                  style="width: 100%;" ${esEstudiante ? "" : "multiple"}>
         ${GRADOS.map((g) => `<sl-option value="${g.id}">${g.nombre}</sl-option>`).join("")}
       </sl-select>
-      <sl-button slot="footer" variant="primary" id="grados-guardar">Guardar</sl-button>
+      <sl-button slot="footer" variant="primary" pill id="grados-guardar">Guardar</sl-button>
     `;
     document.body.append(dialogo);
 
     // sl-dialog se carga de forma perezosa (autoloader de Shoelace): hay que
     // esperar a que el componente esté definido para que existan .show()/.hide().
-    // Sin esta espera, lanza "dialogo.show is not a function" cuando la red va lenta.
+    // La espera va SIEMPRE después del append() (el autoloader carga el
+    // componente al verlo en el DOM; esperar antes sería un deadlock).
     customElements.whenDefined("sl-dialog").then(() => dialogo.show());
 
     // El modal no se puede cerrar sin guardar (bloquea Esc y clic fuera)
