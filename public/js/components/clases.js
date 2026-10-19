@@ -22,19 +22,12 @@
 // Convención: CSS implícito · 100% responsivo · bajo la userbar.
 // ============================================================
 
-import { db } from "../data/initFirebase.js";
+// REGLA DEL PROYECTO: nada toca Firestore directo → todo pasa por db.js
+import { db } from "../data/db.js";
 import { GRADOS } from "./auth.js";
 import { renderUserbar } from "./userbar.js";
 import { renderInicio } from "./inicio.js";
 import { escapeHtml } from "../utils/helpers.js";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 /* ---------------- Materias ---------------- */
 
@@ -581,14 +574,13 @@ async function cargarClasesDocente() {
   cargando = true;
   pintarListado();
   try {
-    const snap = await getDocs(collection(db, "clases", String(gradoSel), materiaSel));
-    clasesCache = snap.docs
-      .map((d) => ({
-        id: d.id,
+    const lista = await db.clases.listar(gradoSel, materiaSel);
+    clasesCache = lista
+      .map((c) => ({
         grado: gradoSel,
         materiaId: materiaSel,
         materia: materiaDe(materiaSel).nombre,
-        ...d.data(),
+        ...c,
       }))
       .sort(compararClases);
   } catch (e) {
@@ -757,22 +749,20 @@ function abrirModalCrear() {
     // Id legible = nombre del archivo de contenido
     const id = `d${dia}-u${slug(unidad)}-l${slug(leccion)}-${slug(titulo)}`;
 
-    guardar.loading = true;
+        guardar.loading = true;
     try {
-      const ref = doc(db, "clases", String(gradoSel), materiaSel, id);
-      const existe = await getDoc(ref);
-      if (existe.exists()) {
+      const id = `d${dia}-u${slug(unidad)}-l${slug(leccion)}-${slug(titulo)}`;
+      if (await db.clases.existe(gradoSel, materiaSel, id)) {
         notify("Ya existe una clase con esos datos en esta materia.", "danger");
         return;
       }
-      await setDoc(ref, {
+      await db.clases.crear(gradoSel, materiaSel, id, {
         dia,
         unidad,
         leccion,
         clase: titulo,
-        creadoEn: serverTimestamp(),
         creadoPor: perfilActual?.uid || "",
-      });
+      }); // db.js añade creadoEn
       notify(`Clase creada. Contenido en: clases/${gradoSel}/${materiaSel}/${id}.js`, "success", 6000);
       d.hide();
       cargarClasesDocente();

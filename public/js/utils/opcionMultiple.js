@@ -1,35 +1,51 @@
 // ============================================================
 // opcionMultiple.js — Pregunta de opción múltiple reutilizable
-// (js/utils/opcionMultiple.js)
+// (js/utils/opcionMultiple.js) · v2: puntaje por pregunta, OCULTO
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta
-// una pregunta interactiva en el elemento que se le indique.
+// una pregunta interactiva en el elemento que se indique.
 //
 // USO (desde el archivo de contenido de una clase, p. ej.
 // public/clases/8/matematica-y-datos/mi-clase.js):
 //
-//   import { opcionMultiple } from "../../../js/utils/opcionMultiple.js";
+//   import { opcionMultiple, obtenerNota } from "../../../js/utils/opcionMultiple.js";
 //
 //   opcionMultiple({
-//     contenedor,   // elemento del DOM donde insertar la pregunta
-//     perfil,       // perfil del usuario (users/{uid}, trae uid)
-//     clase,        // objeto de la clase { id, grado, materiaId, ... }
-//     pregunta: "¿Cuál es el resultado de 3/4 + 1/4?",
-//     opciones: ["4/8", "1/2", "1", "3/8"],   // entre 2 y 6 textos
-//     correcta: 3,   // NÚMERO de la respuesta correcta (1 = primera opción)
-//     // id: "p1",   // (opcional) identificador único de la pregunta
-//   });
+//     contenedor,           // elemento del DOM donde insertar la pregunta
+//     perfil,               // perfil del usuario (users/{uid}, trae uid)
+//     clase,                // objeto de la clase { id, grado, materiaId, ... }
+//     indicacion: "¿Cuál es el resultado de 3/4 + 1/4?",
+//     respuestas: ["4/8", "1/2", "1", "3/8"],  // entre 2 y 6 textos
+//     respuestaCorrecta: 3, // NÚMERO de la respuesta correcta (1 = primera)
+//     puntaje: 2,           // valor de esta pregunta para la clase (0 a 10)
+//     // id: "p1",          // (opcional) identificador único y estable
+//   }).then((ganado) => { /* nota obtenida en ESTA pregunta (oculta) */ });
 //
-// Nota de la clase (se guarda por usuario y por clase):
-//   · Correcta al 1er intento → +1 punto.
-//   · Correcta al 2do intento → +0.5 punto.
-//   · Fallada 2 veces → 0 puntos (podrá reintentarse en otra sesión).
-//   · Cada pregunta solo suma UNA vez (queda registrada).
-//   · Guardado: localStorage "mco_nota_{uid}_{claseId}" (instantáneo)
-//     + notas/{uid}/clases/{claseId} en Firestore (mejor esfuerzo).
+//   // o dentro de una función async:
+//   // const ganado = await opcionMultiple({ ... });
 //
-// También exporta obtenerNota(perfil, clase) y sumarPuntos(...) por si
-// otras utilidades (tareas, exámenes) necesitan la misma nota.
+// QUÉ DEVUELVE — Promise<number> con lo ganado en ESTA pregunta.
+//   LA NOTA ES INVISIBLE: el recuadro NO muestra puntos ni los menciona.
+//   · Correcta al 1er intento → el puntaje completo (ej. 2).
+//   · Correcta al 2do intento → la MITAD con un decimal (ej. 1).
+//   · Incorrecta 2 veces      → 0 (podrá reintentar en otra sesión).
+//   · Si ya estaba respondida → 0 (no vuelve a sumar).
+//   El estudiante solo ve si acertó, en qué intento va y si puede reintentar.
+//
+// SUMATORIA FINAL DE LA CLASE (también oculta; muéstrala donde quieras):
+//   const nota = await obtenerNota(perfil, clase);
+//   nota.puntos  // ← suma de TODAS las preguntas respondidas de la clase
+//                //    (sesión actual y anteriores). NO le sumes el valor
+//                //    devuelto por opcionMultiple(): sería duplicado.
+//
+// Persistencia: localStorage "mco_nota_{uid}_{claseId}" (instantáneo)
+//   + notas/{uid}/clases/{claseId} en Firestore (mejor esfuerzo).
+//   Cada pregunta guarda su valor UNA sola vez (clave: id, o slug del
+//   texto + hash). Lo no sumado no se guarda → las preguntas falladas
+//   2 veces reaparecen frescas en otra sesión.
+//
+// Compatibilidad: también acepta los nombres antiguos pregunta / opciones /
+//   correcta, y puntaje por defecto = 1 (comportamiento de la v1).
 //
 // Convención: CSS implícito · 100% responsivo · fondo blanco · paleta del proyecto.
 // ============================================================
@@ -69,19 +85,9 @@ function hash8(texto) {
   return h.toString(16).padStart(8, "0");
 }
 
-// Toast de aviso (mismo patrón que auth.js / clases.js)
-function notify(mensaje, variant = "warning", duracion = 4000) {
-  try {
-    const alerta = document.createElement("sl-alert");
-    alerta.setAttribute("variant", variant);
-    alerta.setAttribute("closable", "");
-    alerta.setAttribute("duration", String(duracion));
-    alerta.textContent = mensaje;
-    document.body.append(alerta);
-    customElements.whenDefined("sl-alert").then(() => alerta.toast());
-  } catch (e) {
-    console.warn("[aviso]", mensaje);
-  }
+// Redondeo a 1 decimal (la mitad del puntaje siempre con un decimal)
+function redondear1(n) {
+  return Math.round(Number(n) * 10) / 10;
 }
 
 /* ---------------- CSS implícito ---------------- */
@@ -120,8 +126,18 @@ function inyectarEstilos() {
       letter-spacing: .04em;
       text-transform: uppercase;
     }
-    .om-nota { font-size: .8rem; color: #6b7280; }
-    .om-nota b { color: #7c3aed; font-size: .95rem; }
+    .om-chip {
+      font-size: .72rem;
+      font-weight: 800;
+      padding: .18rem .6rem;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: #4b5563;
+      white-space: nowrap;
+    }
+    .om-chip.aviso { background: rgba(249, 115, 22, .14); color: #c2410c; }
+    .om-chip.bien { background: rgba(22, 163, 52, .12); color: #15803d; }
+    .om-chip.mal { background: rgba(239, 68, 68, .12); color: #b91c1c; }
 
     .om-pregunta {
       margin: 0 0 .85rem;
@@ -307,167 +323,197 @@ export async function sumarPuntos(perfil, clase, preguntaId, puntos) {
 
 /**
  * Inserta una pregunta de opción múltiple en el contenedor indicado.
- * Devuelve el elemento creado (o null si los parámetros son inválidos).
+ * Devuelve una Promise<number> con la nota ganada en ESTA pregunta
+ * (puntaje completo / mitad con un decimal / 0). Esa nota NUNCA se
+ * muestra en pantalla: queda oculta para la sumatoria final de la clase.
  */
-export function opcionMultiple({ contenedor, perfil, clase, pregunta, opciones, correcta, id } = {}) {
-  inyectarEstilos();
+export function opcionMultiple(config = {}) {
+  const {
+    contenedor,
+    perfil,
+    clase,
+    id,
+    indicacion, pregunta,         // pregunta = nombre antiguo (compatibilidad)
+    respuestas, opciones,         // opciones = nombre antiguo (compatibilidad)
+    respuestaCorrecta, correcta,  // correcta  = nombre antiguo (compatibilidad)
+  } = config;
 
-  // --- Validaciones (avisos claros para quien escribe el contenido) ---
-  const texto = String(pregunta ?? "").trim();
-  const lista = Array.isArray(opciones) ? opciones.map((o) => String(o ?? "").trim()) : [];
-  const idx = Number(correcta);
-
-  function errorDev(mensaje) {
-    console.error("[opcionMultiple]", mensaje);
-    const div = document.createElement("div");
-    div.className = "om-caja om-error-dev";
-    div.textContent = "[opcionMultiple] " + mensaje;
-    contenedor.append(div);
-    return null;
+  // PUNTAJE OCULTO de esta pregunta (0 a 10). Defecto: 1 (compatibilidad v1).
+  let puntaje = Number(config.puntaje ?? 1);
+  if (!Number.isFinite(puntaje) || puntaje < 0 || puntaje > 10) {
+    console.warn("[opcionMultiple] 'puntaje' debe ser un número entre 0 y 10 (llegó:", config.puntaje, "). Se usará 1.");
+    puntaje = 1;
   }
+  puntaje = redondear1(puntaje);
 
-  if (!contenedor || typeof contenedor.append !== "function") {
-    console.error("[opcionMultiple] Falta 'contenedor' (elemento del DOM donde insertar la pregunta).");
-    return null;
-  }
-  if (!texto) return errorDev("Falta el texto de la pregunta.");
-  if (lista.length < 2 || lista.length > 6) {
-    return errorDev(`Las opciones deben ser entre 2 y 6 (llegaron ${lista.length}).`);
-  }
-  if (lista.some((o) => !o)) return errorDev("Hay opciones vacías (cada respuesta necesita texto).");
-  if (!Number.isInteger(idx) || idx < 1 || idx > lista.length) {
-    return errorDev(`'correcta' debe ser un número entero entre 1 y ${lista.length} (1 = primera opción).`);
-  }
-  if (!perfil?.uid || !clase?.id) {
-    return errorDev("Faltan 'perfil' (con uid) o 'clase' (con id): la nota no se puede guardar.");
-  }
+  return new Promise((resolve) => {
+    inyectarEstilos();
 
-  const idxCorrecta = idx - 1;
-  const qid = id ? slug(String(id)) : `${slug(texto)}-${hash8(normalizar(texto))}`;
+    // --- Validaciones (avisos claros para quien escribe el contenido) ---
+    const texto = String(indicacion ?? pregunta ?? "").trim();
+    const lista = (Array.isArray(respuestas) ? respuestas
+      : Array.isArray(opciones) ? opciones : []).map((o) => String(o ?? "").trim());
+    const idx = Number(respuestaCorrecta ?? correcta);
 
-  let intento = 0;        // 0 = primer intento, 1 = segunda oportunidad
-  let seleccion = -1;
-  let bloqueada = false;  // pregunta terminada (resuelta o agotada)
-
-  // --- Estructura ---
-  const caja = document.createElement("section");
-  caja.className = "om-caja";
-  caja.setAttribute("aria-label", texto);
-  caja.innerHTML = `
-    <div class="om-cab">
-      <span class="om-etiqueta">Pregunta</span>
-      <span class="om-nota">Nota de la clase: <b>0</b> pts</span>
-    </div>
-    <p class="om-pregunta"></p>
-    <div class="om-opciones"></div>
-    <div class="om-pie">
-      <span class="om-feedback" aria-live="polite"></span>
-      <button type="button" class="om-enviar" disabled>Enviar respuesta</button>
-    </div>`;
-  caja.querySelector(".om-pregunta").textContent = texto;
-
-  const feedbackEl = caja.querySelector(".om-feedback");
-  const btnEnviar = caja.querySelector(".om-enviar");
-  const notaEl = caja.querySelector(".om-nota b");
-
-  const feedback = (mensaje, tipo) => {
-    feedbackEl.textContent = mensaje;
-    feedbackEl.className = "om-feedback" + (tipo ? " " + tipo : "");
-  };
-
-  const pintarNota = (puntos) => {
-    notaEl.textContent = String(puntos);
-  };
-
-  const bloquear = () => {
-    bloqueada = true;
-    btnEnviar.disabled = true;
-    botones.forEach((b) => {
-      b.disabled = true;
-      b.classList.remove("seleccionada");
-    });
-  };
-
-  const botones = lista.map((textoOpcion, i) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "om-opcion";
-    b.setAttribute("aria-pressed", "false");
-
-    const letra = document.createElement("span");
-    letra.className = "om-letra";
-    letra.textContent = LETRAS[i];
-
-    const t = document.createElement("span");
-    t.className = "om-texto";
-    t.textContent = textoOpcion;
-
-    b.append(letra, t);
-    b.addEventListener("click", () => {
-      if (bloqueada) return;
-      seleccion = i;
-      botones.forEach((x, j) => {
-        x.classList.toggle("seleccionada", j === i);
-        x.setAttribute("aria-pressed", String(j === i));
-      });
-      btnEnviar.disabled = false;
-      feedback("", "");
-    });
-    return b;
-  });
-  caja.querySelector(".om-opciones").append(...botones);
-
-  // --- Nota inicial: local al instante, Firestore de fondo ---
-  obtenerNota(perfil, clase).then((nota) => {
-    pintarNota(nota.puntos);
-    if (nota.preguntas[qid] != null) {
-      // Ya respondida antes: se muestra resuelta y bloqueada
-      bloquear();
-      botones[idxCorrecta].classList.add("correcta");
-      btnEnviar.textContent = "Respondida";
-      feedback(`Ya respondiste esta pregunta: +${nota.preguntas[qid]} punto(s).`, "ok");
+    function errorDev(mensaje) {
+      console.error("[opcionMultiple]", mensaje);
+      const div = document.createElement("div");
+      div.className = "om-caja om-error-dev";
+      div.textContent = "[opcionMultiple] " + mensaje;
+      contenedor.append(div);
     }
-  });
 
-  // --- Enviar respuesta ---
-  btnEnviar.addEventListener("click", async () => {
-    if (bloqueada || seleccion < 0) return;
-
-    if (seleccion === idxCorrecta) {
-      const puntos = intento === 0 ? 1 : 0.5;
-      bloquear();
-      botones[idxCorrecta].classList.add("correcta");
-      btnEnviar.textContent = "Respondida";
-      feedback(
-        intento === 0
-          ? "¡Correcta! +1 punto para tu nota."
-          : "¡Correcta al segundo intento! +0.5 punto para tu nota.",
-        "ok"
-      );
-      notify(`+${puntos} punto${puntos === 1 ? "" : "s"} en esta pregunta`, "success", 3000);
-      const nota = await sumarPuntos(perfil, clase, qid, puntos);
-      pintarNota(nota.puntos);
+    if (!contenedor || typeof contenedor.append !== "function") {
+      console.error("[opcionMultiple] Falta 'contenedor' (elemento del DOM donde insertar la pregunta).");
+      resolve(0);
+      return;
+    }
+    if (!texto) { errorDev("Falta la indicación de la pregunta."); resolve(0); return; }
+    if (lista.length < 2 || lista.length > 6) {
+      errorDev(`Las respuestas deben ser entre 2 y 6 (llegaron ${lista.length}).`);
+      resolve(0);
+      return;
+    }
+    if (lista.some((o) => !o)) { errorDev("Hay respuestas vacías (cada una necesita texto)."); resolve(0); return; }
+    if (!Number.isInteger(idx) || idx < 1 || idx > lista.length) {
+      errorDev(`'respuestaCorrecta' debe ser un número entero entre 1 y ${lista.length} (1 = primera respuesta).`);
+      resolve(0);
+      return;
+    }
+    if (!perfil?.uid || !clase?.id) {
+      errorDev("Faltan 'perfil' (con uid) o 'clase' (con id): la nota no se puede guardar.");
+      resolve(0);
       return;
     }
 
-    // Respuesta incorrecta
-    botones[seleccion].classList.remove("seleccionada");
-    botones[seleccion].classList.add("erronea");
-    botones[seleccion].disabled = true;
-    seleccion = -1;
-    btnEnviar.disabled = true;
-    intento++;
+    const idxCorrecta = idx - 1;
+    const qid = id ? slug(String(id)) : `${slug(texto)}-${hash8(normalizar(texto))}`;
 
-    if (intento === 1) {
-      feedback("No es correcta. Tienes una segunda oportunidad: si aciertas sumarás medio punto.", "aviso");
-    } else {
-      bloquear();
-      botones[idxCorrecta].classList.add("correcta");
-      btnEnviar.textContent = "Sin más intentos";
-      feedback("Incorrecta otra vez. Esta pregunta no suma puntos esta vez; podrás intentarlo de nuevo en otra sesión.", "mal");
-    }
+    let intento = 0;        // fallos acumulados (0 = primer intento, 1 = segunda oportunidad)
+    let seleccion = -1;
+    let bloqueada = false;  // pregunta terminada (resuelta, agotada o ya respondida)
+
+    // --- Estructura (SIN ninguna mención al puntaje: queda oculto) ---
+    const caja = document.createElement("section");
+    caja.className = "om-caja";
+    caja.setAttribute("aria-label", texto);
+    caja.innerHTML = `
+      <div class="om-cab">
+        <span class="om-etiqueta">Pregunta</span>
+        <span class="om-chip">Intento 1 de 2</span>
+      </div>
+      <p class="om-pregunta"></p>
+      <div class="om-opciones"></div>
+      <div class="om-pie">
+        <span class="om-feedback" aria-live="polite"></span>
+        <button type="button" class="om-enviar" disabled>Enviar respuesta</button>
+      </div>`;
+    caja.querySelector(".om-pregunta").textContent = texto;
+
+    const chipEl = caja.querySelector(".om-chip");
+    const feedbackEl = caja.querySelector(".om-feedback");
+    const btnEnviar = caja.querySelector(".om-enviar");
+
+    const feedback = (mensaje, tipo) => {
+      feedbackEl.textContent = mensaje;
+      feedbackEl.className = "om-feedback" + (tipo ? " " + tipo : "");
+    };
+    const chip = (mensaje, tipo) => {
+      chipEl.textContent = mensaje;
+      chipEl.className = "om-chip" + (tipo ? " " + tipo : "");
+    };
+
+    const bloquear = () => {
+      bloqueada = true;
+      btnEnviar.disabled = true;
+      botones.forEach((b) => {
+        b.disabled = true;
+        b.classList.remove("seleccionada");
+      });
+    };
+
+    const botones = lista.map((textoOpcion, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "om-opcion";
+      b.setAttribute("aria-pressed", "false");
+
+      const letra = document.createElement("span");
+      letra.className = "om-letra";
+      letra.textContent = LETRAS[i];
+
+      const t = document.createElement("span");
+      t.className = "om-texto";
+      t.textContent = textoOpcion;
+
+      b.append(letra, t);
+      b.addEventListener("click", () => {
+        if (bloqueada) return;
+        seleccion = i;
+        botones.forEach((x, j) => {
+          x.classList.toggle("seleccionada", j === i);
+          x.setAttribute("aria-pressed", String(j === i));
+        });
+        btnEnviar.disabled = false;
+        feedback("", "");
+      });
+      return b;
+    });
+    caja.querySelector(".om-opciones").append(...botones);
+
+    // --- ¿Ya respondida antes? (el valor guardado NO se muestra: solo se bloquea) ---
+    obtenerNota(perfil, clase).then((nota) => {
+      if (bloqueada || intento > 0 || seleccion >= 0) return; // ya interactuó en esta sesión
+      if (nota.preguntas[qid] != null) {
+        bloquear();
+        botones[idxCorrecta].classList.add("correcta");
+        btnEnviar.textContent = "Respondida";
+        chip("Respondida", "bien");
+        feedback("Ya respondiste esta pregunta.", "ok");
+        resolve(0); // no vuelve a sumar
+      }
+    });
+
+    // --- Enviar respuesta ---
+    btnEnviar.addEventListener("click", () => {
+      if (bloqueada || seleccion < 0) return;
+
+      if (seleccion === idxCorrecta) {
+        const primero = intento === 0;
+        // Nota OCULTA: completa al 1.er intento, mitad con 1 decimal al 2.º.
+        const ganado = primero ? redondear1(puntaje) : redondear1(puntaje / 2);
+        bloquear();
+        botones[idxCorrecta].classList.add("correcta");
+        btnEnviar.textContent = "Respondida";
+        chip(primero ? "Resuelta" : "Resuelta (2.º intento)", "bien");
+        feedback(primero ? "¡Correcta! Muy bien." : "¡Correcta en tu segundo intento! Muy bien.", "ok");
+        resolve(ganado); // ← la nota solo la recibe el archivo de la clase
+        sumarPuntos(perfil, clase, qid, ganado).catch(() => {});
+        return;
+      }
+
+      // Respuesta incorrecta
+      botones[seleccion].classList.remove("seleccionada");
+      botones[seleccion].classList.add("erronea");
+      botones[seleccion].disabled = true;
+      seleccion = -1;
+      btnEnviar.disabled = true;
+      intento++;
+
+      if (intento === 1) {
+        chip("Intento 2 de 2", "aviso");
+        btnEnviar.textContent = "Intentar de nuevo";
+        feedback("No es correcta. Tienes una segunda oportunidad.", "aviso");
+      } else {
+        bloquear();
+        botones[idxCorrecta].classList.add("correcta");
+        btnEnviar.textContent = "Sin más intentos";
+        chip("Intentos agotados", "mal");
+        feedback("Incorrecta otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión.", "mal");
+        resolve(0);
+      }
+    });
+
+    contenedor.append(caja);
   });
-
-  contenedor.append(caja);
-  return caja;
 }

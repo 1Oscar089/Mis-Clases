@@ -12,13 +12,16 @@
 //   { nombre, rol, email, foto, nie (solo estudiante), grados, creadoEn }
 // - Primera vez: el estudiante elige SU grado; el docente elige TODOS
 //   los grados que imparte. Se guarda en users/{uid}.grados (array).
+// - REGLA DEL PROYECTO: este módulo SOLO toca Firebase AUTH (login);
+//   toda la parte de datos (users/{uid}) pasa por js/data/db.js.
 //
 // Convención del proyecto: este módulo lleva su CSS implícito (inyectado
 // desde aquí) para no crear archivos .css extra. Vista 100% responsiva
 // (celular / tablet / PC) y SIN scroll para ningún lado.
 // ============================================================
 
-import { auth, db } from "../data/initFirebase.js";
+import { auth } from "../data/initFirebase.js"; // SOLO Firebase Authentication
+import { db } from "../data/db.js";             // TODA la parte de datos
 import { escapeHtml } from "../utils/helpers.js";
 import {
   GoogleAuthProvider,
@@ -28,13 +31,6 @@ import {
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 const DOMINIO_PERMITIDO = "@clases.edu.sv";
 
@@ -260,8 +256,8 @@ function renderLogin() {
           <span style="background:#16a34a"></span>
         </div>
 
-        <h1 class="auth-titulo">MIS CLASES ONLINE</h1>
-        <p class="auth-sub">Revisa clases, recursos, tareas, examenes, entre otros.</p>
+        <h1 class="auth-titulo">Mis Clases Online</h1>
+        <p class="auth-sub">Ingresa con tu cuenta institucional para continuar</p>
 
         <sl-button id="auth-google" class="auth-btn" size="large">
           <span class="auth-btn-int">${LOGO_GOOGLE} Continuar con Google</span>
@@ -313,34 +309,33 @@ async function asegurarPerfil(user) {
     return null;
   }
 
-  const ref = doc(db, "users", user.uid);
-  const snap = await getDoc(ref);
+  // Perfil en Firestore SIEMPRE vía db.js (users/{uid})
+  const datos = await db.usuarios.leer(user.uid);
   let perfil;
 
-  if (snap.exists()) {
-    perfil = { uid: user.uid, ...snap.data() };
+  if (datos) {
+    perfil = { uid: user.uid, ...datos };
   } else {
     // Primera vez: crear el perfil con los datos que da Google
     const rol = rolDeCorreo(user.email);
     const local = user.email.split("@")[0];
-    const datos = {
+    const nuevo = {
       nombre: user.displayName || (rol === "estudiante" ? `Estudiante ${local}` : local),
       rol,
       email: user.email,
       foto: user.photoURL || "",
       grados: [],
-      creadoEn: serverTimestamp(),
     };
-    if (rol === "estudiante") datos.nie = local; // NIE = números antes del @
+    if (rol === "estudiante") nuevo.nie = local; // NIE = números antes del @
 
-    await setDoc(ref, datos);
-    perfil = { uid: user.uid, ...datos, creadoEn: null };
+    await db.usuarios.crear(user.uid, nuevo); // db añade creadoEn
+    perfil = { uid: user.uid, ...nuevo, creadoEn: null };
   }
 
   // Sin grados todavía → pedirlos (modal obligatorio)
   if (!Array.isArray(perfil.grados) || perfil.grados.length === 0) {
     const grados = await pedirGrados(perfil);
-    await updateDoc(ref, { grados });
+    await db.usuarios.actualizar(user.uid, { grados });
     perfil.grados = grados;
   }
 
