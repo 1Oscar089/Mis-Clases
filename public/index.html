@@ -32,14 +32,29 @@
   <!-- Diagnóstico temporal: muestra errores en pantalla en vez de página en blanco (quitar en producción) -->
   <script>
     (function () {
+      // Ruido BENIGNO del navegador (lo dispara Shoelace al abrir el dropdown, etc.)
+      var RUIDO = /ResizeObserver loop/i;
+      function esRuido(t) { return RUIDO.test(t || ""); }
+
       function mostrarError(msg) {
-        var app = document.getElementById("app");
-        if (!app) return;
-        app.innerHTML =
-          '<div style="font-family:sans-serif;max-width:560px;margin:12vh auto 0;padding:1.5rem;' +
-          'border:2px solid #dc2626;border-radius:.75rem;color:#7f1d1d;background:#fef2f2">' +
-          '<h2 style="margin:0 0 .5rem;font-size:1.1rem">Error al cargar la aplicación</h2>' +
-          '<p style="margin:0;white-space:pre-wrap">' + msg + "</p></div>";
+        // Aviso flotante NO destructivo: NUNCA reemplaza el contenido de #app
+        var previo = document.getElementById("diag-error");
+        if (previo) previo.remove();
+        var caja = document.createElement("div");
+        caja.id = "diag-error";
+        caja.style.cssText =
+          "position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;max-width:560px;" +
+          "margin:0 auto;padding:1rem 1.25rem;border:2px solid #dc2626;border-radius:.75rem;" +
+          "color:#7f1d1d;background:#fef2f2;font-family:sans-serif;font-size:.9rem;" +
+          "box-shadow:0 10px 30px rgba(0,0,0,.18)";
+        var titulo = document.createElement("strong");
+        titulo.textContent = "Error detectado";
+        titulo.style.cssText = "display:block;margin-bottom:.35rem";
+        var texto = document.createElement("span");
+        texto.style.cssText = "white-space:pre-wrap";
+        texto.textContent = msg;
+        caja.append(titulo, texto);
+        document.body.append(caja);
       }
       if (location.protocol === "file:") {
         mostrarError(
@@ -52,12 +67,15 @@
         );
       }
       window.addEventListener("error", function (e) {
+        if (esRuido(e.message)) return; // ruido benigno: ignorar
         if (!e.message) return; // errores de recursos ya cubiertos por el aviso de file://
         mostrarError((e.message || "Error desconocido") + (e.filename ? "\n" + e.filename + ":" + e.lineno : ""));
       }, true);
       window.addEventListener("unhandledrejection", function (e) {
         var r = e.reason;
-        mostrarError("Error de promesa: " + ((r && (r.message || r.code)) || r));
+        var msg = "Error de promesa: " + ((r && (r.message || r.code)) || r);
+        if (esRuido(msg)) return; // ruido benigno: ignorar
+        mostrarError(msg);
       });
     })();
   </script>

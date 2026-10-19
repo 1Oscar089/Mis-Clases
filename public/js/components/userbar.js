@@ -115,6 +115,7 @@ function inyectarEstilos() {
 
     /* Menú desplegable (celular) */
     .userbar-menu::part(panel) {
+      background-color: #7c3aed;
       border-radius: .9rem;
       border: 1px solid #ece9f6;
       box-shadow: 0 10px 30px rgba(17, 12, 46, .18);
@@ -130,14 +131,14 @@ function inyectarEstilos() {
     }
     .userbar-menu-nombre {
       font-weight: 600;
-      color: #1f2937;
+      color: #ffffff;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .userbar-menu-grado {
       font-size: .85rem;
-      color: #7c3aed;
+      color: #ffffff;
     }
 
     /* ── Celular ── */
