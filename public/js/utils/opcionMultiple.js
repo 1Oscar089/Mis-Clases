@@ -1,67 +1,124 @@
 // ============================================================
 // opcionMultiple.js — Pregunta de opción múltiple reutilizable
-// (js/utils/opcionMultiple.js) · v2: puntaje por pregunta, OCULTO
+// (js/utils/opcionMultiple.js) · v4: FÓRMULAS matemáticas ($…$) en la
+// indicación y en las opciones, vía js/utils/formatearFormulas.js
+// (antes v3: TIPOS clase/tarea/examen, docente con intentos libres y
+// puntaje local, espejo en Sheets)
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta
 // una pregunta interactiva en el elemento que se indique.
 //
-// USO (desde el archivo de contenido de una clase, p. ej.
+// USO (desde el archivo de contenido, p. ej.
 // public/clases/8/matematica-y-datos/mi-clase.js):
 //
-//   import { opcionMultiple, obtenerNota } from "../../../js/utils/opcionMultiple.js";
+//   import { opcionMultiple } from "../../../js/utils/opcionMultiple.js";
 //
 //   opcionMultiple({
 //     contenedor,           // elemento del DOM donde insertar la pregunta
-//     perfil,               // perfil del usuario (users/{uid}, trae uid)
-//     clase,                // objeto de la clase { id, grado, materiaId, ... }
-//     indicacion: "¿Cuál es el resultado de 3/4 + 1/4?",
-//     respuestas: ["4/8", "1/2", "1", "3/8"],  // entre 2 y 6 textos
-//     respuestaCorrecta: 3, // NÚMERO de la respuesta correcta (1 = primera)
-//     puntaje: 2,           // valor de esta pregunta para la clase (0 a 10)
+//     perfil,               // perfil del usuario (users/{uid}: uid, rol, nie?)
+//     clase,                // { id, grado, materiaId, materia?, dia?, unidad?, leccion? }
+//     tipo: "clase",        // "clase" | "tarea" | "examen"  (defecto: "clase")
+//     indicacion: "¿Cuánto es $\\frac{3}{4} + \\frac{1}{4}$?",  // ← admite fórmulas
+//     respuestas: ["$\\frac{4}{8}$", "$\\frac{1}{2}$", "1", "$\\frac{3}{8}$"],
+//                           // entre 2 y 6 textos, cada uno admite $…$
+//     respuestaCorrecta: 2, // NÚMERO de la respuesta correcta (1 = primera)
+//     puntaje: 2,           // valor de esta pregunta (0 a 10)
 //     // id: "p1",          // (opcional) identificador único y estable
-//   }).then((ganado) => { /* nota obtenida en ESTA pregunta (oculta) */ });
+//   }).then((ganado) => { /* nota ganada en ESTA pregunta (oculta) */ });
 //
-//   // o dentro de una función async:
-//   // const ganado = await opcionMultiple({ ... });
+// FÓRMULAS (v4): TODO texto (indicación y opciones) acepta LaTeX entre
+//   $…$ (en la línea) o $$…$$ (centrado), renderizado con KaTeX por
+//   js/utils/formatearFormulas.js. Sin $ se muestra como texto normal
+//   (los contenidos viejos siguen igual). Si el CDN no responde, la
+//   fórmula se ve como su LaTeX plano: nunca se rompe la página.
 //
-// QUÉ DEVUELVE — Promise<number> con lo ganado en ESTA pregunta.
-//   LA NOTA ES INVISIBLE: el recuadro NO muestra puntos ni los menciona.
-//   · Correcta al 1er intento → el puntaje completo (ej. 2).
-//   · Correcta al 2do intento → la MITAD con un decimal (ej. 1).
-//   · Incorrecta 2 veces      → 0 (podrá reintentar en otra sesión).
-//   · Si ya estaba respondida → 0 (no vuelve a sumar).
-//   El estudiante solo ve si acertó, en qué intento va y si puede reintentar.
+// REGLA DE PUNTAJE (estudiante): 1.er intento correcto → puntaje
+//   completo · 2.º intento correcto → la MITAD con 1 decimal ·
+//   fallada en los dos → 0. La nota NUNCA se muestra en pantalla
+//   (solo el examen muestra la NOTA final, a cargo del archivo del
+//   examen). Si ganó 0 no se guarda nada: la pregunta reaparece
+//   fresca en otra sesión; si ya está respondida se bloquea
+//   ("Respondida") leyendo la nota en Firestore + localStorage.
 //
-// SUMATORIA FINAL DE LA CLASE (también oculta; muéstrala donde quieras):
+// ─── TIPO "clase" (defecto) ───
+//   Dos intentos (completo/mitad). MUESTRA si la respuesta es
+//   correcta (verde/roja + feedback). Botón "Enviar respuesta".
+//
+// ─── TIPO "tarea" ───
+//   Los mismos dos intentos y el mismo puntaje, pero la UI es
+//   NEUTRA: nunca dice si la respuesta final fue correcta ni
+//   marca opciones en verde/rojo. Botón "Enviar respuesta": el
+//   1.er envío vale completo y el 2.º (si lo hay, aunque el 1.º
+//   hubiera sido correcto) es EL QUE CUENTA: correcto → mitad,
+//   incorrecto → 0. Tras el 2.º envío se bloquea.
+//
+// ─── TIPO "examen" ───
+//   SIN botón propio: el archivo del examen pone SU botón "Enviar"
+//   al final y envía todos los bloques de una vez:
+//
+//     const p = opcionMultiple({ ..., tipo: "examen" });
+//     // ... el estudiante responde ...
+//     const r = await p.enviar();  // → { puntos, maxPuntaje } del bloque
+//     // ... tras todos los bloques:
+//     const resumen = await finalizarExamen(perfil, clase, { titulo });
+//     // resumen.puntos = nota del examen (mostrarla en pantalla)
+//
+//   · enviar() califica el bloque (una sola oportunidad: correcta →
+//     puntaje completo, vacía/incorrecta → 0), lo guarda con la
+//     marca de examen enviado y devuelve el resultado al examen.
+//   · finalizarExamen() fija nota.enviado = true y reporta el TOTAL
+//     al Sheet UNA sola vez (fila del examen × columna del NIE):
+//     el examen queda bloqueado aunque cierre y abra sesión.
+//   · Al cargar, si nota.enviado → todos los bloques aparecen
+//     bloqueados ("Examen enviado").
+//   · No muestra cuáles están correctas. SOLO si el docente marca
+//     en la configuración del examen mostrarCorrectas: true se
+//     revelan al enviar (opción correcta en verde). La nota
+//     obtenida la muestra el archivo del examen con resumen.puntos.
+//
+// ─── DOCENTE (perfil.rol === "docente") ───
+//   Intentos ILIMITADOS y NADA se guarda: ni Firestore, ni Sheets,
+//   ni localStorage de notas. El puntaje de la clase se muestra en
+//   un head morado DEBAJO DE LA USERBAR (sticky) y vive SOLO en
+//   la pestaña (sessionStorage): cerrar la app lo borra.
+//
+// Persistencia (estudiante): localStorage "mco_nota_{uid}_{claseId}"
+//   (instantáneo) + notas/{uid}/clases/{claseId} en Firestore vía
+//   js/data/db.js (fuente de verdad) + ESPEJO en Google Sheets
+//   (db.notas.reportarActividad) para las tablas del docente y para
+//   que una actividad hecha no se rehaga. Cada pregunta guarda su
+//   valor UNA sola vez (clave: id, o slug del texto + hash).
+//
+// SUMATORIA FINAL de la sesión (también oculta):
 //   const nota = await obtenerNota(perfil, clase);
-//   nota.puntos  // ← suma de TODAS las preguntas respondidas de la clase
-//                //    (sesión actual y anteriores). NO le sumes el valor
-//                //    devuelto por opcionMultiple(): sería duplicado.
+//   nota.puntos  // suma de TODAS las preguntas respondidas. NO le
+//                // sumes el valor devuelto por opcionMultiple().
 //
-// Persistencia: localStorage "mco_nota_{uid}_{claseId}" (instantáneo)
-//   + notas/{uid}/clases/{claseId} en Firestore (mejor esfuerzo).
-//   Cada pregunta guarda su valor UNA sola vez (clave: id, o slug del
-//   texto + hash). Lo no sumado no se guarda → las preguntas falladas
-//   2 veces reaparecen frescas en otra sesión.
+// Compatibilidad: también acepta los nombres antiguos pregunta /
+//   opciones / correcta, y puntaje por defecto = 1.
 //
-// Compatibilidad: también acepta los nombres antiguos pregunta / opciones /
-//   correcta, y puntaje por defecto = 1 (comportamiento de la v1).
+// Compartido con multipleOpcion.js (v4): esta utilidad también exporta
+//   esDocente(), prepararDocente() y registrarPuntoDocente() (el head
+//   morado del docente: UNO solo para todas las utils) y
+//   guardarPreguntaExamen() (guardado de un bloque de examen), para
+//   que todas las utilidades se comporten igual.
 //
 // Convención: CSS implícito · 100% responsivo · fondo blanco · paleta del proyecto.
 // ============================================================
 
-import { db } from "../data/initFirebase.js";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+// REGLA DEL PROYECTO: nada toca Firestore o Sheets directo → todo pasa por db.js
+import { db } from "../data/db.js";
+
+// Fórmulas: cargarFormulas() trae KaTeX (una sola vez) y
+// textoConFormulas() convierte "$…$" en fórmula renderizada.
+import { cargarFormulas, textoConFormulas } from "./formatearFormulas.js";
 
 /* ---------------- Constantes ---------------- */
 
 const LETRAS = ["A", "B", "C", "D", "E", "F"];
+const TIPOS = ["clase", "tarea", "examen"];
 const CLAVE_NOTA = (uid, claseId) => `mco_nota_${uid}_${claseId}`;
+const CLAVE_DOCENTE = (uid, claseId) => `mco_docente_${uid}_${claseId}`;
 
 let estilosListos = false;
 
@@ -90,6 +147,76 @@ function redondear1(n) {
   return Math.round(Number(n) * 10) / 10;
 }
 
+export function esDocente(perfil) {
+  return perfil?.rol === "docente";
+}
+
+/* ---------------- Head del docente (puntaje SOLO local) ----------------
+   Barra sticky justo debajo de la userbar con el puntaje acumulado de
+   la clase que el docente está probando. NADA va a ninguna db: vive
+   en la pestaña (sessionStorage) y muere al cerrarla. */
+
+let docenteEstado = { clave: null, valores: {}, el: null };
+
+function claveDocente(perfil, clase) {
+  return `${perfil?.uid || "?"}::${clase?.id || "?"}`;
+}
+
+// Al montar un bloque docente: restaura lo acumulado de esta clase
+// (sessionStorage) y pinta el head si ya hay puntaje que mostrar.
+export function prepararDocente(perfil, clase) {
+  const clave = claveDocente(perfil, clase);
+  if (docenteEstado.clave !== clave) {
+    docenteEstado = { clave, valores: {}, el: null };
+  }
+  try {
+    const d = JSON.parse(sessionStorage.getItem(CLAVE_DOCENTE(perfil.uid, clase.id)) || "null");
+    if (d && d.valores && typeof d.valores === "object") {
+      docenteEstado.valores = { ...docenteEstado.valores, ...d.valores };
+    }
+  } catch (e) { /* sessionStorage no disponible: queda en memoria */ }
+  if (Object.keys(docenteEstado.valores).length) pintarHeadDocente();
+}
+
+// Registra el último valor ganado en UNA pregunta del docente y
+// actualiza el head (cada pregunta aporta su ÚLTIMO valor).
+export function registrarPuntoDocente(perfil, clase, qid, valor) {
+  const clave = claveDocente(perfil, clase);
+  if (docenteEstado.clave !== clave) {
+    docenteEstado = { clave, valores: {}, el: null };
+  }
+  docenteEstado.valores[qid] = redondear1(valor);
+  try {
+    sessionStorage.setItem(
+      CLAVE_DOCENTE(perfil.uid, clase.id),
+      JSON.stringify({ valores: docenteEstado.valores })
+    );
+  } catch (e) { /* ignorar */ }
+  pintarHeadDocente();
+}
+
+function totalDocente() {
+  return redondear1(
+    Object.values(docenteEstado.valores).reduce((s, v) => s + (Number(v) || 0), 0)
+  );
+}
+
+function pintarHeadDocente() {
+  const app = document.getElementById("app") || document.body;
+  if (!docenteEstado.el || !docenteEstado.el.isConnected) {
+    const barra = document.createElement("div");
+    barra.className = "om-head-docente";
+    barra.setAttribute("role", "status");
+    barra.innerHTML =
+      '<span class="om-head-docente-etq">Vista docente · puntaje de la clase (solo local, no se guarda)</span>' +
+      '<span class="om-head-docente-pts"></span>';
+    app.prepend(barra);
+    docenteEstado.el = barra;
+  }
+  docenteEstado.el.querySelector(".om-head-docente-pts").textContent =
+    totalDocente() + " pts";
+}
+
 /* ---------------- CSS implícito ---------------- */
 
 function inyectarEstilos() {
@@ -98,6 +225,32 @@ function inyectarEstilos() {
   const estilo = document.createElement("style");
   estilo.id = "opcion-multiple-estilos";
   estilo.textContent = `
+    .om-head-docente {
+      position: sticky;
+      top: 56px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .6rem;
+      background: #f5f3ff;
+      border-bottom: 1px solid #e9d5ff;
+      padding: .45rem clamp(1rem, 4vw, 2rem);
+      font-size: .84rem;
+      font-weight: 700;
+      color: #5b21b6;
+      box-shadow: 0 2px 10px rgba(124, 58, 237, .08);
+    }
+    .om-head-docente-pts {
+      background: #7c3aed;
+      color: #ffffff;
+      border-radius: 999px;
+      padding: .18rem .7rem;
+      font-size: .8rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
     .om-caja {
       background: #ffffff;
       border: 1px solid #ece9f6;
@@ -248,6 +401,7 @@ function inyectarEstilos() {
     }
 
     @media (max-width: 767px) {
+      .om-head-docente { top: 52px; padding: .4rem 1rem; }
       .om-caja { padding: 1rem; }
       .om-opciones { grid-template-columns: 1fr; }
       .om-pie { flex-direction: column-reverse; align-items: stretch; }
@@ -257,39 +411,61 @@ function inyectarEstilos() {
   document.head.append(estilo);
 }
 
-/* ---------------- Nota de la clase (localStorage + Firestore) ---------------- */
+/* ------------- Nota de la sesión (localStorage + Firestore + Sheets) ------------- */
 
 function leerNotaLocal(uid, claseId) {
   try {
     const d = JSON.parse(localStorage.getItem(CLAVE_NOTA(uid, claseId)) || "null");
-    if (!d || typeof d !== "object") return { puntos: 0, preguntas: {} };
+    if (!d || typeof d !== "object") return { puntos: 0, preguntas: {}, enviado: false };
     return {
       puntos: Number(d.puntos) || 0,
       preguntas: d.preguntas && typeof d.preguntas === "object" ? d.preguntas : {},
+      enviado: !!d.enviado,
     };
   } catch (e) {
-    return { puntos: 0, preguntas: {} };
+    return { puntos: 0, preguntas: {}, enviado: false };
   }
 }
 
 function guardarNotaLocal(uid, claseId, nota) {
   try {
-    localStorage.setItem(CLAVE_NOTA(uid, claseId), JSON.stringify(nota));
+    localStorage.setItem(
+      CLAVE_NOTA(uid, claseId),
+      JSON.stringify({
+        puntos: nota.puntos,
+        preguntas: nota.preguntas,
+        enviado: !!nota.enviado,
+      })
+    );
   } catch (e) { /* ignorar */ }
 }
 
-/** Nota de una clase para el usuario: fusiona lo local con lo de Firestore. */
+function recalcular(nota) {
+  nota.puntos = redondear1(
+    Object.values(nota.preguntas).reduce((s, p) => s + (Number(p) || 0), 0)
+  );
+  return nota;
+}
+
+/** Nota de UNA sesión (clase/tarea/examen) del usuario. El docente
+ *  SIEMPRE recibe ceros: él no genera nota ni guarda nada. */
 export async function obtenerNota(perfil, clase) {
-  if (!perfil?.uid || !clase?.id) return { puntos: 0, preguntas: {} };
+  if (!perfil?.uid || !clase?.id || esDocente(perfil)) {
+    return { puntos: 0, preguntas: {}, enviado: false };
+  }
   const local = leerNotaLocal(perfil.uid, clase.id);
   try {
-    const snap = await getDoc(doc(db, "notas", perfil.uid, "clases", clase.id));
-    if (snap.exists()) {
-      const remota = snap.data() || {};
+    const remota = await db.notas.leer(perfil.uid, clase.id);
+    if (remota) {
       const preguntas = { ...(remota.preguntas || {}), ...local.preguntas };
       // El total SIEMPRE se recalcula del mapa por pregunta (fuente de verdad)
-      const puntos = Object.values(preguntas).reduce((s, p) => s + (Number(p) || 0), 0);
-      const nota = { puntos, preguntas };
+      const nota = {
+        puntos: 0,
+        preguntas,
+        enviado: !!(remota.enviado || local.enviado),
+      };
+      if (remota.tipo) nota.tipo = remota.tipo;
+      recalcular(nota);
       guardarNotaLocal(perfil.uid, clase.id, nota);
       return nota;
     }
@@ -297,24 +473,113 @@ export async function obtenerNota(perfil, clase) {
   return local;
 }
 
-/** Suma puntos de UNA pregunta (solo la primera vez que se responde). */
-export async function sumarPuntos(perfil, clase, preguntaId, puntos) {
-  if (!perfil?.uid || !clase?.id) return { puntos: 0, preguntas: {} };
+/** Espejo en Sheets del TOTAL de la actividad (mejor esfuerzo). */
+function reportarEspejo(perfil, clase, tipo, puntos) {
+  db.notas
+    .reportarActividad({
+      perfil: { nie: perfil.nie, nombre: perfil.nombre },
+      clase,
+      materia: clase.materia || clase.materiaId,
+      grado: clase.grado,
+      tipo,
+      actividadId: tipo === "clase" ? undefined : clase.id,
+      puntos,
+      titulo: clase.titulo || clase.clase || "",
+    })
+    .catch(() => {});
+}
+
+/** Suma puntos de UNA pregunta (solo la primera vez que se responde).
+ *  El docente NO guarda nada (devuelve la nota en ceros). */
+export async function sumarPuntos(perfil, clase, preguntaId, puntos, opciones = {}) {
+  if (!perfil?.uid || !clase?.id || esDocente(perfil)) {
+    return { puntos: 0, preguntas: {}, enviado: false };
+  }
+  const tipo = String(opciones.tipo || clase.tipo || "clase").toLowerCase();
   const nota = await obtenerNota(perfil, clase);
   if (nota.preguntas[preguntaId] != null) return nota; // ya sumó antes
 
-  nota.preguntas[preguntaId] = puntos;
-  nota.puntos = Object.values(nota.preguntas).reduce((s, p) => s + (Number(p) || 0), 0);
+  nota.preguntas[preguntaId] = Number(puntos) || 0;
+  nota.tipo = tipo;
+  recalcular(nota);
+  guardarNotaLocal(perfil.uid, clase.id, nota);
+
+  // 1) Firestore vía db.js (fuente de verdad de la nota)
+  try {
+    await db.notas.guardar(perfil.uid, clase.id, nota);
+  } catch (e) {
+    console.warn("[nota] Firestore no disponible, queda en localStorage:", e?.code || e);
+  }
+
+  // 2) Espejo en Sheets con el TOTAL de la actividad (mejor esfuerzo).
+  //    Solo clase y tarea: el examen se reporta UNA vez y con el
+  //    total completo desde finalizarExamen().
+  if (tipo === "clase" || tipo === "tarea") {
+    reportarEspejo(perfil, clase, tipo, nota.puntos);
+  }
+
+  return nota;
+}
+
+/** CIERRE DE UN EXAMEN: fija la marca de "enviado" en la nota y
+ *  reporta el TOTAL al Sheet UNA sola vez. La llama el archivo del
+ *  examen justo después de enviar todos los bloques; los bloques ya
+ *  guardaron su valor al responder enviar(). Docente: no hace nada. */
+export async function finalizarExamen(perfil, clase, opciones = {}) {
+  if (!perfil?.uid || !clase?.id) return { ok: false, razon: "datos" };
+  if (esDocente(perfil)) {
+    return { ok: true, docente: true, yaEnviado: false, puntos: 0 };
+  }
+  const titulo = String(
+    opciones.titulo ?? clase.titulo ?? clase.clase ?? ""
+  ).trim();
+  const nota = await obtenerNota(perfil, clase);
+  const yaEnviado = !!nota.enviado;
+  nota.enviado = true;
+  nota.tipo = "examen";
+  recalcular(nota);
   guardarNotaLocal(perfil.uid, clase.id, nota);
 
   try {
-    await setDoc(
-      doc(db, "notas", perfil.uid, "clases", clase.id),
-      { ...nota, actualizadoEn: serverTimestamp() },
-      { merge: true }
-    );
+    await db.notas.guardar(perfil.uid, clase.id, nota);
   } catch (e) {
-    console.warn("[nota] Firestore no disponible, queda en localStorage:", e?.code || e);
+    console.warn("[finalizarExamen] Firestore no disponible:", e?.code || e);
+  }
+
+  const espejo = await db.notas
+    .reportarActividad({
+      perfil: { nie: perfil.nie, nombre: perfil.nombre },
+      clase,
+      materia: clase.materia || clase.materiaId,
+      grado: clase.grado,
+      tipo: "examen",
+      actividadId: clase.id,
+      puntos: nota.puntos,
+      titulo,
+    })
+    .catch(() => ({ ok: false, razon: "red" }));
+
+  return { ok: true, yaEnviado, puntos: nota.puntos, espejo };
+}
+
+/** GUARDADO DE UNA PREGUNTA/BLOQUE DE EXAMEN (estudiante): fija el
+ *  valor (0 incluido), marca la nota como examen enviado y la guarda
+ *  en localStorage + Firestore vía db.js. El ESPEJO en Sheets NO va
+ *  aquí: lo reporta finalizarExamen() UNA sola vez con el TOTAL.
+ *  Compartida por opcionMultiple.js y multipleOpcion.js. Docente: no
+ *  hace nada. */
+export async function guardarPreguntaExamen(perfil, clase, preguntaId, ganado) {
+  if (!perfil?.uid || !clase?.id || esDocente(perfil)) return null;
+  const nota = await obtenerNota(perfil, clase);
+  nota.preguntas[preguntaId] = Number(ganado) || 0; // el examen guarda SIEMPRE (0 incluido)
+  nota.enviado = true;
+  nota.tipo = "examen";
+  recalcular(nota);
+  guardarNotaLocal(perfil.uid, clase.id, nota);
+  try {
+    await db.notas.guardar(perfil.uid, clase.id, nota);
+  } catch (e) {
+    console.warn("[examen] Firestore no disponible, queda en localStorage:", e?.code || e);
   }
   return nota;
 }
@@ -324,8 +589,10 @@ export async function sumarPuntos(perfil, clase, preguntaId, puntos) {
 /**
  * Inserta una pregunta de opción múltiple en el contenedor indicado.
  * Devuelve una Promise<number> con la nota ganada en ESTA pregunta
- * (puntaje completo / mitad con un decimal / 0). Esa nota NUNCA se
- * muestra en pantalla: queda oculta para la sumatoria final de la clase.
+ * (puntaje completo / mitad con 1 decimal / 0; queda pendiente si el
+ * estudiante nunca la termina). Con tipo "examen" la promesa trae
+ * además .enviar() → Promise<{ puntos, maxPuntaje }> para el botón
+ * final del examen.
  */
 export function opcionMultiple(config = {}) {
   const {
@@ -334,9 +601,20 @@ export function opcionMultiple(config = {}) {
     clase,
     id,
     indicacion, pregunta,         // pregunta = nombre antiguo (compatibilidad)
-    respuestas, opciones,         // opciones = nombre antiguo (compatibilidad)
-    respuestaCorrecta, correcta,  // correcta  = nombre antiguo (compatibilidad)
+    respuestas, opciones,         // opciones   = nombre antiguo (compatibilidad)
+    respuestaCorrecta, correcta,  // correcta   = nombre antiguo (compatibilidad)
   } = config;
+
+  const tipo = String(config.tipo || clase?.tipo || "clase").toLowerCase().trim();
+  const esTipoClase = tipo === "clase";
+  const esTarea = tipo === "tarea";
+  const esExamen = tipo === "examen";
+  // mostrarCorrectas: SOLO examen (el docente lo marcará en la
+  // configuración del examen; defecto false = nunca se revela).
+  const mostrarCorrectas = !!config.mostrarCorrectas;
+  // ¿Se revela la corrección? clase: siempre · tarea: nunca ·
+  // examen: solo si la config del examen lo permite.
+  const revelar = esTipoClase || (esExamen && mostrarCorrectas);
 
   // PUNTAJE OCULTO de esta pregunta (0 a 10). Defecto: 1 (compatibilidad v1).
   let puntaje = Number(config.puntaje ?? 1);
@@ -346,8 +624,16 @@ export function opcionMultiple(config = {}) {
   }
   puntaje = redondear1(puntaje);
 
-  return new Promise((resolve) => {
+  let enviarExamen = null; // se define dentro del executor (solo examen)
+
+  const promesa = new Promise((resolve) => {
     inyectarEstilos();
+    // Fórmulas: cargar KaTeX ANTES de pintar (si el CDN falla sigue
+    // adelante y los textos se muestran planos).
+    cargarFormulas().catch(() => null).then(() => construir(resolve));
+  });
+
+  function construir(resolve) {
 
     // --- Validaciones (avisos claros para quien escribe el contenido) ---
     const texto = String(indicacion ?? pregunta ?? "").trim();
@@ -365,6 +651,11 @@ export function opcionMultiple(config = {}) {
 
     if (!contenedor || typeof contenedor.append !== "function") {
       console.error("[opcionMultiple] Falta 'contenedor' (elemento del DOM donde insertar la pregunta).");
+      resolve(0);
+      return;
+    }
+    if (!TIPOS.includes(tipo)) {
+      errorDev(`'tipo' debe ser "clase", "tarea" o "examen" (llegó: ${tipo}).`);
       resolve(0);
       return;
     }
@@ -386,12 +677,20 @@ export function opcionMultiple(config = {}) {
       return;
     }
 
+    const esDoc = esDocente(perfil);
     const idxCorrecta = idx - 1;
     const qid = id ? slug(String(id)) : `${slug(texto)}-${hash8(normalizar(texto))}`;
 
-    let intento = 0;        // fallos acumulados (0 = primer intento, 1 = segunda oportunidad)
+    let envios = 0;         // envíos/intentos ya usados (0 = el próximo es el primero)
     let seleccion = -1;
-    let bloqueada = false;  // pregunta terminada (resuelta, agotada o ya respondida)
+    let bloqueada = false;
+    let resuelto = false;
+    let yaEnviada = false;  // examen: guardado con la marca de enviado
+    let ultimoResultado = null;
+
+    const resolverUnaVez = (valor) => {
+      if (!resuelto) { resuelto = true; resolve(valor); }
+    };
 
     // --- Estructura (SIN ninguna mención al puntaje: queda oculto) ---
     const caja = document.createElement("section");
@@ -399,33 +698,33 @@ export function opcionMultiple(config = {}) {
     caja.setAttribute("aria-label", texto);
     caja.innerHTML = `
       <div class="om-cab">
-        <span class="om-etiqueta">Pregunta</span>
-        <span class="om-chip">Intento 1 de 2</span>
+        <span class="om-etiqueta">${esExamen ? "Examen" : esTarea ? "Tarea" : "Pregunta"}</span>
+        <span class="om-chip"></span>
       </div>
       <p class="om-pregunta"></p>
       <div class="om-opciones"></div>
       <div class="om-pie">
         <span class="om-feedback" aria-live="polite"></span>
-        <button type="button" class="om-enviar" disabled>Enviar respuesta</button>
+        ${esExamen ? "" : '<button type="button" class="om-enviar" disabled>Enviar respuesta</button>'}
       </div>`;
-    caja.querySelector(".om-pregunta").textContent = texto;
+    caja.querySelector(".om-pregunta").innerHTML = textoConFormulas(texto);
 
     const chipEl = caja.querySelector(".om-chip");
     const feedbackEl = caja.querySelector(".om-feedback");
-    const btnEnviar = caja.querySelector(".om-enviar");
+    const btnEnviar = caja.querySelector(".om-enviar"); // null en examen
 
-    const feedback = (mensaje, tipo) => {
+    const feedback = (mensaje, tipoFeedback) => {
       feedbackEl.textContent = mensaje;
-      feedbackEl.className = "om-feedback" + (tipo ? " " + tipo : "");
+      feedbackEl.className = "om-feedback" + (tipoFeedback ? " " + tipoFeedback : "");
     };
-    const chip = (mensaje, tipo) => {
+    const chip = (mensaje, tipoChip) => {
       chipEl.textContent = mensaje;
-      chipEl.className = "om-chip" + (tipo ? " " + tipo : "");
+      chipEl.className = "om-chip" + (tipoChip ? " " + tipoChip : "");
     };
 
-    const bloquear = () => {
+    const bloquearTodo = () => {
       bloqueada = true;
-      btnEnviar.disabled = true;
+      if (btnEnviar) btnEnviar.disabled = true;
       botones.forEach((b) => {
         b.disabled = true;
         b.classList.remove("seleccionada");
@@ -444,7 +743,7 @@ export function opcionMultiple(config = {}) {
 
       const t = document.createElement("span");
       t.className = "om-texto";
-      t.textContent = textoOpcion;
+      t.innerHTML = textoConFormulas(textoOpcion); // admite $fórmulas$
 
       b.append(letra, t);
       b.addEventListener("click", () => {
@@ -454,66 +753,207 @@ export function opcionMultiple(config = {}) {
           x.classList.toggle("seleccionada", j === i);
           x.setAttribute("aria-pressed", String(j === i));
         });
-        btnEnviar.disabled = false;
+        if (btnEnviar) btnEnviar.disabled = false;
         feedback("", "");
       });
       return b;
     });
     caja.querySelector(".om-opciones").append(...botones);
 
-    // --- ¿Ya respondida antes? (el valor guardado NO se muestra: solo se bloquea) ---
-    obtenerNota(perfil, clase).then((nota) => {
-      if (bloqueada || intento > 0 || seleccion >= 0) return; // ya interactuó en esta sesión
-      if (nota.preguntas[qid] != null) {
-        bloquear();
-        botones[idxCorrecta].classList.add("correcta");
-        btnEnviar.textContent = "Respondida";
-        chip("Respondida", "bien");
-        feedback("Ya respondiste esta pregunta.", "ok");
-        resolve(0); // no vuelve a sumar
+    // Estado inicial por tipo y rol
+    if (esDoc) {
+      chip("Vista docente", "");
+      feedback("Intentos libres, puntaje local arriba y nada se guarda.", "");
+    } else if (esExamen) {
+      chip("Sin enviar", "");
+      feedback("El examen enviará todas tus respuestas al final.", "");
+    } else if (esTarea) {
+      chip("Envío 1 de 2", "");
+      feedback("Elige una respuesta y envíala. Tienes hasta dos envíos.", "");
+    } else {
+      chip("Intento 1 de 2", "");
+    }
+
+    if (esDoc) prepararDocente(perfil, clase); // restaura el head local si ya hay puntaje
+
+    // --- Al montar (estudiante): ¿ya respondida o examen ya enviado? ---
+    if (!esDoc) {
+      obtenerNota(perfil, clase).then((nota) => {
+        if (resuelto || bloqueada || envios > 0 || seleccion >= 0) return;
+        const guardado = nota.preguntas ? nota.preguntas[qid] : undefined;
+        const hecha = guardado != null;
+
+        if (esExamen && (nota.enviado || hecha)) {
+          yaEnviada = true;
+          ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje, yaEnviado: true };
+          bloquearTodo();
+          if (revelar) botones[idxCorrecta].classList.add("correcta");
+          chip("Examen enviado", "");
+          feedback("Ya enviaste este examen.", "");
+          resolverUnaVez(0);
+          return;
+        }
+        if (hecha) {
+          bloquearTodo();
+          if (revelar) botones[idxCorrecta].classList.add("correcta");
+          if (btnEnviar) btnEnviar.textContent = "Respondida";
+          chip("Respondida", "bien");
+          feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste esta pregunta.", "ok");
+          resolverUnaVez(0); // no vuelve a sumar
+        }
+      });
+    }
+
+    // --- Guardado del examen (estudiante): valor + marca de enviado ---
+    // (la lógica vive en guardarPreguntaExamen(), compartida con multipleOpcion.js)
+    async function guardarExamen(ganado) {
+      await guardarPreguntaExamen(perfil, clase, qid, ganado);
+      yaEnviada = true;
+      ultimoResultado = { puntos: ganado, maxPuntaje: puntaje };
+    }
+
+    // --- Envío de clase y tarea (botón) ---
+    async function procesarEnvio() {
+      if (bloqueada || seleccion < 0) return null;
+      if (esExamen) return null; // el examen pasa por enviar()
+
+      /* DOCENTE · clase y tarea: intentos libres, puntaje local, nada se guarda */
+      if (esDoc) {
+        const acierto = seleccion === idxCorrecta;
+        const ganado = acierto ? (envios === 0 ? puntaje : redondear1(puntaje / 2)) : 0;
+        envios++;
+        if (acierto) {
+          registrarPuntoDocente(perfil, clase, qid, ganado);
+          if (revelar) {
+            botones[idxCorrecta].classList.add("correcta");
+            chip(envios === 1 ? "Resuelta" : "Resuelta (intento " + envios + ")", "bien");
+            feedback("¡Correcta! Vista docente: el puntaje está arriba y nada se guarda.", "ok");
+          } else {
+            chip("Enviada", "");
+            feedback("Respuesta enviada. Vista docente: el puntaje está arriba y nada se guarda.", "");
+          }
+          resolverUnaVez(ganado);
+          return ganado;
+        }
+        if (revelar) {
+          botones[seleccion].classList.remove("seleccionada");
+          botones[seleccion].classList.add("erronea");
+          const equivocada = seleccion;
+          setTimeout(() => {
+            if (botones[equivocada]) botones[equivocada].classList.remove("erronea");
+          }, 700);
+          chip("Vista docente · intento " + (envios + 1), "");
+          feedback("No es correcta. Puedes seguir intentando: nada se guarda.", "aviso");
+        } else {
+          chip("Vista docente · envío " + (envios + 1), "");
+          feedback("Respuesta enviada. Puedes enviar otra vez: nada se guarda.", "");
+        }
+        seleccion = -1;
+        btnEnviar.disabled = true;
+        return null;
       }
-    });
 
-    // --- Enviar respuesta ---
-    btnEnviar.addEventListener("click", () => {
-      if (bloqueada || seleccion < 0) return;
-
-      if (seleccion === idxCorrecta) {
-        const primero = intento === 0;
-        // Nota OCULTA: completa al 1.er intento, mitad con 1 decimal al 2.º.
-        const ganado = primero ? redondear1(puntaje) : redondear1(puntaje / 2);
-        bloquear();
-        botones[idxCorrecta].classList.add("correcta");
-        btnEnviar.textContent = "Respondida";
-        chip(primero ? "Resuelta" : "Resuelta (2.º intento)", "bien");
-        feedback(primero ? "¡Correcta! Muy bien." : "¡Correcta en tu segundo intento! Muy bien.", "ok");
-        resolve(ganado); // ← la nota solo la recibe el archivo de la clase
-        sumarPuntos(perfil, clase, qid, ganado).catch(() => {});
-        return;
+      /* ESTUDIANTE · CLASE: 2 intentos, revela la corrección */
+      if (esTipoClase) {
+        if (seleccion === idxCorrecta) {
+          const ganado = envios === 0 ? puntaje : redondear1(puntaje / 2);
+          bloquearTodo();
+          botones[idxCorrecta].classList.add("correcta");
+          chip(envios === 0 ? "Resuelta" : "Resuelta (2.º intento)", "bien");
+          feedback(envios === 0 ? "¡Correcta! Muy bien." : "¡Correcta en tu segundo intento! Muy bien.", "ok");
+          if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+          resolverUnaVez(ganado);
+          return ganado;
+        }
+        envios++;
+        botones[seleccion].classList.remove("seleccionada");
+        botones[seleccion].classList.add("erronea");
+        botones[seleccion].disabled = true;
+        seleccion = -1;
+        btnEnviar.disabled = true;
+        if (envios === 1) {
+          chip("Intento 2 de 2", "aviso");
+          btnEnviar.textContent = "Intentar de nuevo";
+          feedback("No es correcta. Tienes una segunda oportunidad.", "aviso");
+        } else {
+          bloquearTodo();
+          botones[idxCorrecta].classList.add("correcta");
+          chip("Intentos agotados", "mal");
+          feedback("Incorrecta otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión.", "mal");
+          resolverUnaVez(0);
+        }
+        return null;
       }
 
-      // Respuesta incorrecta
-      botones[seleccion].classList.remove("seleccionada");
-      botones[seleccion].classList.add("erronea");
-      botones[seleccion].disabled = true;
-      seleccion = -1;
-      btnEnviar.disabled = true;
-      intento++;
+      /* ESTUDIANTE · TAREA: 2 envíos neutros; el 2.º es el que cuenta */
+      if (esTarea) {
+        const acierto = seleccion === idxCorrecta;
+        if (envios === 0) {
+          envios++;
+          chip("Envío 2 de 2", "aviso");
+          btnEnviar.textContent = "Enviar de nuevo";
+          feedback("Respuesta enviada. Puedes modificarla y enviar una segunda vez.", "");
+          return null; // la respuesta final (2.º envío) decide el puntaje
+        }
+        const ganado = acierto ? redondear1(puntaje / 2) : 0;
+        bloquearTodo();
+        chip("Enviada", "");
+        feedback("Respuesta enviada. No hay más envíos.", "");
+        if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+        resolverUnaVez(ganado);
+        return ganado;
+      }
 
-      if (intento === 1) {
-        chip("Intento 2 de 2", "aviso");
-        btnEnviar.textContent = "Intentar de nuevo";
-        feedback("No es correcta. Tienes una segunda oportunidad.", "aviso");
+      return null;
+    }
+
+    if (btnEnviar) {
+      btnEnviar.addEventListener("click", () => {
+        procesarEnvio().catch((e) => console.error("[opcionMultiple]", e));
+      });
+    }
+
+    // --- EXAMEN: el botón lo pone el archivo del examen ---
+    enviarExamen = async function () {
+      if (esDoc) {
+        const acierto = seleccion === idxCorrecta;
+        const ganado = acierto ? puntaje : 0;
+        registrarPuntoDocente(perfil, clase, qid, ganado);
+        if (revelar) {
+          botones[idxCorrecta].classList.add("correcta");
+          if (seleccion >= 0 && !acierto) botones[seleccion].classList.add("erronea");
+        }
+        chip("Vista docente", "");
+        feedback("Enviado. El puntaje está en el head de arriba; nada se guarda.", "");
+        resolverUnaVez(ganado);
+        return { puntos: ganado, maxPuntaje: puntaje, docente: true };
+      }
+
+      if (yaEnviada) {
+        return ultimoResultado || { puntos: 0, maxPuntaje: puntaje, yaEnviado: true };
+      }
+
+      const acierto = seleccion === idxCorrecta;
+      const ganado = acierto ? puntaje : 0;
+      if (revelar) {
+        botones[idxCorrecta].classList.add("correcta");
+        if (seleccion >= 0 && !acierto) botones[seleccion].classList.add("erronea");
+      }
+      bloquearTodo();
+      if (revelar) {
+        feedback(acierto ? "Respuesta correcta." : "Respuesta incorrecta.", acierto ? "ok" : "mal");
       } else {
-        bloquear();
-        botones[idxCorrecta].classList.add("correcta");
-        btnEnviar.textContent = "Sin más intentos";
-        chip("Intentos agotados", "mal");
-        feedback("Incorrecta otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión.", "mal");
-        resolve(0);
+        feedback("Respuesta enviada.", "");
       }
-    });
+      chip("Enviada", "");
+      await guardarExamen(ganado);
+      resolverUnaVez(ganado);
+      return { puntos: ganado, maxPuntaje: puntaje };
+    };
 
     contenedor.append(caja);
-  });
+  }
+
+  if (esExamen) promesa.enviar = () => enviarExamen();
+  return promesa;
 }

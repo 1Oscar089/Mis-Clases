@@ -1,63 +1,209 @@
 // ============================================================
-// respuestaSimple.js — Pregunta de respuesta simple (texto escrito)
-// (js/utils/respuestaSimple.js) · v1: DOS intentos (mitad al 2.º), nota OCULTA
+// respuestaSimple.js — Pregunta de respuesta simple (texto o FÓRMULA)
+// (js/utils/respuestaSimple.js) · v4: modo esFormula con MathLive
+// (campo <math-field> + SU teclado virtual completo); antes v3: teclado
+// propio de formatearFormulas.js · antes v2: TIPOS clase/tarea/examen,
+// docente con intentos libres, espejo Sheets
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta una
-// pregunta con un campo de texto libre y valida lo que escriba el estudiante.
+// pregunta con un campo de respuesta y valida lo que escriba el estudiante.
 //
-// USO (desde el archivo de contenido de una clase, p. ej.
+// USO (desde el archivo de contenido, p. ej.
 // public/clases/8/matematica-y-datos/mi-clase.js):
 //
 //   import { respuestaSimple } from "../../../js/utils/respuestaSimple.js";
 //
 //   respuestaSimple({
 //     contenedor,           // elemento del DOM donde insertar la pregunta
-//     perfil,               // perfil del usuario (users/{uid}, trae uid)
-//     clase,                // objeto de la clase { id, grado, materiaId, ... }
+//     perfil,               // perfil del usuario (users/{uid}: uid, rol, nie?)
+//     clase,                // { id, grado, materiaId, materia?, dia?, unidad?, leccion? }
+//     tipo: "clase",        // "clase" | "tarea" | "examen"  (defecto: "clase")
 //     indicacion: "¿Quién escribió El Quijote?",
-//     respuestaCorrecta: "Miguel de Cervantes", // texto esperado
-//     puntaje: 2,           // valor de esta pregunta para la clase (0 a 10)
+//     respuestaCorrecta: "Miguel de Cervantes", // texto esperado (o LISTA)
+//     puntaje: 2,           // valor de esta pregunta (0 a 10)
 //     // id: "p7",          // (opcional) identificador único y estable
-//   }).then((ganado) => { /* nota obtenida en ESTA pregunta (oculta) */ });
+//   }).then((ganado) => { /* nota ganada en ESTA pregunta (oculta) */ });
 //
-//   // o dentro de una función async:
-//   // const ganado = await respuestaSimple({ ... });
+// ─── RESPUESTA FÓRMULA: esFormula: true (v4 · MathLive) ───
+//   Para matemática (fracciones, raíces, exponentes…):
 //
-// COMPARACIÓN AL VALIDAR (para que no importe cómo la escriba):
+//     respuestaSimple({
+//       ...,
+//       esFormula: true,                    // ← la respuesta es una FÓRMULA
+//       indicacion: "Resuelve $x^2 = 9$ y escribe la solución positiva.",
+//       respuestaCorrecta: "x = 3",         // LaTeX (o lista de aceptadas:
+//                                           //  ["x = 3", "x = +3"])
+//     });
+//
+//   · La respuesta se arma SOLO con el TECLADO VIRTUAL de MathLive
+//     (capas 123 / símbolos / abc / αβγ / funciones: todos los símbolos
+//     y letras, fracciones, raíces, exponentes…) que viene con la
+//     pregunta: NO hay campo de texto físico ni pegado — el teclado
+//     físico y el portapapeles se BLOQUEAN por captura, así NADIE puede
+//     escribir otra cosa; el valor guardado es LaTeX limpio de MathLive.
+//   · El campo <math-field> muestra la fórmula renderizada en vivo,
+//     como en un editor profesional de matemática.
+//   · Comparación TOLERANTE (normalizarFormula): espacios fuera,
+//     \dfrac = \frac, coma decimal = punto, × = ·, x^2 = x^{2}, etc.
+//   · respuestaCorrecta acepta UN string LaTeX o una LISTA de
+//     equivalentes (también en modo texto normal).
+//
+// COMPARACIÓN AL VALIDAR en modo TEXTO (para que no importe cómo la
+//   escriba):
 //   · Se convierte TODO a MINÚSCULAS (no importa mayúsculas/minúsculas).
 //   · Se quitan TODOS los espacios en blanco (antes, dentro y después).
 //   · SÍ se respetan las TILDES y los signos: "Árbol" ≠ "arbol", "1.5" ≠ "15".
 //     Ej.: "  MIGUEL   de cervantes " = "Miguel de Cervantes" ✓
+//   En modo FÓRMULA compara con respuestasEquivalentes() de
+//   formatearFormulas.js (normalización de LaTeX tolerante).
 //
-// QUÉ DEVUELVE — Promise<number> con lo ganado en ESTA pregunta.
-//   LA NOTA ES INVISIBLE: el recuadro NO muestra puntos ni los menciona.
-//   · SIEMPRE hay DOS intentos:
-//     - Correcta al 1er intento → el puntaje COMPLETO (ej. 2).
-//     - Correcta al 2do intento → la MITAD con un decimal (ej. 1).
-//     - Mala en los dos         → 0 (podrá reintentar en otra sesión).
-//   · Si ya estaba respondida → 0 (no vuelve a sumar).
-//   · Al agotar los intentos se revela la respuesta correcta.
-//   El estudiante solo ve si acertó, en qué intento va y si puede reintentar.
+// REGLA DE PUNTAJE (estudiante): 1.er intento correcto → puntaje
+//   completo · 2.º intento correcto → la MITAD con 1 decimal ·
+//   fallada en los dos → 0. La nota NUNCA se muestra en pantalla
+//   (solo el examen muestra la NOTA final, a cargo del archivo del
+//   examen). Si ganó 0 no se guarda nada: la pregunta reaparece
+//   fresca en otra sesión; si ya está respondida se bloquea
+//   ("Respondida") leyendo la nota en Firestore + localStorage.
+//
+// ─── TIPO "clase" (defecto) ───
+//   Dos intentos (completo/mitad). MUESTRA si lo escrito es correcto
+//   (borde verde/rojo + feedback). Botón "Enviar respuesta".
+//
+// ─── TIPO "tarea" ───
+//   Los mismos dos intentos y el mismo puntaje, pero la UI es
+//   NEUTRA: nunca dice si lo enviado fue correcto ni pone el borde
+//   verde/rojo. Botón "Enviar respuesta": el 1.er envío vale
+//   completo y el 2.º (si lo hay, aunque el 1.º hubiera sido
+//   correcto) es EL QUE CUENTA: correcto → mitad, incorrecto → 0.
+//   Tras el 2.º envío se bloquea.
+//
+// ─── TIPO "examen" ───
+//   SIN botón propio: el archivo del examen pone SU botón "Enviar"
+//   al final y envía todos los bloques de una vez:
+//
+//     const p = respuestaSimple({ ..., tipo: "examen" });
+//     // ... el estudiante responde ...
+//     const r = await p.enviar();  // → { puntos, maxPuntaje } del bloque
+//     // ... tras todos los bloques:
+//     const resumen = await finalizarExamen(perfil, clase, { titulo });
+//     // resumen.puntos = nota del examen (mostrarla en pantalla)
+//
+//   · enviar() califica el bloque (una sola oportunidad: correcto →
+//     puntaje completo, vacío/incorrecto → 0), lo guarda con la marca
+//     de examen enviado y devuelve el resultado al examen.
+//   · finalizarExamen() fija nota.enviado = true y reporta el TOTAL
+//     al Sheet UNA sola vez (fila del examen × columna del NIE):
+//     el examen queda bloqueado aunque cierre y abra sesión.
+//   · Al cargar, si nota.enviado → todos los bloques aparecen
+//     bloqueados ("Examen enviado").
+//   · No muestra si lo escrito es correcto. SOLO si el docente marca
+//     en la configuración del examen mostrarCorrectas: true se
+//     revelan al enviar (borde verde/rojo + la respuesta correcta).
+//     La nota obtenida la muestra el archivo del examen con
+//     resumen.puntos.
+//
+// ─── DOCENTE (perfil.rol === "docente") ───
+//   Intentos ILIMITADOS y NADA se guarda: ni Firestore, ni Sheets,
+//   ni localStorage de notas. El puntaje de la clase se muestra en
+//   un head morado DEBAJO DE LA USERBAR (sticky) y vive SOLO en
+//   la pestaña (sessionStorage): cerrar la app lo borra.
+//
+// Persistencia (estudiante): la MISMA de opcionMultiple.js —
+//   localStorage "mco_nota_{uid}_{claseId}" (instantáneo) + notas/
+//   {uid}/clases/{claseId} en Firestore vía js/data/db.js (fuente de
+//   verdad) + ESPEJO en Google Sheets (db.notas.reportarActividad):
+//   clase y tarea re-reportan el TOTAL tras cada pregunta; el examen
+//   se reporta UNA vez desde finalizarExamen(). Cada pregunta guarda
+//   su valor UNA sola vez (clave: id, o slug del texto + hash). Lo no
+//   sumado no se guarda → las preguntas falladas reaparecen frescas.
+//   OJO: si el MISMO texto de pregunta se usa en dos utilidades
+//   distintas de la misma clase, dales 'id' diferentes.
 //
 // SUMATORIA FINAL DE LA CLASE (compartida con opcionMultiple.js y
-// multipleOpcion.js — usan las MISMAS obtenerNota() y sumarPuntos()):
+// multipleOpcion.js — usan las MISMAS obtenerNota() y sumarPuntos(),
+// re-exportadas aquí):
 //     const nota = await obtenerNota(perfil, clase);
 //     nota.puntos  // ← suma de TODO lo respondido (esta sesión y anteriores).
 //                  //   NO le sumes el valor devuelto por respuestaSimple():
 //                  //   sería duplicado.
 //
-// Persistencia: localStorage "mco_nota_{uid}_{claseId}" (instantáneo)
-//   + notas/{uid}/clases/{claseId} en Firestore (mejor esfuerzo).
-//   Cada pregunta guarda su valor UNA sola vez (clave: id, o slug del
-//   texto + hash). Lo no sumado no se guarda → las preguntas falladas
-//   2 veces reaparecen frescas en otra sesión.
-//   OJO: si el MISMO texto de pregunta se usa en dos utilidades distintas
-//   de la misma clase, dales 'id' diferentes para que no colisionen.
+// Compatibilidad: también acepta los nombres antiguos pregunta /
+//   respuesta, y puntaje por defecto = 1. Sin 'tipo' se comporta
+//   como "clase": los contenidos viejos siguen igual.
+//
+// Compartido con opcionMultiple.js (v3) y multipleOpcion.js (v4): esta
+//   utilidad usa SUS helpers (esDocente, prepararDocente,
+//   registrarPuntoDocente, guardarPreguntaExamen, obtenerNota,
+//   sumarPuntos, finalizarExamen) para que todas las utilidades se
+//   comporten igual (un solo head de docente, una sola lógica de
+//   guardado).
 //
 // Convención: CSS implícito · 100% responsivo · fondo blanco · paleta del proyecto.
 // ============================================================
 
-import { obtenerNota, sumarPuntos } from "./opcionMultiple.js";
+// REGLA DEL PROYECTO: nada toca Firestore o Sheets directo → todo pasa
+// por las funciones compartidas de opcionMultiple.js (que usan db.js)
+import {
+  obtenerNota,
+  sumarPuntos,
+  finalizarExamen,
+  guardarPreguntaExamen,
+  esDocente,
+  prepararDocente,
+  registrarPuntoDocente,
+} from "./opcionMultiple.js";
+
+// Fórmulas (v4): render + comparación tolerante. El TECLADO ya no es
+// el propio de formatearFormulas.js: ahora es el de MathLive.
+import {
+  cargarFormulas,
+  textoConFormulas,
+  formatearFormula,
+  respuestasEquivalentes,
+} from "./formatearFormulas.js";
+
+import { escapeHtml } from "./helpers.js";
+
+// Comodines para el archivo de contenido (misma API que opcionMultiple.js)
+export { obtenerNota, sumarPuntos, finalizarExamen } from "./opcionMultiple.js";
+
+/* ------------- Carga de MathLive (solo modo fórmula) -------------
+   MathLive trae el campo <math-field> (muestra la fórmula renderizada
+   en vivo) y SU teclado virtual completo: capas 123, símbolos, letras
+   abc, griego y funciones. Versión FIJADA. Si el CDN falla, la zona
+   muestra un aviso claro y NO hay campo alternativo a propósito: la
+   regla de esFormula es que la respuesta SOLO salga del teclado. */
+
+const MATHLIVE_VERSION = "0.111.1";
+const MATHLIVE_URL = `https://cdn.jsdelivr.net/npm/mathlive@${MATHLIVE_VERSION}/mathlive.min.mjs`;
+const MATHLIVE_FONTS = `https://cdn.jsdelivr.net/npm/mathlive@${MATHLIVE_VERSION}/fonts`;
+
+let promesaMathLive = null;
+
+function cargarMathLive() {
+  if (!promesaMathLive) {
+    promesaMathLive = import(MATHLIVE_URL)
+      .then((ml) => {
+        if (ml && ml.MathfieldElement) {
+          try {
+            // Fuentes junto al módulo (CDN) y sin sonidos: menos peticiones.
+            ml.MathfieldElement.fontsDirectory = MATHLIVE_FONTS;
+            ml.MathfieldElement.soundsDirectory = null;
+          } catch (e) { /* opciones no disponibles en esta versión */ }
+        }
+        return ml;
+      });
+    // Si falla, permitir reintentarlo en el próximo montaje
+    promesaMathLive.catch(() => { promesaMathLive = null; });
+  }
+  return promesaMathLive;
+}
+
+/* ---------------- Constantes ---------------- */
+
+const TIPOS = ["clase", "tarea", "examen"];
+
+let estilosListos = false;
 
 /* ---------------- Helpers ---------------- */
 
@@ -98,6 +244,34 @@ function inyectarEstilos() {
   const estilo = document.createElement("style");
   estilo.id = "respuesta-simple-estilos";
   estilo.textContent = `
+    /* Head del docente (compartido con opcionMultiple.js: mismas reglas
+       por si esta utilidad carga sola en la página) */
+    .om-head-docente {
+      position: sticky;
+      top: 56px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .6rem;
+      background: #f5f3ff;
+      border-bottom: 1px solid #e9d5ff;
+      padding: .45rem clamp(1rem, 4vw, 2rem);
+      font-size: .84rem;
+      font-weight: 700;
+      color: #5b21b6;
+      box-shadow: 0 2px 10px rgba(124, 58, 237, .08);
+    }
+    .om-head-docente-pts {
+      background: #7c3aed;
+      color: #ffffff;
+      border-radius: 999px;
+      padding: .18rem .7rem;
+      font-size: .8rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
     .re-caja {
       background: #ffffff;
       border: 1px solid #e0f4f7;
@@ -215,6 +389,89 @@ function inyectarEstilos() {
       cursor: not-allowed;
     }
 
+    /* ── Modo FÓRMULA (esFormula: true → MathLive) ── */
+    .re-formula-zona { margin: 0 0 .25rem; }
+    .re-mathfield {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 3.2rem;
+      font-size: 1.15rem;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: .9rem;
+      padding: .3rem .65rem;
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+      --caret-color: #0891b2;
+      --caret-background-color: #0891b2;
+    }
+    .re-mathfield:focus-within {
+      outline: none;
+      border-color: #0891b2;
+      box-shadow: 0 0 0 3px rgba(8, 145, 178, .15);
+    }
+    .re-mathfield.bien { border-color: #16a34a; background: rgba(22, 163, 52, .06); }
+    .re-mathfield.mal {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, .05);
+      animation: re-shake .3s ease;
+    }
+    .re-mathfield:disabled { background: #f9fafb; opacity: .85; }
+    /* El menú ☰ de MathLive trae "pegar LaTeX": fuera (setOptions({menuItems})
+       se ignora en 0.111.x, pero expone el part menu-toggle). El botón ▦ que
+       abre el teclado virtual se queda. */
+    .re-mathfield::part(menu-toggle) { display: none !important; }
+    .re-formula-cargando {
+      display: block;
+      padding: .85rem;
+      font-size: .85rem;
+      color: #9ca3af;
+    }
+    .re-formula-aviso {
+      margin: 0;
+      padding: .7rem .85rem;
+      background: rgba(249, 115, 22, .08);
+      border: 1px dashed #f97316;
+      border-radius: .9rem;
+      color: #c2410c;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .re-formula-pie {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .6rem;
+      flex-wrap: wrap;
+      margin-top: .35rem;
+    }
+    .re-formula-nota {
+      margin: 0;
+      font-size: .78rem;
+      color: #6b7280;
+      flex: 1;
+      min-width: 0;
+    }
+    .re-btn-teclado {
+      font-family: inherit;
+      background: #ecfeff;
+      color: #0e7490;
+      border: 1px solid rgba(8, 145, 178, .35);
+      border-radius: 999px;
+      padding: .42rem .9rem;
+      font-size: .82rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .re-btn-teclado:hover:not(:disabled) {
+      background: rgba(8, 145, 178, .12);
+      box-shadow: 0 3px 10px rgba(8, 145, 178, .15);
+    }
+    .re-btn-teclado:disabled { opacity: .5; cursor: not-allowed; }
+    .re-solucion .katex { font-size: 1em; }
+
     /* Caja roja cuando el contenido llamó a la utilidad con datos inválidos */
     .re-error-dev {
       border: 2px dashed #ef4444;
@@ -226,24 +483,28 @@ function inyectarEstilos() {
     }
 
     @media (max-width: 767px) {
+      .om-head-docente { top: 52px; padding: .4rem 1rem; }
       .re-caja { padding: 1rem; }
       .re-pie { flex-direction: column-reverse; align-items: stretch; }
       .re-enviar { justify-content: center; }
+      .re-formula-pie { flex-direction: column-reverse; align-items: stretch; }
+      .re-btn-teclado { justify-content: center; }
     }
   `;
   document.head.append(estilo);
 }
-
-let estilosListos = false;
 
 /* ---------------- Componente ---------------- */
 
 /**
  * Inserta una pregunta de respuesta simple en el contenedor indicado.
  * Devuelve una Promise<number> con la nota ganada en ESTA pregunta
- * (puntaje completo al 1er intento / mitad con un decimal al 2.º / 0).
- * Esa nota NUNCA se muestra en pantalla: queda oculta para la sumatoria
- * final de la clase (la misma de opcionMultiple.js y multipleOpcion.js).
+ * (puntaje completo / mitad con 1 decimal / 0; queda pendiente si el
+ * estudiante nunca la termina). Con tipo "examen" la promesa trae
+ * además .enviar() → Promise<{ puntos, maxPuntaje }> para el botón
+ * final del examen. Esa nota NUNCA se muestra en pantalla: queda
+ * oculta para la sumatoria final (la misma de opcionMultiple.js y
+ * multipleOpcion.js).
  */
 export function respuestaSimple(config = {}) {
   const {
@@ -255,7 +516,22 @@ export function respuestaSimple(config = {}) {
     respuestaCorrecta, respuesta,       // respuesta = alias (compatibilidad)
   } = config;
 
-  // PUNTAJE OCULTO de esta pregunta (0 a 10). Defecto: 1.
+  // MODO FÓRMULA (v3): esFormula: true → la respuesta se arma SOLO con
+  // el teclado virtual de fórmulas (sin campo de texto físico).
+  const esFormula = !!config.esFormula;
+
+  const tipo = String(config.tipo || clase?.tipo || "clase").toLowerCase().trim();
+  const esTipoClase = tipo === "clase";
+  const esTarea = tipo === "tarea";
+  const esExamen = tipo === "examen";
+  // mostrarCorrectas: SOLO examen (el docente lo marcará en la
+  // configuración del examen; defecto false = nunca se revela).
+  const mostrarCorrectas = !!config.mostrarCorrectas;
+  // ¿Se revela la corrección? clase: siempre · tarea: nunca ·
+  // examen: solo si la config del examen lo permite.
+  const revelar = esTipoClase || (esExamen && mostrarCorrectas);
+
+  // PUNTAJE OCULTO de esta pregunta (0 a 10). Defecto: 1 (compatibilidad v1).
   let puntaje = Number(config.puntaje ?? 1);
   if (!Number.isFinite(puntaje) || puntaje < 0 || puntaje > 10) {
     console.warn("[respuestaSimple] 'puntaje' debe ser un número entre 0 y 10 (llegó:", config.puntaje, "). Se usará 1.");
@@ -263,12 +539,25 @@ export function respuestaSimple(config = {}) {
   }
   puntaje = redondear1(puntaje);
 
-  return new Promise((resolve) => {
+  let enviarExamen = null; // se define dentro del executor (solo examen)
+
+  const promesa = new Promise((resolve) => {
     inyectarEstilos();
+    // Fórmulas: cargar KaTeX ANTES de pintar (si el CDN falla sigue
+    // adelante y los textos se muestran planos).
+    cargarFormulas().catch(() => null).then(() => construir(resolve));
+  });
+
+  function construir(resolve) {
 
     // --- Validaciones (avisos claros para quien escribe el contenido) ---
     const texto = String(indicacion ?? pregunta ?? "").trim();
-    const solucion = String(respuestaCorrecta ?? respuesta ?? "").trim();
+    // Aceptadas: UN string o una LISTA de strings (todos equivalentes).
+    const soluciones = (Array.isArray(respuestaCorrecta ?? respuesta)
+      ? (respuestaCorrecta ?? respuesta)
+      : [(respuestaCorrecta ?? respuesta)])
+      .map((s) => String(s ?? "").trim())
+      .filter(Boolean);
 
     function errorDev(mensaje) {
       console.error("[respuestaSimple]", mensaje);
@@ -283,18 +572,37 @@ export function respuestaSimple(config = {}) {
       resolve(0);
       return;
     }
+    if (!TIPOS.includes(tipo)) {
+      errorDev(`'tipo' debe ser "clase", "tarea" o "examen" (llegó: ${tipo}).`);
+      resolve(0);
+      return;
+    }
     if (!texto) { errorDev("Falta la indicación de la pregunta."); resolve(0); return; }
-    if (!solucion) { errorDev("Falta la 'respuestaCorrecta' (texto esperado)."); resolve(0); return; }
+    if (!soluciones.length) {
+      errorDev(esFormula
+        ? "Falta la 'respuestaCorrecta' (LaTeX esperado; también puede ser una lista de equivalentes)."
+        : "Falta la 'respuestaCorrecta' (texto esperado; también puede ser una lista de equivalentes).");
+      resolve(0);
+      return;
+    }
     if (!perfil?.uid || !clase?.id) {
       errorDev("Faltan 'perfil' (con uid) o 'clase' (con id): la nota no se puede guardar.");
       resolve(0);
       return;
     }
 
+    const esDoc = esDocente(perfil);
     const qid = id ? slug(String(id)) : `${slug(texto)}-${hash8(normalizar(texto))}`;
 
-    let intento = 0;        // fallos acumulados (0 = primer intento, 1 = segunda oportunidad)
+    let envios = 0;         // envíos ya usados (0 = el próximo es el primero)
     let bloqueada = false;  // pregunta terminada (resuelta, agotada o ya respondida)
+    let resuelto = false;
+    let yaEnviada = false;  // examen: guardado con la marca de enviado
+    let ultimoResultado = null;
+
+    const resolverUnaVez = (valor) => {
+      if (!resuelto) { resuelto = true; resolve(valor); }
+    };
 
     // --- Estructura (SIN ninguna mención al puntaje: queda oculto) ---
     const caja = document.createElement("section");
@@ -302,103 +610,423 @@ export function respuestaSimple(config = {}) {
     caja.setAttribute("aria-label", texto);
     caja.innerHTML = `
       <div class="re-cab">
-        <span class="re-etiqueta">Pregunta</span>
-        <span class="re-chip">Intento 1 de 2</span>
+        <span class="re-etiqueta">${esExamen ? "Examen" : esTarea ? "Tarea" : "Pregunta"}</span>
+        <span class="re-chip"></span>
       </div>
       <p class="re-pregunta"></p>
-      <input type="text" class="re-input" aria-label="Tu respuesta"
-             placeholder="Escribe tu respuesta…" autocomplete="off"
-             autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+      ${esFormula
+        ? '<div class="re-formula-zona"><span class="re-formula-cargando">Cargando el teclado de fórmulas…</span></div>' +
+          '<div class="re-formula-pie">' +
+          '<p class="re-formula-nota">Responde SOLO con el teclado virtual de MathLive: toca el campo (o el botón) para abrirlo. Aquí no funciona el teclado físico.</p>' +
+          '<button type="button" class="re-btn-teclado" disabled>⌨ Teclado</button>' +
+          '</div>'
+        : '<input type="text" class="re-input" aria-label="Tu respuesta"' +
+          ' placeholder="Escribe tu respuesta…" autocomplete="off"' +
+          ' autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">'}
       <div class="re-pie">
         <span class="re-feedback" aria-live="polite"></span>
-        <button type="button" class="re-enviar" disabled>Enviar respuesta</button>
+        ${esExamen ? "" : '<button type="button" class="re-enviar" disabled>Enviar respuesta</button>'}
       </div>`;
-    caja.querySelector(".re-pregunta").textContent = texto;
+    caja.querySelector(".re-pregunta").innerHTML = textoConFormulas(texto);
 
     const chipEl = caja.querySelector(".re-chip");
     const feedbackEl = caja.querySelector(".re-feedback");
-    const input = caja.querySelector(".re-input");
-    const btnEnviar = caja.querySelector(".re-enviar");
+    // En modo fórmula NO hay input: la respuesta vive en el math-field
+    // de MathLive. En modo texto, el input normal.
+    const input = caja.querySelector(".re-input");        // null en modo fórmula
+    const zonaFormula = caja.querySelector(".re-formula-zona"); // null en modo texto
+    const btnEnviar = caja.querySelector(".re-enviar"); // null en examen
+    let mfFormula = null;      // <math-field> de MathLive (solo modo fórmula)
+    let btnTeclado = caja.querySelector(".re-btn-teclado"); // null en modo texto
+    let marcaPendiente = null; // por si se marca/bloquea antes de que cargue MathLive
 
-    const feedback = (mensaje, tipo) => {
+    /* MathLive: campo + teclado virtual EXCLUSIVO. El teclado físico y
+       el portapapeles se bloquean por CAPTURA en la zona (el evento
+       muere antes de llegar al campo) y el teclado de MathLive trae
+       TODOS los símbolos y letras. Si el CDN falla, la zona muestra un
+       aviso claro: no hay campo alternativo a propósito. */
+    if (esFormula) montarFormula();
+
+    function montarFormula() {
+      cargarMathLive()
+        .then((ml) => {
+          if (!ml || !ml.MathfieldElement) throw new Error("MathLive no disponible");
+          if (!zonaFormula || !zonaFormula.isConnected) return; // ya desmontada
+          const mf = new ml.MathfieldElement({
+            virtualKeyboardMode: "manual", // el teclado lo abrimos NOSOTROS
+            fontsDirectory: MATHLIVE_FONTS,
+            soundsDirectory: null,
+          });
+          mf.className = "re-mathfield";
+          if (marcaPendiente) mf.classList.add(marcaPendiente);
+          mf.setAttribute("aria-label", "Tu respuesta en fórmula");
+          try { mf.menuItems = []; } catch (e) { /* sin menú si la versión no lo permite */ }
+          mfFormula = mf;
+          zonaFormula.replaceChildren(mf);
+          if (btnTeclado) btnTeclado.disabled = bloqueada;
+
+          // ── SOLO teclado virtual: el teclado físico NUNCA llega ──
+          const bloquearFisico = (e) => {
+            if (e.target === mf || (e.target && mf.contains(e.target))) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          };
+          ["keydown", "paste", "drop", "contextmenu"].forEach((tipoEvento) => {
+            zonaFormula.addEventListener(tipoEvento, bloquearFisico, true);
+          });
+
+          // Teclado virtual de MathLive. OJO: NUNCA acoplar show/hide a
+          // focus/blur — al abrir el teclado MathLive hace blur y
+          // re-foco del campo (gestión interna), y acoplarlo crea un
+          // BUCLE show/hide que re-crea el teclado sin parar. Se abre con
+          // POINTERDOWN en el campo (intención del usuario) o con el
+          // botón, y se cierra con clic FUERA, con el botón, al enviar o
+          // al bloquearse.
+          const vk = () => window.mathVirtualKeyboard || null;
+          const abrirTeclado = () => {
+            const v = vk();
+            if (v && !bloqueada && !v.visible) { try { mf.focus(); } catch (e) { /* noop */ } v.show(); }
+          };
+          const cerrarTeclado = () => { const v = vk(); if (v && v.hide) v.hide(); };
+          const actualizarBtnTeclado = () => {
+            const v = vk();
+            if (btnTeclado) btnTeclado.textContent = v && v.visible ? "⌨ Ocultar teclado" : "⌨ Teclado";
+          };
+          mf.addEventListener("pointerdown", abrirTeclado);
+          if (btnTeclado) {
+            btnTeclado.addEventListener("click", () => {
+              const v = vk();
+              if (!v) return;
+              if (v.visible) cerrarTeclado(); else { try { mf.focus(); } catch (e) { /* noop */ } v.show(); }
+              actualizarBtnTeclado();
+            });
+          }
+          // Clic FUERA (fuera del campo y del propio teclado) lo cierra,
+          // como un teclado de celular. El botón Enviar queda fuera de la
+          // zona → al enviar, el teclado se cierra solo.
+          const cerrarSiFuera = (e) => {
+            const v = vk();
+            if (!v || !v.visible) return;
+            const kb = document.querySelector(".ML__keyboard");
+            const enTeclado = kb && e.target instanceof Node && kb.contains(e.target);
+            const enCampo = e.target instanceof Node && zonaFormula.contains(e.target);
+            if (!enTeclado && !enCampo) cerrarTeclado();
+          };
+          document.addEventListener("pointerdown", cerrarSiFuera, true);
+          try {
+            const v = vk();
+            if (v && v.addEventListener) v.addEventListener("virtual-keyboard-toggle", actualizarBtnTeclado);
+          } catch (e) { /* solo cosmético */ }
+
+          // Estado en vivo: habilita Enviar y limpia el rojo al cambiar
+          mf.addEventListener("input", () => {
+            if (bloqueada) return;
+            const vacio = valorActual().trim() === "";
+            mf.classList.remove("mal");
+            if (btnEnviar) btnEnviar.disabled = vacio;
+            if (vacio) feedback("", "");
+          });
+
+          if (bloqueada) bloquearFormula();
+        })
+        .catch(() => {
+          if (zonaFormula && zonaFormula.isConnected) {
+            zonaFormula.innerHTML =
+              '<p class="re-formula-aviso">No se pudo cargar el editor de fórmulas (MathLive). ' +
+              "Revisa tu conexión a internet y vuelve a entrar a la clase.</p>";
+          }
+          if (btnTeclado) btnTeclado.style.display = "none";
+        });
+    }
+
+    const feedback = (mensaje, tipoFeedback) => {
       feedbackEl.textContent = mensaje;
-      feedbackEl.className = "re-feedback" + (tipo ? " " + tipo : "");
+      feedbackEl.className = "re-feedback" + (tipoFeedback ? " " + tipoFeedback : "");
     };
-    const chip = (mensaje, tipo) => {
+    const chip = (mensaje, tipoChip) => {
       chipEl.textContent = mensaje;
-      chipEl.className = "re-chip" + (tipo ? " " + tipo : "");
+      chipEl.className = "re-chip" + (tipoChip ? " " + tipoChip : "");
+    };
+
+    // Valor actual de la respuesta (texto escrito o LaTeX de MathLive).
+    // Los \placeholder{} VACÍOS (huecos sin llenar del teclado) se quitan
+    // para comparar limpio; si un hueco tiene contenido, MathLive lo
+    // serializa con su contenido dentro.
+    const valorActual = () => {
+      if (!esFormula) return input.value;
+      if (!mfFormula) return "";
+      try {
+        return String(mfFormula.value ?? "").split("\\placeholder{}").join("");
+      } catch (e) {
+        return "";
+      }
+    };
+    const hayTexto = () => valorActual().trim() !== "";
+    // Marca visual verde/roja: input en texto, math-field en fórmula
+    const campoMarca = () => (esFormula ? mfFormula : input);
+    const marcar = (clase) => {
+      marcaPendiente = clase;
+      const campo = campoMarca();
+      if (campo) campo.classList.add(clase);
+    };
+    const desmarcar = (...clases) => {
+      const campo = campoMarca();
+      if (campo) campo.classList.remove(...clases);
+    };
+
+    // Comparación: fórmula → tolerante vía normalizarFormula; texto →
+    // minúsculas y sin espacios (conservando tildes y signos).
+    const esCorrecto = (valor) =>
+      esFormula
+        ? respuestasEquivalentes(valor, soluciones)
+        : soluciones.some((s) => comparable(valor) === comparable(s));
+
+    // Feedback que revela la respuesta correcta (con fórmula renderizada)
+    const decirSolucion = (prefijo, tipoFeedback) => {
+      if (esFormula) {
+        feedbackEl.innerHTML =
+          escapeHtml(prefijo) +
+          ' <span class="re-solucion">' +
+          formatearFormula(soluciones[0]) +
+          "</span>";
+        feedbackEl.className = "re-feedback" + (tipoFeedback ? " " + tipoFeedback : "");
+      } else {
+        feedback(prefijo + " La respuesta era: " + soluciones[0] + ".", tipoFeedback);
+      }
+    };
+
+    const bloquearFormula = () => {
+      if (mfFormula) { try { mfFormula.disabled = true; } catch (e) { /* noop */ } }
+      const v = window.mathVirtualKeyboard;
+      if (v && v.hide) { try { v.hide(); } catch (e) { /* noop */ } }
+      if (btnTeclado) btnTeclado.disabled = true;
     };
 
     const bloquear = () => {
       bloqueada = true;
-      btnEnviar.disabled = true;
-      input.disabled = true;
+      if (btnEnviar) btnEnviar.disabled = true;
+      if (input) input.disabled = true;
+      bloquearFormula();
     };
 
-    input.addEventListener("input", () => {
-      if (bloqueada) return;
-      input.classList.remove("mal");
-      btnEnviar.disabled = input.value.trim() === "";
-      if (input.value.trim() === "") feedback("", "");
-    });
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !btnEnviar.disabled) btnEnviar.click();
-    });
+    if (input) {
+      input.addEventListener("input", () => {
+        if (bloqueada) return;
+        input.classList.remove("mal");
+        if (btnEnviar) btnEnviar.disabled = input.value.trim() === "";
+        if (input.value.trim() === "") feedback("", "");
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && btnEnviar && !btnEnviar.disabled) btnEnviar.click();
+      });
+    }
 
-    // --- ¿Ya respondida antes? (el valor guardado NO se muestra: solo se bloquea) ---
-    obtenerNota(perfil, clase).then((nota) => {
-      if (bloqueada || input.value.trim() !== "") return; // ya interactuó en esta sesión
-      if (nota.preguntas[qid] != null) {
-        bloquear();
-        input.classList.add("bien");
-        btnEnviar.textContent = "Respondida";
-        chip("Respondida", "bien");
-        feedback(`Ya respondiste esta pregunta. La respuesta era: ${solucion}.`, "ok");
-        resolve(0); // no vuelve a sumar
+    // Estado inicial por tipo y rol
+    if (esDoc) {
+      chip("Vista docente", "");
+      feedback("Intentos libres, puntaje local arriba y nada se guarda.", "");
+    } else if (esExamen) {
+      chip("Sin enviar", "");
+      feedback("El examen enviará todas tus respuestas al final.", "");
+    } else if (esTarea) {
+      chip("Envío 1 de 2", "");
+      feedback("Escribe tu respuesta y envíala. Tienes hasta dos envíos.", "");
+    } else {
+      chip("Intento 1 de 2", "");
+    }
+
+    if (esDoc) prepararDocente(perfil, clase); // restaura el head local si ya hay puntaje
+
+    // --- Al montar (estudiante): ¿ya respondida o examen ya enviado? ---
+    if (!esDoc) {
+      obtenerNota(perfil, clase).then((nota) => {
+        if (resuelto || bloqueada || envios > 0 || hayTexto()) return; // ya interactuó en esta sesión
+        const guardado = nota.preguntas ? nota.preguntas[qid] : undefined;
+        const hecha = guardado != null;
+
+        if (esExamen && (nota.enviado || hecha)) {
+          yaEnviada = true;
+          ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje, yaEnviado: true };
+          bloquear();
+          if (revelar) {
+            marcar("bien");
+            decirSolucion("Ya enviaste este examen.", "ok");
+          } else {
+            feedback("Ya enviaste este examen.", "");
+          }
+          chip("Examen enviado", "");
+          resolverUnaVez(0);
+          return;
+        }
+        if (hecha) {
+          bloquear();
+          if (revelar) {
+            marcar("bien");
+            decirSolucion("Ya respondiste esta pregunta.", "ok");
+          } else {
+            feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste esta pregunta.", "ok");
+          }
+          btnEnviar.textContent = "Respondida";
+          chip("Respondida", "bien");
+          resolverUnaVez(0); // no vuelve a sumar
+        }
+      });
+    }
+
+    // --- Guardado del examen (estudiante): valor + marca de enviado ---
+    // (la lógica vive en guardarPreguntaExamen(), compartida con
+    // opcionMultiple.js y multipleOpcion.js)
+    async function guardarExamen(ganado) {
+      await guardarPreguntaExamen(perfil, clase, qid, ganado);
+      yaEnviada = true;
+      ultimoResultado = { puntos: ganado, maxPuntaje: puntaje };
+    }
+
+    // --- Envío de clase y tarea (botón) ---
+    async function procesarEnvio() {
+      if (bloqueada || !hayTexto()) return null;
+      if (esExamen) return null; // el examen pasa por enviar()
+
+      const acierto = esCorrecto(valorActual());
+
+      /* DOCENTE · clase y tarea: intentos libres, puntaje local, nada se guarda */
+      if (esDoc) {
+        const ganado = acierto ? (envios === 0 ? puntaje : redondear1(puntaje / 2)) : 0;
+        envios++;
+        if (acierto) {
+          if (revelar) {
+            desmarcar("mal");
+            marcar("bien");
+          }
+          registrarPuntoDocente(perfil, clase, qid, ganado);
+          if (revelar) {
+            chip(envios === 1 ? "Resuelta" : "Resuelta (intento " + envios + ")", "bien");
+            feedback("¡Correcta! Vista docente: el puntaje está arriba y nada se guarda.", "ok");
+          } else {
+            chip("Enviada", "");
+            feedback("Respuesta enviada. Vista docente: el puntaje está arriba y nada se guarda.", "");
+          }
+          resolverUnaVez(ganado);
+          return ganado;
+        }
+        if (revelar) {
+          marcar("mal");
+          const elCampo = campoMarca();
+          setTimeout(() => {
+            if (elCampo && !elCampo.classList.contains("bien")) elCampo.classList.remove("mal");
+          }, 700);
+          chip("Vista docente · intento " + (envios + 1), "");
+          feedback("No es correcta. Puedes seguir intentando: nada se guarda.", "aviso");
+        } else {
+          chip("Vista docente · envío " + (envios + 1), "");
+          feedback("Respuesta enviada. Puedes enviar otra vez: nada se guarda.", "");
+        }
+        return null;
       }
-    });
 
-    // --- Enviar respuesta (SIEMPRE dos intentos: completo / mitad / 0) ---
-    btnEnviar.addEventListener("click", () => {
-      if (bloqueada || input.value.trim() === "") return;
-
-      if (comparable(input.value) === comparable(solucion)) {
-        const primero = intento === 0;
-        // Nota OCULTA: completa al 1.er intento, mitad con 1 decimal al 2.º.
-        const ganado = primero ? redondear1(puntaje) : redondear1(puntaje / 2);
-        bloquear();
-        input.classList.add("bien");
-        btnEnviar.textContent = "Respondida";
-        chip(primero ? "Resuelta" : "Resuelta (2.º intento)", "bien");
-        feedback(primero ? "¡Correcta! Muy bien." : "¡Correcta en tu segundo intento! Muy bien.", "ok");
-        resolve(ganado); // ← la nota solo la recibe el archivo de la clase
-        sumarPuntos(perfil, clase, qid, ganado).catch(() => {});
-        return;
+      /* ESTUDIANTE · CLASE: 2 intentos, revela la corrección */
+      if (esTipoClase) {
+        if (acierto) {
+          const ganado = envios === 0 ? puntaje : redondear1(puntaje / 2);
+          bloquear();
+          marcar("bien");
+          btnEnviar.textContent = "Respondida";
+          chip(envios === 0 ? "Resuelta" : "Resuelta (2.º intento)", "bien");
+          feedback(envios === 0 ? "¡Correcta! Muy bien." : "¡Correcta en tu segundo intento! Muy bien.", "ok");
+          if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+          resolverUnaVez(ganado);
+          return ganado;
+        }
+        envios++;
+        marcar("mal");
+        if (envios === 1) {
+          chip("Intento 2 de 2", "aviso");
+          btnEnviar.textContent = "Intentar de nuevo";
+          // Vaciar ANTES del feedback: si MathLive dispara input al vaciar,
+          // su listener limpia el mensaje y el aviso sobrevive al final
+          if (input) input.value = "";
+          if (mfFormula) { try { mfFormula.value = ""; } catch (e) { /* noop */ } }
+          feedback("No es correcta. Tienes una segunda oportunidad.", "aviso");
+          btnEnviar.disabled = true;
+          if (input) input.focus();
+        } else {
+          bloquear();
+          btnEnviar.textContent = "Sin más intentos";
+          chip("Intentos agotados", "mal");
+          decirSolucion("Incorrecta otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión.", "mal");
+          resolverUnaVez(0);
+        }
+        return null;
       }
 
-      // Respuesta incorrecta
-      intento++;
-      input.classList.add("mal");
+      /* ESTUDIANTE · TAREA: 2 envíos neutros; el 2.º es el que cuenta */
+      if (esTarea) {
+        if (envios === 0) {
+          envios++;
+          desmarcar("mal");
+          chip("Envío 2 de 2", "aviso");
+          btnEnviar.textContent = "Enviar de nuevo";
+          feedback("Respuesta enviada. Puedes modificarla y enviar una segunda vez.", "");
+          return null; // la respuesta final (2.º envío) decide el puntaje
+        }
+        const ganado = acierto ? redondear1(puntaje / 2) : 0;
+        bloquear();
+        chip("Enviada", "");
+        feedback("Respuesta enviada. No hay más envíos.", "");
+        if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+        resolverUnaVez(ganado);
+        return ganado;
+      }
 
-      if (intento === 1) {
-        chip("Intento 2 de 2", "aviso");
-        btnEnviar.textContent = "Intentar de nuevo";
-        feedback("No es correcta. Tienes una segunda oportunidad.", "aviso");
-        input.value = "";
-        btnEnviar.disabled = true;
-        input.focus();
+      return null;
+    }
+
+    if (btnEnviar) {
+      btnEnviar.addEventListener("click", () => {
+        procesarEnvio().catch((e) => console.error("[respuestaSimple]", e));
+      });
+    }
+
+    // --- EXAMEN: el botón lo pone el archivo del examen ---
+    enviarExamen = async function () {
+      if (esDoc) {
+        const acierto = esCorrecto(valorActual());
+        const ganado = acierto ? puntaje : 0;
+        registrarPuntoDocente(perfil, clase, qid, ganado);
+        if (revelar) {
+          desmarcar("mal");
+          marcar(acierto ? "bien" : "mal");
+        }
+        chip("Vista docente", "");
+        feedback("Enviado. El puntaje está en el head de arriba; nada se guarda.", "");
+        resolverUnaVez(ganado);
+        return { puntos: ganado, maxPuntaje: puntaje, docente: true };
+      }
+
+      if (yaEnviada) {
+        return ultimoResultado || { puntos: 0, maxPuntaje: puntaje, yaEnviado: true };
+      }
+
+      const acierto = esCorrecto(valorActual());
+      const ganado = acierto ? puntaje : 0;
+      if (revelar) {
+        marcar(acierto ? "bien" : "mal");
+        if (acierto) feedback("Respuesta correcta.", "ok");
+        else decirSolucion("Respuesta incorrecta.", "mal");
       } else {
-        bloquear();
-        btnEnviar.textContent = "Sin más intentos";
-        chip("Intentos agotados", "mal");
-        feedback(
-          `Incorrecta otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión. La respuesta era: ${solucion}.`,
-          "mal"
-        );
-        resolve(0);
+        feedback("Respuesta enviada.", "");
       }
-    });
+      bloquear();
+      chip("Enviada", "");
+      await guardarExamen(ganado);
+      resolverUnaVez(ganado);
+      return { puntos: ganado, maxPuntaje: puntaje };
+    };
 
     contenedor.append(caja);
-  });
+  }
+
+  if (esExamen) promesa.enviar = () => enviarExamen();
+  return promesa;
 }

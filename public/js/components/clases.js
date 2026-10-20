@@ -613,8 +613,8 @@ async function cargarClasesEstudiante() {
   try {
     const grupos = await Promise.all(
       MATERIAS.map(async (m) => {
-        const snap = await getDocs(collection(db, "clases", String(grado), m.id));
-        return snap.docs.map((d) => ({ id: d.id, grado, materiaId: m.id, materia: m.nombre, ...d.data() }));
+        const lista = await db.clases.listar(grado, m.id);
+        return lista.map((c) => ({ grado, materiaId: m.id, materia: m.nombre, ...c }));
       })
     );
     clasesCache = grupos.flat().sort(compararClases);
@@ -746,10 +746,7 @@ function abrirModalCrear() {
       return;
     }
 
-    // Id legible = nombre del archivo de contenido
-    const id = `d${dia}-u${slug(unidad)}-l${slug(leccion)}-${slug(titulo)}`;
-
-        guardar.loading = true;
+    guardar.loading = true;
     try {
       const id = `d${dia}-u${slug(unidad)}-l${slug(leccion)}-${slug(titulo)}`;
       if (await db.clases.existe(gradoSel, materiaSel, id)) {

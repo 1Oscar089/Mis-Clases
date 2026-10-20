@@ -8,8 +8,8 @@
 // - Parte local del correo solo con números → rol "estudiante"
 //   (NIE = los números antes del @). Cualquier otra cosa → "docente".
 // - El nombre se toma del perfil de Google (displayName).
-// - Al iniciar sesión se crea/lee el perfil en Firestore (users/{uid}):
-//   { nombre, rol, email, foto, nie (solo estudiante), grados, creadoEn }
+// - Al iniciar sesión se crea/lee el perfil, SIEMPRE vía db.js
+//   (users/{uid}): { nombre, rol, email, foto, nie, grados, creadoEn }.
 // - Primera vez: el estudiante elige SU grado; el docente elige TODOS
 //   los grados que imparte. Se guarda en users/{uid}.grados (array).
 // - REGLA DEL PROYECTO: este módulo SOLO toca Firebase AUTH (login);
@@ -299,7 +299,7 @@ async function ingresarConGoogle() {
   }
 }
 
-/* ---------------- Perfil en Firestore (users/{uid}) ---------------- */
+/* ---------------- Perfil en Firestore (users/{uid}, vía db.js) ---------------- */
 
 async function asegurarPerfil(user) {
   // Regla: solo correos institucionales. Si no coincide, se cierra sesión.

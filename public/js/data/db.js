@@ -1,47 +1,34 @@
 // ============================================================
 // db.js — ÚNICA capa de acceso a datos (js/data/db.js)
 //
-// REGLA DEL PROYECTO: NADA más toca Firestore o Sheets directamente.
-//   · Firebase AUTH (login Google) queda en auth.js: es autenticación,
-//     no base de datos.
-//   · TODO lo demás (users, clases, notas) pasa por este archivo.
-//   · Sheets se habla a través de sheets.js, pero SIEMPRE desde aquí.
+// REGLA DEL PROYECTO: NINGÚN otro archivo toca Firestore o Sheets.
+//   · Firebase AUTH (login Google) queda en components/auth.js:
+//     es autenticación, no base de datos.
+//   · TODO lo demás (users, clases, notas, hojas…) pasa por aquí.
 //
-// DIVISIÓN DE DATOS (para no saturar Firestore):
-//   · Firestore : users/{uid}
-//                 clases/{grado}/{materia}/{idClase}
-//                 notas/{uid}/clases/{claseId}   (como hasta ahora)
-//   · Sheets    : la nota de CADA actividad de utils (para que una
-//                 actividad ya hecha no se pueda rehacer al volver a
-//                 abrir la clase, ni en otro dispositivo) y las tablas
-//                 del docente: Asistencia-{grado} y Notas-{materia}-
-//                 {grado} (clases + exámenes + tareas, con sumatorias
-//                 por día y media aritmética).
+// ESTADO ACTUAL:
+//   · db.usuarios (users/{uid})                     ✅
+//   · db.clases   (clases/{grado}/{materia}/{id})   ✅
+//   · db.notas    (notas/{uid}/clases/{claseId})    ✅
+//       leer · guardar (Firestore, pueden lanzar) +
+//       actividadHecha · reportarActividad (mejor esfuerzo:
+//       NUNCA lanzan; reportarActividad = espejo en Sheets vía
+//       db.sheets.actividad). La nota { puntos, preguntas } es
+//       la sumatoria de TODAS las actividades de la sesión
+//       (clase, tarea o examen) identificada por claseId.
+//   · db.sheets   (puente con Google Sheets)        ✅
+//       disponible · ping · info · leer · configurar ·
+//       actividad · asistencia  → TODO "mejor esfuerzo":
+//       NUNCA lanzan; devuelven { ok:false, razon }.
+//       Toda la estructura de las hojas vive en sheets.js.
+//   En próximos pasos se agregará SIEMPRE aquí: db.asistencia.
 //
-// PRINCIPIO DE FALLO SUAVE:
-//   · Firestore (usuarios/clases/notas) SÍ puede lanzar error: la UI
-//     ya lo captura y avisa. Es la fuente de verdad.
-//   · Sheets es "mejor esfuerzo": NUNCA lanza; si falla devuelve
-//     {ok:false} y la app sigue normal (sheets.js sin URL configurada
-//     se comporta igual: {ok:false, razon:"sin-url"}).
-//
-// API pública (import { db } from ".../js/data/db.js"):
-//   db.usuarios.leer(uid)                  → datos | null
-//   db.usuarios.crear(uid, datos)          (añade creadoEn)
-//   db.usuarios.actualizar(uid, campos)
-//   db.clases.listar(grado, materiaId)     → [{ id, ...datos }]
-//   db.clases.existe(grado, materiaId, id) → bool
-//   db.clases.crear(grado, materiaId, id, datos)  (añade creadoEn)
-//   db.notas.leer(uid, claseId)            → datos | null
-//   db.notas.guardar(uid, claseId, nota)   (merge + actualizadoEn)
-//   db.notas.reportarActividad({perfil, clase, qid, puntos, tipo})  → Sheets
-//   db.notas.actividadHecha(uid, qid)      → bool (por Sheets)
-//   db.asistencia.registrar({grado, fecha, estudiantes})            → Sheets
-//   db.sheets.configurada() / ping() / configurar()
+// CONVENCIÓN: los métodos de Firestore SÍ pueden lanzar error (es la
+// fuente de verdad; la UI lo captura y avisa). Las funciones de
+// Sheets son "mejor esfuerzo": nunca lanzan.
 // ============================================================
 
 import { db as firestore } from "./initFirebase.js";
-import * as sheets from "./sheets.js";
 import {
   doc,
   getDoc,
@@ -51,16 +38,15 @@ import {
   getDocs,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-
-/* ---------------- Helpers internos ---------------- */
-
-// Fecha local de HOY en formato "yyyy-mm-dd" (la usa Sheets para los
-// encabezados por día; se calcula en el cliente para respetar su zona).
-function fechaLocal() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
+import {
+  configurada,
+  ping,
+  info,
+  leer,
+  configurar,
+  actividad,
+  asistencia,
+} from "./sheets.js";
 
 /* ---------------- USUARIOS — Firestore: users/{uid} ---------------- */
 
@@ -113,90 +99,94 @@ const clases = {
   },
 };
 
-/* ---------------- NOTAS — Firestore + Sheets ---------------- */
+/* ------------- NOTAS — Firestore: notas/{uid}/clases/{claseId} -------------
+   La nota de UNA sesión de trabajo (clase, tarea o examen) es
+   { puntos, preguntas: { [qid]: valor } } y vive en Firestore para
+   que el bloqueo de actividades ya hechas sobreviva a cerrar/abrir
+   sesión y cambie de dispositivo sin perderse. localStorage es el
+   respaldo inmediato y Sheets (reportarActividad) el ESPEJO para
+   las tablas del docente. */
 
 const notas = {
-  /**
-   * Firestore: notas/{uid}/clases/{claseId} → { puntos, preguntas:{qid:p} }
-   * Devuelve null si no hay nota guardada. Puede lanzar.
-   */
+  /** Nota { puntos, preguntas } del usuario en esa clase/tarea/examen
+      o null si no existe. Puede lanzar (Firestore = fuente de verdad). */
   async leer(uid, claseId) {
-    const snap = await getDoc(doc(firestore, "notas", uid, "clases", claseId));
+    const snap = await getDoc(
+      doc(firestore, "notas", String(uid), "clases", String(claseId))
+    );
     return snap.exists() ? snap.data() : null;
   },
 
-  /** Guarda/actualiza la nota completa (merge + actualizadoEn). Puede lanzar. */
+  /** Guarda la nota completa (merge; añade actualizadoEn). Puede lanzar. */
   async guardar(uid, claseId, nota) {
     await setDoc(
-      doc(firestore, "notas", uid, "clases", claseId),
+      doc(firestore, "notas", String(uid), "clases", String(claseId)),
       { ...nota, actualizadoEn: serverTimestamp() },
       { merge: true }
     );
   },
 
-  /**
-   * SHEETS: reporta la nota de UNA actividad de utils (mejor esfuerzo).
-   * · tipo: "clase" | "examen" | "tarea" (define en qué tabla cae).
-   * · clase: { id, grado, materiaId } (el mismo objeto que ya reciben
-   *   los componentes de utils).
-   * code.gs la coloca en su celda, suma el día y marca la actividad
-   * como "hecha" (uid+qid) para que no pueda rehacerse.
-   */
-  async reportarActividad({ perfil, clase, qid, puntos, tipo }) {
-    return sheets.llamar("nota", {
-      tipo: tipo || "clase",
-      grado: clase?.grado,
-      materia: clase?.materiaId,
-      claseId: clase?.id,
-      titulo: clase?.clase || "",   // título legible (ej. del examen/tarea)
-      qid,
-      puntos,
-      uid: perfil?.uid,
-      nombre: perfil?.nombre || "",
-      nie: perfil?.nie || "",
-      fecha: fechaLocal(),
-    });
+  /** ¿Ya respondió el estudiante ESE bloque (qid) de esa sesión?
+      Mejor esfuerzo: ante cualquier fallo devuelve false (no bloquea). */
+  async actividadHecha(uid, claseId, qid) {
+    try {
+      const nota = await this.leer(uid, claseId);
+      return !!(nota && nota.preguntas && nota.preguntas[qid] != null);
+    } catch (e) {
+      return false;
+    }
   },
 
-  /**
-   * SHEETS: ¿esa actividad ya la resolvió este usuario? → bool.
-   * Si Sheets no responde devuelve false (permite hacerla; el guardado
-   * normal de Firestore/localStorage sigue protegiendo la nota).
-   */
-  async actividadHecha(uid, qid) {
-    const r = await sheets.llamar("hecha", { uid, qid });
-    return r.ok === true && r.hecha === true;
+  /** ESPEJO en Sheets de la nota de UNA actividad (mejor esfuerzo).
+      datos: { perfil:{nie,nombre}, clase:{dia,unidad,leccion} | {id},
+               materia, grado, actividadId?, tipo:"clase"|"examen"|"tarea",
+               puntos, titulo? }
+      · tipo "clase": columna D{dia}·U{unidad}·L{leccion} con el TOTAL
+        de la clase para ese NIE (se re-reporta y siempre queda al día).
+      · tipo "tarea"/"examen": fila actividadId × columna NIE con el
+        TOTAL de la tarea/examen (el examen se reporta UNA sola vez,
+        desde finalizarExamen() de js/utils/opcionMultiple.js). */
+  async reportarActividad(datos) {
+    try {
+      return await actividad(datos || {});
+    } catch (e) {
+      return { ok: false, razon: "peticion", detalle: String((e && e.message) || e) };
+    }
   },
 };
 
-/* ---------------- ASISTENCIA — solo Sheets ---------------- */
+/* ------------- SHEETS — puente con Google Sheets -------------
+   TODO el aspecto de las hojas se define en sheets.js; aquí solo
+   se expone como db.sheets.* para que la UI no importe nada más.
+   Las llamadas son "mejor esfuerzo": sin URL configurada o con
+   red caída devuelven { ok:false, razon } y la app sigue. */
 
-const asistencia = {
-  /**
-   * SHEETS: guarda la asistencia de UN día de UN grado.
-   * · fecha: "yyyy-mm-dd" (la columna se crea en orden cronológico).
-   * · estudiantes: [{ uid, nombre, nie, estado }] con estado "A" | "T" | "F".
-   * code.gs ordena a los estudiantes por apellidos (ignora de/del/…).
-   */
-  async registrar({ grado, fecha, estudiantes }) {
-    return sheets.llamar("asistencia", { grado, fecha, estudiantes });
-  },
-};
-
-/* ---------------- SHEETS: mantenimiento ---------------- */
-
-const sheetsAdmin = {
-  /** true si ya se pegó el enlace /exec en sheets.js. */
-  configurada: () => sheets.configurada(),
-
-  /** Prueba de conexión con el Web App. */
-  ping: () => sheets.llamar("ping"),
-
-  /** (Re)construye la hoja "Menú" con enlaces a todas las demás hojas. */
-  configurar: () => sheets.llamar("configurar"),
+const sheets = {
+  /** true si ya se pegó el enlace /exec en sheets.js (CONFIG.url). */
+  disponible: configurada,
+  /** Prueba de vida del motor: { ok, version, hora }. */
+  ping,
+  /** Hojas existentes + especificaciones guardadas (depuración). */
+  info,
+  /** Lee una hoja completa → { ok, valores: [ [celda…] ] } (lectura). */
+  leer,
+  /** Crea/actualiza hojas y sincroniza alumnado, clases, exámenes y tareas.
+      datos: { grado?, materia?, estudiantes:[{uid,nombre,nie}],
+               clases:[{dia,unidad,leccion,…}], examenes:[{id,titulo}],
+               tareas:[{id,titulo}] } */
+  configurar,
+  /** Espejo en Sheets de UNA nota de actividad (mejor esfuerzo).
+      datos: { perfil:{nie,nombre}, clase:{dia,unidad,leccion},
+               materia, grado, actividadId, tipo:"clase"|"examen"|"tarea",
+               puntos, titulo } */
+  actividad,
+  /** Registra la asistencia de UN día completo.
+      datos: { grado, fecha:"2026-10-20",
+               estudiantes:[{uid,nombre,nie,estado:"A"|"T"|"F"}] } */
+  asistencia,
 };
 
 /* ---------------- Export ---------------- */
 
-export const db = { usuarios, clases, notas, asistencia, sheets: sheetsAdmin };
+export const db = { usuarios, clases, notas, sheets };
 export default db;
