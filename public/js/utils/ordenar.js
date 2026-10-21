@@ -1,9 +1,13 @@
 // ============================================================
 // ordenar.js — Bloque de ORDENAR objetos arrastrándolos a campos
-// (js/utils/ordenar.js) · v2: FÓRMULAS matemáticas ($…$) en la
-// indicación y los objetos, vía js/utils/formatearFormulas.js
-// (antes v1: TIPOS clase/tarea/examen, docente con intentos libres,
-// puntaje local, espejo en Sheets)
+// (js/utils/ordenar.js) · v4: OBJETOS EN ORDEN ALEATORIO (anti-copia)
+// PERSISTENTE por navegador hasta responder (js/utils/aleatorio.js);
+// antes v3: TAMAÑO en pantalla — 'columnas'
+// (2 = mitad del ancho, 3 = tercio, 4 = cuarto → bloques LADO A LADO)
+// o 'ancho' ("320px", "50%", 0.5…); antes v2: FÓRMULAS matemáticas
+// ($…$), vía js/utils/formatearFormulas.js (antes v1: TIPOS
+// clase/tarea/examen, docente con intentos libres, puntaje local,
+// espejo en Sheets)
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta un
 // bloque con DOS lados. A la IZQUIERDA aparecen los objetos colocados
@@ -27,6 +31,10 @@
 //     distractores: ["$\\sqrt{2}$"],
 //                           // 0 A 8 objetos extra que NO van en ningún campo
 //     puntaje: 1,           // valor TOTAL del bloque (0 a 10)
+//     // columnas: 2,       // NUEVO v3: el bloque ocupa LA MITAD del ancho
+//     //                    //  (dos bloques en el MISMO contenedor quedan
+//     //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
+//     // ancho: "320px",    // NUEVO v3: ancho fijo ("50%", "18rem", 0.5…)
 //     // mostrarCorrectas: true,  // SOLO examen: revela el orden al enviar
 //     // id: "o1",          // (opcional) identificador único y estable
 //   }).then((ganado) => { /* nota ganada en ESTE bloque (oculta) */ });
@@ -140,11 +148,16 @@ import {
   esDocente,
   prepararDocente,
   registrarPuntoDocente,
+  aplicarTamano,
 } from "./opcionMultiple.js";
 
 // Fórmulas: cargarFormulas() trae KaTeX (una sola vez) y
 // textoConFormulas() convierte "$…$" en fórmula renderizada.
 import { cargarFormulas, textoConFormulas } from "./formatearFormulas.js";
+
+// Azar anti-copia (v4): orden aleatorio de la piscina PERSISTENTE por
+// navegador hasta responder el bloque (js/utils/aleatorio.js).
+import { ordenAlAzar, ordenPersistente, liberarOrden, claveOrden } from "./aleatorio.js";
 
 // Comodines para el archivo de contenido (misma API que opcionMultiple.js)
 export { obtenerNota, sumarPuntos, finalizarExamen } from "./opcionMultiple.js";
@@ -570,9 +583,15 @@ export function ordenar(config = {}) {
     const valorCampo = puntaje / N; // reparto igualitario entre los campos
     const qid = id ? slug(String(id)) : `${slug(texto)}-${hash8(normalizar(texto))}`;
 
-    // --- Orden ALEATORIO de la columna izquierda (Fisher-Yates) ---
+    // --- Orden ALEATORIO de la columna izquierda (Fisher-Yates), v4
+    // PERSISTENTE por navegador (anti-copia): al recargar sin responder
+    // sale IGUAL; respondido se libera y vuelve a sortear. El docente
+    // ve un orden nuevo en cada montaje y nada se guarda.
     const indices = (n) => Array.from({ length: n }, (_, i) => i);
-    const ordenPiscina = mezclar(indices(objetos.length));
+    const clavePiscina = claveOrden(qid);
+    const ordenPiscina = esDoc
+      ? mezclar(indices(objetos.length))
+      : ordenPersistente(clavePiscina, objetos.length);
 
     // --- Estado ---
     let envios = 0;             // envíos ya usados en clase/tarea (0 = el próximo es el primero)
@@ -591,7 +610,13 @@ export function ordenar(config = {}) {
     let docenteCompleto = false; // docente clase: ya llenó los N campos bien
 
     const resolverUnaVez = (valor) => {
-      if (!resuelto) { resuelto = true; resolve(valor); }
+      if (!resuelto) {
+        resuelto = true;
+        // Respondido (o pre-marcado respondido): el orden guardado de
+        // la piscina ya no hace falta y se libera para la próxima vez.
+        if (!esDoc) liberarOrden(clavePiscina);
+        resolve(valor);
+      }
     };
 
     // --- Estructura (SIN ninguna mención al puntaje: queda oculto) ---
@@ -1132,6 +1157,7 @@ export function ordenar(config = {}) {
     }
 
     contenedor.append(caja);
+    aplicarTamano(caja, config); // v3: columnas / ancho (tras el montaje)
   }
 
   if (esExamen) promesa.enviar = () => enviarExamen();

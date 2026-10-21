@@ -1,9 +1,12 @@
 // ============================================================
 // multipleOpcion.js — Bloque de selección múltiple (1 o MÁS correctas)
-// (js/utils/multipleOpcion.js) · v5: FÓRMULAS matemáticas ($…$) en la
-// indicación y las opciones, vía js/utils/formatearFormulas.js
-// (antes v4: TIPOS clase/tarea/examen, docente con intentos libres y
-// puntaje local, espejo en Sheets)
+// (js/utils/multipleOpcion.js) · v7: OPCIONES EN ORDEN ALEATORIO
+// (anti-copia) PERSISTENTE por navegador hasta responder (js/utils/
+// aleatorio.js); antes v6: TAMAÑO en pantalla — 'columnas'
+// (2 = mitad del ancho, 3 = tercio, 4 = cuarto → bloques LADO A LADO)
+// o 'ancho' ("320px", "50%", 0.5…); antes v5: FÓRMULAS matemáticas
+// ($…$), vía js/utils/formatearFormulas.js (antes v4: TIPOS
+// clase/tarea/examen, docente con intentos libres, espejo en Sheets)
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta un
 // bloque en el que el estudiante marca VARIAS opciones y las envía.
@@ -24,6 +27,10 @@
 //     correctas: [2, 4, 6], // NÚMEROS de las opciones correctas (1 = primera),
 //                           // 1 o más, sin repetir
 //     puntaje: 1,           // valor TOTAL del bloque (0 a 10)
+//     // columnas: 2,       // NUEVO v6: el bloque ocupa LA MITAD del ancho
+//     //                    //  (dos bloques en el MISMO contenedor quedan
+//     //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
+//     // ancho: "320px",    // NUEVO v6: ancho fijo ("50%", "18rem", 0.5…)
 //     // id: "p4",          // (opcional) identificador único y estable
 //     // penalizarErroneas: true, // (opcional, defecto true) las marcas
 //     //                          // equivocadas restan su valor; en false,
@@ -135,11 +142,16 @@ import {
   esDocente,
   prepararDocente,
   registrarPuntoDocente,
+  aplicarTamano,
 } from "./opcionMultiple.js";
 
 // Fórmulas: cargarFormulas() trae KaTeX (una sola vez) y
 // textoConFormulas() convierte "$…$" en fórmula renderizada.
 import { cargarFormulas, textoConFormulas } from "./formatearFormulas.js";
+
+// Azar anti-copia (v7): orden aleatorio de las opciones PERSISTENTE
+// por navegador hasta responder el bloque (js/utils/aleatorio.js).
+import { ordenAlAzar, ordenPersistente, liberarOrden, claveOrden } from "./aleatorio.js";
 
 // Comodines para el archivo de contenido (misma API que opcionMultiple.js)
 export { obtenerNota, sumarPuntos, finalizarExamen } from "./opcionMultiple.js";
@@ -485,9 +497,20 @@ export function multipleOpcion(config = {}) {
     }
 
     const esDoc = esDocente(perfil);
-    const setCorrectas = new Set(nums.map((n) => n - 1)); // índices 0-based
-    const numCorrectas = setCorrectas.size;
     const qid = id ? slug(String(id)) : `${slug(texto)}-${hash8(normalizar(texto))}`;
+
+    // v7 · ORDEN ALEATORIO de las opciones (anti-copia): cada navegador
+    // guarda SU orden en localStorage mientras el bloque no se
+    // responda — al recargar sale IGUAL; respondido se libera. El
+    // docente ve un orden nuevo en cada montaje y nada se guarda.
+    const claveOrdenBloque = claveOrden(qid);
+    const ordenOpciones = esDoc
+      ? ordenAlAzar(lista.length)
+      : ordenPersistente(claveOrdenBloque, lista.length);
+    const listaVista = ordenOpciones.map((j) => lista[j]); // opciones ya mezcladas
+    // Correctas remapeadas a la posición VISUAL tras el sorteo
+    const setCorrectas = new Set(nums.map((n) => ordenOpciones.indexOf(n - 1))); // 0-based visuales
+    const numCorrectas = setCorrectas.size;
 
     let bloqueada = false;
     let resuelto = false;
@@ -502,7 +525,13 @@ export function multipleOpcion(config = {}) {
     let ultimoResultado = null;
 
     const resolverUnaVez = (valor) => {
-      if (!resuelto) { resuelto = true; resolve(valor); }
+      if (!resuelto) {
+        resuelto = true;
+        // Respondido (o pre-marcado respondido): el orden guardado ya
+        // no hace falta y se libera para la próxima vez.
+        if (!esDoc) liberarOrden(claveOrdenBloque);
+        resolve(valor);
+      }
     };
 
     // --- Estructura (SIN ninguna mención al puntaje: queda oculto) ---
@@ -569,7 +598,7 @@ export function multipleOpcion(config = {}) {
       botones.forEach((b) => (b.disabled = true));
     };
 
-    const botones = lista.map((textoOpcion, i) => {
+    const botones = listaVista.map((textoOpcion, i) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "mo-opcion";
@@ -832,7 +861,7 @@ export function multipleOpcion(config = {}) {
         feedback("Esta vez el resultado no suma otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión.", "mal");
       }
       if (total > 0) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
-      resolve(total); // ← la nota solo la recibe el archivo de la clase
+      resolverUnaVez(total); // ← la nota solo la recibe el archivo de la clase (y libera el orden guardado)
     }
 
     // --- EXAMEN: el botón lo pone el archivo del examen ---
@@ -879,6 +908,7 @@ export function multipleOpcion(config = {}) {
     };
 
     contenedor.append(caja);
+    aplicarTamano(caja, config); // v6: columnas / ancho (tras el montaje)
   }
 
   if (esExamen) promesa.enviar = () => enviarExamen();

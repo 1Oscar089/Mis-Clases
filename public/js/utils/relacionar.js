@@ -1,8 +1,13 @@
 // ============================================================
 // relacionar.js — Bloque de RELACIONAR columnas (parejas)
-// (js/utils/relacionar.js) · v3: FÓRMULAS ($…$) e IMÁGENES en las
-// listas (recursos/img/), vía js/utils/formatearFormulas.js; antes v2:
-// TIPOS clase/tarea/examen, docente con intentos libres, espejo Sheets
+// (js/utils/relacionar.js) · v5: COLUMNAS EN ORDEN ALEATORIO
+// (anti-copia) PERSISTENTE por navegador hasta responder (js/utils/
+// aleatorio.js); antes v4: TAMAÑO en pantalla — 'columnas'
+// (2 = mitad del ancho, 3 = tercio, 4 = cuarto → bloques LADO A LADO)
+// o 'ancho' ("320px", "50%", 0.5…); antes v3: FÓRMULAS ($…$) e IMÁGENES
+// en las listas (recursos/img/), vía js/utils/formatearFormulas.js;
+// antes v2: TIPOS clase/tarea/examen, docente con intentos libres,
+// espejo en Sheets
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta un
 // bloque con DOS columnas de elementos. El estudiante forma parejas
@@ -23,6 +28,10 @@
 //     derecha:   ["$b \\cdot h / 2$", "0.5", "Dólar", "$\\pi r^2$"],
 //                           // ENTRE 3 Y 10 elementos cada lista
 //     puntaje: 1,           // valor TOTAL del bloque (0 a 10)
+//     // columnas: 2,       // NUEVO v4: el bloque ocupa LA MITAD del ancho
+//     //                    //  (dos bloques en el MISMO contenedor quedan
+//     //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
+//     // ancho: "320px",    // NUEVO v4: ancho fijo ("50%", "18rem", 0.5…)
 //     // mostrarCorrectas: true,  // SOLO examen: revela parejas al enviar
 //     // id: "r1",          // (opcional) identificador único y estable
 //   }).then((ganado) => { /* nota ganada en ESTE bloque (oculta) */ });
@@ -157,11 +166,22 @@ import {
   esDocente,
   prepararDocente,
   registrarPuntoDocente,
+  aplicarTamano,
 } from "./opcionMultiple.js";
 
 // Fórmulas: cargarFormulas() trae KaTeX (una sola vez) y
 // textoConFormulas() convierte "$…$" en fórmula renderizada.
 import { cargarFormulas, textoConFormulas } from "./formatearFormulas.js";
+
+// Azar anti-copia (v5): orden aleatorio de las DOS columnas PERSISTENTE
+// por navegador hasta responder el bloque (js/utils/aleatorio.js).
+import {
+  ordenAlAzar,
+  ordenPersistente,
+  guardarOrden,
+  liberarOrden,
+  claveOrden,
+} from "./aleatorio.js";
 
 // Comodines para el archivo de contenido (misma API que opcionMultiple.js)
 export { obtenerNota, sumarPuntos, finalizarExamen } from "./opcionMultiple.js";
@@ -606,12 +626,21 @@ export function relacionar(config = {}) {
     const valorPareja = puntaje / k;
     const qid = id ? slug(String(id)) : `${slug(texto)}-${hash8(normalizar(texto))}`;
 
-    // --- Orden aleatorio de cada columna (Fisher-Yates).
-    // Evita que una pareja correcta (i, i) caiga en la MISMA fila visual:
-    // ver los dos elementos juntos daría la respuesta.
+    // --- Orden aleatorio de cada columna (Fisher-Yates), v5
+    // PERSISTENTE por navegador (anti-copia): al recargar sin responder
+    // sale IGUAL; respondido se libera y vuelve a sortear. El docente
+    // ve un orden nuevo en cada montaje y nada se guarda. Sigue
+    // evitando que una pareja correcta (i, i) caiga en la MISMA fila
+    // visual: ver los dos elementos juntos daría la respuesta.
     const indices = (n) => Array.from({ length: n }, (_, i) => i);
-    const ordenIzq = mezclar(indices(listaIzq.length));
-    let ordenDer = mezclar(indices(listaDer.length));
+    const claveIzq = claveOrden(qid) + "::I";
+    const claveDer = claveOrden(qid) + "::D";
+    const ordenIzq = esDoc
+      ? mezclar(indices(listaIzq.length))
+      : ordenPersistente(claveIzq, listaIzq.length);
+    let ordenDer = esDoc
+      ? mezclar(indices(listaDer.length))
+      : ordenPersistente(claveDer, listaDer.length);
     let guardia = 0;
     const chocaEnFila = () => {
       for (let fila = 0; fila < k; fila++) {
@@ -621,6 +650,7 @@ export function relacionar(config = {}) {
     };
     while (chocaEnFila() && guardia++ < 50) {
       ordenDer = mezclar(indices(listaDer.length));
+      if (!esDoc) guardarOrden(claveDer, ordenDer); // la copia guardada sigue a la buena
     }
 
     // --- Estado ---
@@ -639,7 +669,16 @@ export function relacionar(config = {}) {
     let docenteCompleto = false; // docente clase: ya logró las k parejas
 
     const resolverUnaVez = (valor) => {
-      if (!resuelto) { resuelto = true; resolve(valor); }
+      if (!resuelto) {
+        resuelto = true;
+        // Respondido (o pre-marcado respondido): los órdenes guardados
+        // de las dos columnas ya no hacen falta y se liberan.
+        if (!esDoc) {
+          liberarOrden(claveIzq);
+          liberarOrden(claveDer);
+        }
+        resolve(valor);
+      }
     };
 
     // --- Estructura (SIN ninguna mención al puntaje: queda oculto) ---
@@ -1135,6 +1174,7 @@ export function relacionar(config = {}) {
     }
 
     contenedor.append(caja);
+    aplicarTamano(caja, config); // v4: columnas / ancho (tras el montaje)
   }
 
   if (esExamen) promesa.enviar = () => enviarExamen();
