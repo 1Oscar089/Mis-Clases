@@ -1,8 +1,11 @@
 // ============================================================
 // relacionar.js — Bloque de RELACIONAR columnas (parejas)
-// (js/utils/relacionar.js) · v3: FÓRMULAS ($…$) e IMÁGENES en las
-// listas (recursos/img/), vía js/utils/formatearFormulas.js; antes v2:
-// TIPOS clase/tarea/examen, docente con intentos libres, espejo Sheets
+// (js/utils/relacionar.js) · v4: TAMAÑO en pantalla — 'columnas'
+// (2 = mitad del ancho, 3 = tercio, 4 = cuarto → bloques LADO A LADO)
+// o 'ancho' ("320px", "50%", 0.5…); antes v3: FÓRMULAS ($…$) e IMÁGENES
+// en las listas (recursos/img/), vía js/utils/formatearFormulas.js;
+// antes v2: TIPOS clase/tarea/examen, docente con intentos libres,
+// espejo en Sheets
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta un
 // bloque con DOS columnas de elementos. El estudiante forma parejas
@@ -23,6 +26,10 @@
 //     derecha:   ["$b \\cdot h / 2$", "0.5", "Dólar", "$\\pi r^2$"],
 //                           // ENTRE 3 Y 10 elementos cada lista
 //     puntaje: 1,           // valor TOTAL del bloque (0 a 10)
+//     // columnas: 2,       // NUEVO v4: el bloque ocupa LA MITAD del ancho
+//     //                    //  (dos bloques en el MISMO contenedor quedan
+//     //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
+//     // ancho: "320px",    // NUEVO v4: ancho fijo ("50%", "18rem", 0.5…)
 //     // mostrarCorrectas: true,  // SOLO examen: revela parejas al enviar
 //     // id: "r1",          // (opcional) identificador único y estable
 //   }).then((ganado) => { /* nota ganada en ESTE bloque (oculta) */ });
@@ -157,6 +164,7 @@ import {
   esDocente,
   prepararDocente,
   registrarPuntoDocente,
+  aplicarTamano,
 } from "./opcionMultiple.js";
 
 // Fórmulas: cargarFormulas() trae KaTeX (una sola vez) y
@@ -1135,6 +1143,7 @@ export function relacionar(config = {}) {
     }
 
     contenedor.append(caja);
+    aplicarTamano(caja, config); // v4: columnas / ancho (tras el montaje)
   }
 
   if (esExamen) promesa.enviar = () => enviarExamen();

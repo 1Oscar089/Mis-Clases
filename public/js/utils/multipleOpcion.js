@@ -1,9 +1,10 @@
 // ============================================================
 // multipleOpcion.js — Bloque de selección múltiple (1 o MÁS correctas)
-// (js/utils/multipleOpcion.js) · v5: FÓRMULAS matemáticas ($…$) en la
-// indicación y las opciones, vía js/utils/formatearFormulas.js
-// (antes v4: TIPOS clase/tarea/examen, docente con intentos libres y
-// puntaje local, espejo en Sheets)
+// (js/utils/multipleOpcion.js) · v6: TAMAÑO en pantalla — 'columnas'
+// (2 = mitad del ancho, 3 = tercio, 4 = cuarto → bloques LADO A LADO)
+// o 'ancho' ("320px", "50%", 0.5…); antes v5: FÓRMULAS matemáticas
+// ($…$), vía js/utils/formatearFormulas.js (antes v4: TIPOS
+// clase/tarea/examen, docente con intentos libres, espejo en Sheets)
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta un
 // bloque en el que el estudiante marca VARIAS opciones y las envía.
@@ -24,6 +25,10 @@
 //     correctas: [2, 4, 6], // NÚMEROS de las opciones correctas (1 = primera),
 //                           // 1 o más, sin repetir
 //     puntaje: 1,           // valor TOTAL del bloque (0 a 10)
+//     // columnas: 2,       // NUEVO v6: el bloque ocupa LA MITAD del ancho
+//     //                    //  (dos bloques en el MISMO contenedor quedan
+//     //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
+//     // ancho: "320px",    // NUEVO v6: ancho fijo ("50%", "18rem", 0.5…)
 //     // id: "p4",          // (opcional) identificador único y estable
 //     // penalizarErroneas: true, // (opcional, defecto true) las marcas
 //     //                          // equivocadas restan su valor; en false,
@@ -135,6 +140,7 @@ import {
   esDocente,
   prepararDocente,
   registrarPuntoDocente,
+  aplicarTamano,
 } from "./opcionMultiple.js";
 
 // Fórmulas: cargarFormulas() trae KaTeX (una sola vez) y
@@ -879,6 +885,7 @@ export function multipleOpcion(config = {}) {
     };
 
     contenedor.append(caja);
+    aplicarTamano(caja, config); // v6: columnas / ancho (tras el montaje)
   }
 
   if (esExamen) promesa.enviar = () => enviarExamen();

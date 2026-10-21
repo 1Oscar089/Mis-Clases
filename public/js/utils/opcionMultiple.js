@@ -1,9 +1,10 @@
 // ============================================================
 // opcionMultiple.js — Pregunta de opción múltiple reutilizable
-// (js/utils/opcionMultiple.js) · v4: FÓRMULAS matemáticas ($…$) en la
-// indicación y en las opciones, vía js/utils/formatearFormulas.js
-// (antes v3: TIPOS clase/tarea/examen, docente con intentos libres y
-// puntaje local, espejo en Sheets)
+// (js/utils/opcionMultiple.js) · v5: TAMAÑO en pantalla — 'columnas'
+// (2 = mitad del ancho, 3 = tercio, 4 = cuarto → varias preguntas LADO
+// A LADO) o 'ancho' ("320px", "50%", 0.5…); antes v4: FÓRMULAS
+// matemáticas ($…$), vía js/utils/formatearFormulas.js (antes v3:
+// TIPOS clase/tarea/examen, docente con intentos libres, espejo Sheets)
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta
 // una pregunta interactiva en el elemento que se indique.
@@ -23,8 +24,19 @@
 //                           // entre 2 y 6 textos, cada uno admite $…$
 //     respuestaCorrecta: 2, // NÚMERO de la respuesta correcta (1 = primera)
 //     puntaje: 2,           // valor de esta pregunta (0 a 10)
+//     // columnas: 2,       // NUEVO v5: la pregunta ocupa LA MITAD del ancho
+//     //                    //  (2 preguntas montadas en el MISMO contenedor
+//     //                    //  quedan LADO A LADO; 3 = tercio, 4 = cuarto)
+//     // ancho: "320px",    // NUEVO v5: ancho fijo ("50%", "18rem", 0.5…)
 //     // id: "p1",          // (opcional) identificador único y estable
 //   }).then((ganado) => { /* nota ganada en ESTA pregunta (oculta) */ });
+//
+// TAMAÑO EN PANTALLA (v5, TODAS las utils):
+//   Si la pregunta y sus respuestas son cortas, el bloque no necesita
+//   todo el ancho: 'columnas: 2' lo deja a la mitad y la siguiente
+//   pregunta con 'columnas: 2' se coloca A SU LADO (mismo contenedor).
+//   'ancho' acepta cualquier valor CSS o una fracción. En móvil
+//   (<768px) TODO vuelve a una sola columna para que nada se apriete.
 //
 // FÓRMULAS (v4): TODO texto (indicación y opciones) acepta LaTeX entre
 //   $…$ (en la línea) o $$…$$ (centrado), renderizado con KaTeX por
@@ -94,6 +106,10 @@
 //   nota.puntos  // suma de TODAS las preguntas respondidas. NO le
 //                // sumes el valor devuelto por opcionMultiple().
 //
+// TAMAÑO compartido (v5): aplicarTamano() vive aquí y lo usan TAMBIÉN
+//   multipleOpcion.js, respuestaSimple.js, relacionar.js y ordenar.js
+//   (una sola hoja de estilos "utils-tamano-estilos" para las 5).
+//
 // Compatibilidad: también acepta los nombres antiguos pregunta /
 //   opciones / correcta, y puntaje por defecto = 1.
 //
@@ -145,6 +161,110 @@ function hash8(texto) {
 // Redondeo a 1 decimal (la mitad del puntaje siempre con un decimal)
 function redondear1(n) {
   return Math.round(Number(n) * 10) / 10;
+}
+
+/* ---------------- TAMAÑO en pantalla (v5 · compartido) ----------------
+   Todas las utils aceptan 'columnas' (2, 3 o 4 → el bloque ocupa la
+   mitad/tercio/cuarto del ancho y las preguntas montadas en el MISMO
+   contenedor quedan LADO A LADO) o 'ancho' (fracción 0..1 o texto CSS
+   tipo "320px", "50%"). Por defecto todo el ancho, como siempre.
+   En móvil (<768px) la hoja compartida devuelve todo a una columna.
+   La usan TAMBIÉN multipleOpcion / respuestaSimple / relacionar /
+   ordenar (misma hoja de estilos, inyectada UNA sola vez). */
+
+let estilosTamanoListos = false;
+
+function inyectarEstilosTamano() {
+  if (estilosTamanoListos) return;
+  estilosTamanoListos = true;
+  const estilo = document.createElement("style");
+  estilo.id = "utils-tamano-estilos";
+  estilo.textContent = `
+    /* Bloques con tamaño reducido: en línea para que dos o tres
+       quepan en la misma fila, alineados por arriba. */
+    .utils-media {
+      display: inline-block;
+      vertical-align: top;
+      box-sizing: border-box;
+    }
+    /* Separación SOLO entre bloques de tamaño (hermanos directos) */
+    .utils-media + .utils-media { margin-left: 1rem; }
+    /* Móvil: siempre una columna para que nada se apriete */
+    @media (max-width: 767px) {
+      .utils-media {
+        display: block;
+        width: 100% !important;
+        margin-left: 0 !important;
+      }
+    }
+  `;
+  document.head.append(estilo);
+}
+
+/** Aplica el tamaño de pantalla a la caja de una utilidad.
+ *  columnas: 2|3|4 → calc del ancho en partes iguales ·
+ *  ancho: fracción (0<n<1 → %) o texto CSS ("320px", "50%", "18rem").
+ *  Devuelve true si aplicó un ancho especial. Errores de contenido:
+ *  solo aviso en consola (cosmético, nunca rompe la pregunta).
+ *
+ *  LLAMAR DESPUÉS de contenedor.append(caja): si la caja quedó SOLA en
+ *  su contenedor directo (típico: un div por pregunta), el tamaño se
+ *  aplica al CONTENEDOR — así dos preguntas montadas cada una en su
+ *  propio div también quedan LADO A LADO. Si el contenedor tiene más
+ *  contenido, el tamaño va a la caja (hermanas directas). Nunca se
+ *  aplica al contenedor principal de la app (main o #app). */
+export function aplicarTamano(caja, opciones = {}) {
+  if (!caja || !caja.classList) return false;
+
+  let css = "";
+  let columnas = Number(opciones.columnas ?? opciones.cols);
+  const ancho = opciones.ancho ?? opciones.width;
+
+  if (columnas != null && Number.isFinite(columnas) && columnas !== 1) {
+    if (Number.isInteger(columnas) && columnas >= 2 && columnas <= 4) {
+      // k columnas → cada una (100% − (k−1)rem de separaciones) / k
+      css = `calc((100% - ${columnas - 1}rem) / ${columnas})`;
+    } else {
+      console.warn(
+        "[utils] 'columnas' debe ser 1, 2, 3 o 4 (llegó:", opciones.columnas,
+        "). Se ignora."
+      );
+    }
+  }
+  if (!css && ancho != null && ancho !== "") {
+    if (typeof ancho === "number" && ancho > 0 && ancho < 1) {
+      css = String(Math.round(ancho * 10000) / 100) + "%";
+    } else if (typeof ancho === "string" && ancho.trim()) {
+      css = ancho.trim();
+    } else {
+      console.warn(
+        "[utils] 'ancho' debe ser una fracción entre 0 y 1 (ej. 0.5) o un " +
+        'texto CSS (ej. "320px", "50%"). Llegó:', ancho, ". Se ignora."
+      );
+    }
+  }
+  if (!css) return false;
+
+  inyectarEstilosTamano();
+
+  // ¿La caja quedó SOLA en su contenedor directo? (sin otros elementos
+  // ni texto) y el contenedor no es el main de la app → el tamaño va al
+  // contenedor, para que funcione también con un div por pregunta.
+  const padre = caja.parentElement;
+  const esPrincipal =
+    !padre || padre === document.body ||
+    padre.tagName === "MAIN" || padre.id === "app";
+  const padreExclusivo =
+    !esPrincipal &&
+    padre.children.length === 1 && padre.children[0] === caja &&
+    ![...padre.childNodes].some(
+      (n) => n.nodeType === 3 && n.textContent.trim()
+    );
+
+  const el = padreExclusivo ? padre : caja;
+  el.classList.add("utils-media");
+  el.style.width = css;
+  return true;
 }
 
 export function esDocente(perfil) {
@@ -952,6 +1072,7 @@ export function opcionMultiple(config = {}) {
     };
 
     contenedor.append(caja);
+    aplicarTamano(caja, config); // v5: columnas / ancho (tras el montaje)
   }
 
   if (esExamen) promesa.enviar = () => enviarExamen();

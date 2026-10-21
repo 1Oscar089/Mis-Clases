@@ -1,9 +1,12 @@
 // ============================================================
 // respuestaSimple.js — Pregunta de respuesta simple (texto o FÓRMULA)
-// (js/utils/respuestaSimple.js) · v4: modo esFormula con MathLive
-// (campo <math-field> + SU teclado virtual completo); antes v3: teclado
-// propio de formatearFormulas.js · antes v2: TIPOS clase/tarea/examen,
-// docente con intentos libres, espejo Sheets
+// (js/utils/respuestaSimple.js) · v5: MULTI-CAMPO — 'respuestas' como
+// LISTA (un campo por respuesta, validados EN ESE ORDEN) o NÚMERO
+// (N campos iguales), con 'etiquetas' opcionales + TAMAÑO en pantalla
+// ('columnas' / 'ancho'); antes v4: modo esFormula con MathLive (campo
+// <math-field> + SU teclado virtual completo); antes v3: teclado propio
+// de formatearFormulas.js · antes v2: TIPOS clase/tarea/examen, docente
+// con intentos libres, espejo Sheets
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta una
 // pregunta con un campo de respuesta y valida lo que escriba el estudiante.
@@ -21,8 +24,41 @@
 //     indicacion: "¿Quién escribió El Quijote?",
 //     respuestaCorrecta: "Miguel de Cervantes", // texto esperado (o LISTA)
 //     puntaje: 2,           // valor de esta pregunta (0 a 10)
+//     // columnas: 2,       // NUEVO v5: la pregunta ocupa LA MITAD del ancho
+//     //                    //  (dos preguntas en el MISMO contenedor quedan
+//     //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
+//     // ancho: "320px",    // NUEVO v5: ancho fijo ("50%", "18rem", 0.5…)
 //     // id: "p7",          // (opcional) identificador único y estable
 //   }).then((ganado) => { /* nota ganada en ESTA pregunta (oculta) */ });
+//
+// ─── MÚLTIPLES CAMPOS (v5 · modo TEXTO) ───
+//   Una sola indicación con VARIOS espacios para responder (p. ej. 5
+//   imágenes en la clase y un campo debajo de cada una):
+//
+//     respuestaSimple({
+//       ...,
+//       indicacion: "Mira cada figura y escribe la fracción que le toca:",
+//       respuestas: ["1/2", "3/4", "2/3", "5/8", "7/10"],
+//                       // ← UN CAMPO por respuesta, EN ESE ORDEN:
+//                       //    el campo 1 valida "1/2", el 2.º "3/4"…
+//       // etiquetas: ["Figura 1", "Figura 2", ...], // rótulos opcionales
+//       puntaje: 5,
+//     });
+//
+//   · 'respuestas' también acepta UN NÚMERO: respuestas: 5 → 5 campos
+//     que validan TODOS contra 'respuestaCorrecta' (y sus equivalentes).
+//   · Cada elemento de la lista puede ser UN texto o UNA LISTA de
+//     equivalentes: respuestas: ["3", ["5", "cinco"], "8"].
+//   · La comparación por campo es la de siempre (minúsculas, sin
+//     espacios, tildes y signos intactos).
+//   · PUNTAJE repartido: cada campo vale puntaje ÷ número de campos.
+//     Regla de SIEMPRE: los correctos al 1.er envío valen COMPLETO y
+//     quedan fijos (verde); los corregidos al 2.º envío valen LA MITAD
+//     de su parte; lo fallado en ambos → 0 (lo asegurado sí se guarda).
+//   · 'etiquetas' (opcional): rótulo de cada campo. Sin él: "Respuesta
+//     1", "Respuesta 2"…
+//   · En modo FÓRMULA (esFormula) por ahora SOLO un campo: pasar
+//     'respuestas' con más de uno muestra aviso de contenido.
 //
 // ─── RESPUESTA FÓRMULA: esFormula: true (v4 · MathLive) ───
 //   Para matemática (fracciones, raíces, exponentes…):
@@ -151,6 +187,7 @@ import {
   esDocente,
   prepararDocente,
   registrarPuntoDocente,
+  aplicarTamano,
 } from "./opcionMultiple.js";
 
 // Fórmulas (v4): render + comparación tolerante. El TECLADO ya no es
@@ -319,6 +356,26 @@ function inyectarEstilos() {
       font-weight: 600;
       color: #1f2937;
       line-height: 1.45;
+    }
+
+    /* ── MULTI-CAMPO (v5): varios espacios para responder ── */
+    .re-campos {
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+      margin-bottom: .25rem;
+    }
+    .re-campo {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      min-width: 0;
+    }
+    .re-campo-etq {
+      font-size: .8rem;
+      font-weight: 800;
+      color: #0e7490;
+      line-height: 1.3;
     }
 
     .re-input {
@@ -514,6 +571,8 @@ export function respuestaSimple(config = {}) {
     id,
     indicacion, pregunta,               // pregunta = alias (compatibilidad)
     respuestaCorrecta, respuesta,       // respuesta = alias (compatibilidad)
+    respuestas: respuestasMulti,        // NUEVO v5: lista o número de campos
+    etiquetas,                          // NUEVO v5: rótulos opcionales por campo
   } = config;
 
   // MODO FÓRMULA (v3): esFormula: true → la respuesta se arma SOLO con
@@ -559,6 +618,41 @@ export function respuestaSimple(config = {}) {
       .map((s) => String(s ?? "").trim())
       .filter(Boolean);
 
+    // ─── MULTI-CAMPO (v5): 'respuestas' define UN campo por respuesta ───
+    //   · LISTA de N textos → N campos; el campo i valida respuestas[i]
+    //     (cada elemento puede ser un texto o una lista de equivalentes).
+    //   · NÚMERO N → N campos que validan TODOS contra 'respuestaCorrecta'.
+    //   Sin 'respuestas' → 1 campo (flujo v4 intacto).
+    let camposSol = null; // lista de listas: equivalentes válidos por campo
+    let nCampos = 1;
+    if (Array.isArray(respuestasMulti)) {
+      camposSol = respuestasMulti.map((x) =>
+        Array.isArray(x)
+          ? x.map((s) => String(s ?? "").trim()).filter(Boolean)
+          : [String(x ?? "").trim()].filter(Boolean) // "" suelto → campo sin solución
+      );
+      nCampos = camposSol.length;
+    } else if (respuestasMulti != null && respuestasMulti !== "") {
+      const n = Number(respuestasMulti);
+      if (Number.isInteger(n) && n >= 1 && n <= 10) {
+        nCampos = n;
+        camposSol = Array.from({ length: n }, () => soluciones.slice());
+      }
+    }
+
+    // Rótulos de cada campo (defecto: "Respuesta 1", "Respuesta 2"…)
+    let rotulos = null;
+    if (Array.isArray(etiquetas) && etiquetas.length === nCampos && nCampos > 0) {
+      rotulos = etiquetas.map((e) => String(e ?? "").trim());
+    } else if (etiquetas != null && etiquetas !== "") {
+      console.warn(
+        "[respuestaSimple] 'etiquetas' debe ser una lista con EXACTAMENTE",
+        nCampos, "texto(s), uno por campo. Se ignora."
+      );
+    }
+    const rotuloDe = (i) =>
+      (rotulos && rotulos[i]) || `Respuesta ${i + 1}`;
+
     function errorDev(mensaje) {
       console.error("[respuestaSimple]", mensaje);
       const div = document.createElement("div");
@@ -578,12 +672,48 @@ export function respuestaSimple(config = {}) {
       return;
     }
     if (!texto) { errorDev("Falta la indicación de la pregunta."); resolve(0); return; }
-    if (!soluciones.length) {
+    if (!soluciones.length && !Array.isArray(respuestasMulti)) {
       errorDev(esFormula
         ? "Falta la 'respuestaCorrecta' (LaTeX esperado; también puede ser una lista de equivalentes)."
         : "Falta la 'respuestaCorrecta' (texto esperado; también puede ser una lista de equivalentes).");
       resolve(0);
       return;
+    }
+    if (respuestasMulti != null && respuestasMulti !== "" && !Array.isArray(respuestasMulti)) {
+      const n = Number(respuestasMulti);
+      if (!Number.isInteger(n) || n < 1 || n > 10) {
+        errorDev(`'respuestas' como número debe ser un entero entre 1 y 10 (llegó: ${JSON.stringify(respuestasMulti)}).`);
+        resolve(0);
+        return;
+      }
+      if (!soluciones.length) {
+        errorDev("'respuestas' como número necesita 'respuestaCorrecta' (los campos validan todos contra ella). Falta.");
+        resolve(0);
+        return;
+      }
+    }
+    if (Array.isArray(respuestasMulti)) {
+      if (!nCampos) {
+        errorDev("'respuestas' está vacía: pasa al menos una respuesta (o usa 'respuestaCorrecta' para un solo campo).");
+        resolve(0);
+        return;
+      }
+      if (nCampos > 10) {
+        errorDev(`'respuestas' admite entre 1 y 10 campos (llegaron ${nCampos}).`);
+        resolve(0);
+        return;
+      }
+      const vacio = camposSol.findIndex((lista) => !lista.length);
+      if (vacio >= 0) {
+        errorDev(`La respuesta ${vacio + 1} de 'respuestas' está vacía (cada campo necesita su texto esperado).`);
+        resolve(0);
+        return;
+      }
+      if (esFormula && nCampos > 1) {
+        errorDev("Por ahora el modo fórmula (esFormula) admite UN solo campo: usa 'respuestas' solo en modo texto.");
+        resolve(0);
+        return;
+      }
     }
     if (!perfil?.uid || !clase?.id) {
       errorDev("Faltan 'perfil' (con uid) o 'clase' (con id): la nota no se puede guardar.");
@@ -608,13 +738,26 @@ export function respuestaSimple(config = {}) {
     const caja = document.createElement("section");
     caja.className = "re-caja";
     caja.setAttribute("aria-label", texto);
+    const esMulti = nCampos > 1 && !esFormula; // multi-campo SOLO en texto
     caja.innerHTML = `
       <div class="re-cab">
         <span class="re-etiqueta">${esExamen ? "Examen" : esTarea ? "Tarea" : "Pregunta"}</span>
         <span class="re-chip"></span>
       </div>
       <p class="re-pregunta"></p>
-      ${esFormula
+      ${esMulti
+        ? `<div class="re-campos">${camposSol
+            .map(
+              (_, i) =>
+                '<div class="re-campo">' +
+                `<span class="re-campo-etq"></span>` +
+                '<input type="text" class="re-input" aria-label="Tu respuesta"' +
+                ' placeholder="Escribe tu respuesta…" autocomplete="off"' +
+                ' autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">' +
+                "</div>"
+            )
+            .join("")}</div>`
+        : esFormula
         ? '<div class="re-formula-zona"><span class="re-formula-cargando">Cargando el teclado de fórmulas…</span></div>' +
           '<div class="re-formula-pie">' +
           '<p class="re-formula-nota">Responde SOLO con el teclado virtual de MathLive: toca el campo (o el botón) para abrirlo. Aquí no funciona el teclado físico.</p>' +
@@ -632,13 +775,49 @@ export function respuestaSimple(config = {}) {
     const chipEl = caja.querySelector(".re-chip");
     const feedbackEl = caja.querySelector(".re-feedback");
     // En modo fórmula NO hay input: la respuesta vive en el math-field
-    // de MathLive. En modo texto, el input normal.
-    const input = caja.querySelector(".re-input");        // null en modo fórmula
+    // de MathLive. En modo texto, el input normal. En MULTI-CAMPO los
+    // inputs viven en inputsMulti (el input único queda en null para no
+    // cruzar flujos).
+    const input = esMulti ? null : caja.querySelector(".re-input");  // null en fórmula y multi
     const zonaFormula = caja.querySelector(".re-formula-zona"); // null en modo texto
     const btnEnviar = caja.querySelector(".re-enviar"); // null en examen
     let mfFormula = null;      // <math-field> de MathLive (solo modo fórmula)
     let btnTeclado = caja.querySelector(".re-btn-teclado"); // null en modo texto
     let marcaPendiente = null; // por si se marca/bloquea antes de que cargue MathLive
+
+    /* MULTI-CAMPO (v5): los N inputs, su rótulo, los campos ya
+       ASEGURADOS (correctos fijados) y el valor exacto acumulado. */
+    const inputsMulti = esMulti ? [...caja.querySelectorAll(".re-input")] : [];
+    const asegurados = new Set(); // índices correctos fijados (multi)
+    let exacto = 0;               // valor exacto acumulado (se redondea al guardar)
+
+    // Botón Enviar consciente de los campos pendientes: en multi se
+    // habilita solo cuando TODOS los campos no asegurados tienen texto
+    // (los asegurados ya valieron y no cuentan).
+    const refrescarEnviar = () => {
+      if (!btnEnviar || bloqueada || !esMulti) return;
+      btnEnviar.disabled = inputsMulti.some(
+        (inp, i) => !asegurados.has(i) && inp.value.trim() === ""
+      );
+    };
+
+    if (esMulti) {
+      inputsMulti.forEach((inp, i) => {
+        const etq = caja.querySelectorAll(".re-campo-etq")[i];
+        if (etq) etq.textContent = rotuloDe(i);
+        inp.setAttribute("aria-label", rotuloDe(i));
+        inp.addEventListener("input", () => {
+          if (bloqueada) return;
+          inp.classList.remove("mal");
+          refrescarEnviar();
+          if (inp.value.trim() === "") feedback("", "");
+        });
+        inp.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && btnEnviar && !btnEnviar.disabled) btnEnviar.click();
+        });
+      });
+      refrescarEnviar(); // estado inicial: todo vacío → deshabilitado
+    }
 
     /* MathLive: campo + teclado virtual EXCLUSIVO. El teclado físico y
        el portapapeles se bloquean por CAPTURA en la zona (el evento
@@ -752,8 +931,10 @@ export function respuestaSimple(config = {}) {
     // Valor actual de la respuesta (texto escrito o LaTeX de MathLive).
     // Los \placeholder{} VACÍOS (huecos sin llenar del teclado) se quitan
     // para comparar limpio; si un hueco tiene contenido, MathLive lo
-    // serializa con su contenido dentro.
-    const valorActual = () => {
+    // serializa con su contenido dentro. En MULTI-CAMPO, valorActual(i)
+    // devuelve el texto del campo i.
+    const valorActual = (i = -1) => {
+      if (esMulti) return i >= 0 ? inputsMulti[i].value : "";
       if (!esFormula) return input.value;
       if (!mfFormula) return "";
       try {
@@ -762,7 +943,10 @@ export function respuestaSimple(config = {}) {
         return "";
       }
     };
-    const hayTexto = () => valorActual().trim() !== "";
+    const hayTexto = () =>
+      esMulti
+        ? inputsMulti.some((inp) => inp.value.trim() !== "")
+        : valorActual().trim() !== "";
     // Marca visual verde/roja: input en texto, math-field en fórmula
     const campoMarca = () => (esFormula ? mfFormula : input);
     const marcar = (clase) => {
@@ -782,6 +966,10 @@ export function respuestaSimple(config = {}) {
         ? respuestasEquivalentes(valor, soluciones)
         : soluciones.some((s) => comparable(valor) === comparable(s));
 
+    // MULTI: el campo i valida contra SU lista de equivalentes (en orden)
+    const esCorrectoCampo = (i, valor) =>
+      (camposSol[i] || []).some((s) => comparable(valor) === comparable(s));
+
     // Feedback que revela la respuesta correcta (con fórmula renderizada)
     const decirSolucion = (prefijo, tipoFeedback) => {
       if (esFormula) {
@@ -796,6 +984,12 @@ export function respuestaSimple(config = {}) {
       }
     };
 
+    // MULTI: revela TODAS las respuestas correctas EN SU ORDEN
+    const decirSolucionesMulti = (prefijo, tipoFeedback) => {
+      const lista = camposSol.map((s) => s[0]).join(" · ");
+      feedback(prefijo + " Las respuestas eran: " + lista + ".", tipoFeedback);
+    };
+
     const bloquearFormula = () => {
       if (mfFormula) { try { mfFormula.disabled = true; } catch (e) { /* noop */ } }
       const v = window.mathVirtualKeyboard;
@@ -807,6 +1001,7 @@ export function respuestaSimple(config = {}) {
       bloqueada = true;
       if (btnEnviar) btnEnviar.disabled = true;
       if (input) input.disabled = true;
+      inputsMulti.forEach((inp) => (inp.disabled = true)); // multi
       bloquearFormula();
     };
 
@@ -850,8 +1045,8 @@ export function respuestaSimple(config = {}) {
           ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje, yaEnviado: true };
           bloquear();
           if (revelar) {
-            marcar("bien");
-            decirSolucion("Ya enviaste este examen.", "ok");
+            if (esMulti) decirSolucionesMulti("Ya enviaste este examen.", "ok");
+            else { marcar("bien"); decirSolucion("Ya enviaste este examen.", "ok"); }
           } else {
             feedback("Ya enviaste este examen.", "");
           }
@@ -862,8 +1057,8 @@ export function respuestaSimple(config = {}) {
         if (hecha) {
           bloquear();
           if (revelar) {
-            marcar("bien");
-            decirSolucion("Ya respondiste esta pregunta.", "ok");
+            if (esMulti) decirSolucionesMulti("Ya respondiste esta pregunta.", "ok");
+            else { marcar("bien"); decirSolucion("Ya respondiste esta pregunta.", "ok"); }
           } else {
             feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste esta pregunta.", "ok");
           }
@@ -887,6 +1082,136 @@ export function respuestaSimple(config = {}) {
     async function procesarEnvio() {
       if (bloqueada || !hayTexto()) return null;
       if (esExamen) return null; // el examen pasa por enviar()
+
+      /* ─── MULTI-CAMPO (v5): N campos, validación EN ESE ORDEN ───
+         Puntaje repartido: cada campo vale puntaje ÷ N. Los correctos
+         al 1.er envío valen COMPLETO y quedan fijos (verde); los
+         corregidos al 2.º envío valen LA MITAD de su parte. Lo
+         asegurado se guarda aunque el bloque termine agotado. */
+      if (esMulti) {
+        const parte = puntaje / nCampos; // valor de UN campo
+        const pendientes = () =>
+          inputsMulti.map((_, i) => i).filter((i) => !asegurados.has(i));
+
+        /* DOCENTE: intentos libres, proporción local, nada se guarda */
+        if (esDoc) {
+          const correctos = pendientes().filter((i) =>
+            esCorrectoCampo(i, inputsMulti[i].value)
+          ).length;
+          const ganado = redondear1(correctos * parte * (envios === 0 ? 1 : 1 / 2));
+          envios++;
+          if (revelar) {
+            inputsMulti.forEach((inp, i) => {
+              if (asegurados.has(i)) return;
+              const ok = esCorrectoCampo(i, inp.value);
+              inp.classList.remove("mal");
+              inp.classList.add(ok ? "bien" : "mal");
+              if (!ok) {
+                const el = inp;
+                setTimeout(() => {
+                  if (!el.classList.contains("bien")) el.classList.remove("mal");
+                }, 700);
+              }
+            });
+          }
+          if (correctos === nCampos) {
+            registrarPuntoDocente(perfil, clase, qid, ganado);
+            chip(envios === 1 ? "Resuelta" : "Resuelta (intento " + envios + ")", "bien");
+            feedback("¡Correcta! Vista docente: el puntaje está arriba y nada se guarda.", "ok");
+            resolverUnaVez(ganado);
+            return ganado;
+          }
+          if (correctos > 0) {
+            registrarPuntoDocente(perfil, clase, qid, ganado);
+            resolverUnaVez(ganado); // el archivo recibe el último envío que sumó
+          }
+          chip("Vista docente · intento " + (envios + 1), "");
+          feedback(
+            correctos > 0
+              ? `Acertaste ${correctos} de ${nCampos} campos. Vista docente: el puntaje está arriba y nada se guarda.`
+              : "Ningún campo correcto. Puedes seguir intentando: nada se guarda.",
+            correctos > 0 ? "ok" : "aviso"
+          );
+          return null;
+        }
+
+        /* ESTUDIANTE · CLASE: los correctos al 1.er envío quedan fijos */
+        if (esTipoClase) {
+          const primero = envios === 0;
+          pendientes().forEach((i) => {
+            const inp = inputsMulti[i];
+            if (esCorrectoCampo(i, inp.value)) {
+              asegurados.add(i);
+              inp.classList.remove("mal");
+              inp.classList.add("bien");
+              inp.disabled = true;
+              exacto += parte * (primero ? 1 : 1 / 2);
+            } else {
+              inp.classList.add("mal");
+              inp.value = ""; // limpiar para el reintento
+            }
+          });
+          envios++;
+          const faltan = nCampos - asegurados.size;
+
+          if (faltan === 0) {
+            const total = redondear1(exacto);
+            bloquear();
+            btnEnviar.textContent = "Respondida";
+            chip(primero ? "Resuelta" : "Resuelta (2.º intento)", "bien");
+            feedback(primero ? "¡Correcta! Muy bien." : "¡Correcta en tu segundo intento! Muy bien.", "ok");
+            if (total > 0) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
+            resolverUnaVez(total);
+            return total;
+          }
+
+          if (primero) {
+            chip("Intento 2 de 2", "aviso");
+            btnEnviar.textContent = "Intentar de nuevo";
+            feedback(
+              `Acertaste ${asegurados.size} de ${nCampos}. Tienes una segunda oportunidad: los campos corregidos valen la mitad.`,
+              "aviso"
+            );
+            btnEnviar.disabled = true; // hasta rellenar los que faltan
+            const primeroVacio = inputsMulti.find((inp) => !inp.disabled);
+            if (primeroVacio) primeroVacio.focus();
+            return null;
+          }
+
+          // Fin del 2.º envío sin completar → agotado (lo asegurado cuenta)
+          const total = redondear1(exacto);
+          bloquear();
+          btnEnviar.textContent = "Sin más intentos";
+          chip("Intentos agotados", "mal");
+          decirSolucionesMulti("Incorrecta otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión.", "mal");
+          if (total > 0) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
+          resolverUnaVez(total);
+          return total;
+        }
+
+        /* ESTUDIANTE · TAREA: 2 envíos neutros; el 2.º es el que cuenta */
+        if (esTarea) {
+          if (envios === 0) {
+            envios++;
+            chip("Envío 2 de 2", "aviso");
+            btnEnviar.textContent = "Enviar de nuevo";
+            feedback("Respuesta enviada. Puedes modificarla y enviar una segunda vez.", "");
+            return null; // la respuesta final (2.º envío) decide el puntaje
+          }
+          const correctos = pendientes().filter((i) =>
+            esCorrectoCampo(i, inputsMulti[i].value)
+          ).length;
+          const ganado = redondear1(correctos * parte * (1 / 2));
+          bloquear();
+          chip("Enviada", "");
+          feedback("Respuesta enviada. No hay más envíos.", "");
+          if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+          resolverUnaVez(ganado);
+          return ganado;
+        }
+
+        return null;
+      }
 
       const acierto = esCorrecto(valorActual());
 
@@ -991,6 +1316,23 @@ export function respuestaSimple(config = {}) {
     // --- EXAMEN: el botón lo pone el archivo del examen ---
     enviarExamen = async function () {
       if (esDoc) {
+        if (esMulti) {
+          const correctos = inputsMulti.filter((inp, i) =>
+            esCorrectoCampo(i, inp.value)
+          ).length;
+          const ganado = redondear1(correctos * (puntaje / nCampos));
+          if (revelar) {
+            inputsMulti.forEach((inp, i) => {
+              inp.classList.remove("mal");
+              inp.classList.add(esCorrectoCampo(i, inp.value) ? "bien" : "mal");
+            });
+          }
+          registrarPuntoDocente(perfil, clase, qid, ganado);
+          chip("Vista docente", "");
+          feedback("Enviado. El puntaje está en el head de arriba; nada se guarda.", "");
+          resolverUnaVez(ganado);
+          return { puntos: ganado, maxPuntaje: puntaje, docente: true };
+        }
         const acierto = esCorrecto(valorActual());
         const ganado = acierto ? puntaje : 0;
         registrarPuntoDocente(perfil, clase, qid, ganado);
@@ -1006,6 +1348,29 @@ export function respuestaSimple(config = {}) {
 
       if (yaEnviada) {
         return ultimoResultado || { puntos: 0, maxPuntaje: puntaje, yaEnviado: true };
+      }
+
+      if (esMulti) {
+        const correctos = inputsMulti.filter((inp, i) =>
+          esCorrectoCampo(i, inp.value)
+        ).length;
+        const ganado = redondear1(correctos * (puntaje / nCampos));
+        if (revelar) {
+          inputsMulti.forEach((inp, i) => {
+            inp.classList.remove("mal");
+            inp.classList.add(esCorrectoCampo(i, inp.value) ? "bien" : "mal");
+          });
+          if (correctos === nCampos) feedback("Respuesta correcta.", "ok");
+          else if (correctos > 0) feedback(`Respuesta enviada. Acertaste ${correctos} de ${nCampos} campos.`, "");
+          else decirSolucionesMulti("Respuesta incorrecta.", "mal");
+        } else {
+          feedback("Respuesta enviada.", "");
+        }
+        bloquear();
+        chip("Enviada", "");
+        await guardarExamen(ganado);
+        resolverUnaVez(ganado);
+        return { puntos: ganado, maxPuntaje: puntaje };
       }
 
       const acierto = esCorrecto(valorActual());
@@ -1025,6 +1390,7 @@ export function respuestaSimple(config = {}) {
     };
 
     contenedor.append(caja);
+    aplicarTamano(caja, config); // v5: columnas / ancho (tras el montaje)
   }
 
   if (esExamen) promesa.enviar = () => enviarExamen();

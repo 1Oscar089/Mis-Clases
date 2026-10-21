@@ -1,9 +1,11 @@
 // ============================================================
 // ordenar.js — Bloque de ORDENAR objetos arrastrándolos a campos
-// (js/utils/ordenar.js) · v2: FÓRMULAS matemáticas ($…$) en la
-// indicación y los objetos, vía js/utils/formatearFormulas.js
-// (antes v1: TIPOS clase/tarea/examen, docente con intentos libres,
-// puntaje local, espejo en Sheets)
+// (js/utils/ordenar.js) · v3: TAMAÑO en pantalla — 'columnas'
+// (2 = mitad del ancho, 3 = tercio, 4 = cuarto → bloques LADO A LADO)
+// o 'ancho' ("320px", "50%", 0.5…); antes v2: FÓRMULAS matemáticas
+// ($…$), vía js/utils/formatearFormulas.js (antes v1: TIPOS
+// clase/tarea/examen, docente con intentos libres, puntaje local,
+// espejo en Sheets)
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta un
 // bloque con DOS lados. A la IZQUIERDA aparecen los objetos colocados
@@ -27,6 +29,10 @@
 //     distractores: ["$\\sqrt{2}$"],
 //                           // 0 A 8 objetos extra que NO van en ningún campo
 //     puntaje: 1,           // valor TOTAL del bloque (0 a 10)
+//     // columnas: 2,       // NUEVO v3: el bloque ocupa LA MITAD del ancho
+//     //                    //  (dos bloques en el MISMO contenedor quedan
+//     //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
+//     // ancho: "320px",    // NUEVO v3: ancho fijo ("50%", "18rem", 0.5…)
 //     // mostrarCorrectas: true,  // SOLO examen: revela el orden al enviar
 //     // id: "o1",          // (opcional) identificador único y estable
 //   }).then((ganado) => { /* nota ganada en ESTE bloque (oculta) */ });
@@ -140,6 +146,7 @@ import {
   esDocente,
   prepararDocente,
   registrarPuntoDocente,
+  aplicarTamano,
 } from "./opcionMultiple.js";
 
 // Fórmulas: cargarFormulas() trae KaTeX (una sola vez) y
@@ -1132,6 +1139,7 @@ export function ordenar(config = {}) {
     }
 
     contenedor.append(caja);
+    aplicarTamano(caja, config); // v3: columnas / ancho (tras el montaje)
   }
 
   if (esExamen) promesa.enviar = () => enviarExamen();

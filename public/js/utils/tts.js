@@ -1,11 +1,22 @@
 // ============================================================
 // tts.js — Reproductor de Texto a Voz (TTS) · Mis Clases Online
 // ------------------------------------------------------------
-// Usa la Web Speech API nativa del navegador (speechSynthesis):
-//   • Sin librerías externas, sin servicios de pago y sin claves.
-//   • Funciona en Chrome, Edge, Firefox y Safari (escritorio y móvil).
-//   • Prefiere las voces instaladas en el dispositivo (funciona sin
-//     internet); si no hay, usa la voz predeterminada del sistema.
+// DOS MOTORES y el reproductor elige SOLO:
+//   1) VOCES DEL SISTEMA (Web Speech API, speechSynthesis):
+//      el preferido — sin servicios externos y funciona SIN internet.
+//   2) VOZ EN LÍNEA (respaldo, NUEVO en v2): si el navegador NO
+//      tiene voces instaladas (o la voz del sistema no responde),
+//      lee el texto con el audio público de Google Translate por
+//      medio de un elemento <audio> (sin claves ni cuentas).
+//      NECESITA INTERNET y tiene 2 espejos: si uno falla, prueba
+//      el otro automáticamente.
+//
+// Así un navegador sin voces (Linux sin voces, Android liviano,
+// webviews pelados…) YA NO SE QUEDA MUDO: muestra el aviso
+// "Se usará la voz en línea" y funciona igual, con los mismos
+// controles (play/pausa, detener, ±3 s, velocidad y barra).
+// Si el dispositivo está SIN internet Y sin voces, ahí sí se
+// avisa y se bloquean los controles hasta que vuelva la conexión.
 //
 // Uso desde una clase:
 //   import { renderTTS } from '/js/utils/tts.js';
@@ -15,9 +26,9 @@
 //     alTerminar: () => { ... }        // opcional: avisa cuando acaba todo
 //   });
 //
-// Coloca el reproductor (play/pausa, detener, ±3s, velocidad y barra
-// de progreso) justo donde se llame y devuelve un controlador:
-//   { raiz, reproducir, pausar, detener, estaReproduciendo() }
+// Coloca el reproductor justo donde se llame y devuelve un controlador:
+//   { raiz, reproducir, pausar, detener, estaReproduciendo(),
+//     info() → { modo: 'sistema'|'red', estado, velocidad } }
 // Solo un reproductor suena a la vez; los demás se detienen solos.
 // ============================================================
 
@@ -65,6 +76,7 @@ function inyectarEstilos() {
 const VELOCIDADES = [0.25, 0.5, 0.75, 1, 1.25, 1.5];
 const CPS_BASE = 14;        // velocidad de lectura estimada (caracteres/segundo a velocidad 1)
 const MAX_FRAGMENTO = 180;  // fragmentos cortos: evita el corte de Chrome en audios largos (~15 s)
+                            // y cabe de sobra en el límite (~200) de la voz en línea
 
 const SVG = {
   altavoz: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05c1.5-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>',
@@ -84,6 +96,7 @@ function registrarLimpiezaGlobal() {
   limpiezaGlobalRegistrada = true;
   window.addEventListener('pagehide', function () {
     try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ }
+    if (jugadorActivo) { try { jugadorActivo.detener(); } catch (e) { /* ignorar */ } }
   });
 }
 
@@ -209,12 +222,15 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
   nota.hidden = true;
 
   raiz.append(cabecera, barra, controles, nota);
+  raiz.dataset.modo = '';      // 'sistema' | 'red' (se define en elegirModo)
+  raiz.dataset.estado = 'detenido';
   contenedorDestino.appendChild(raiz);
 
   // ----- estado del reproductor -----
   let cps = CPS_BASE;              // calibración de caracteres/segundo (se afina al leer)
   let velocidad = 1;
   let estado = 'detenido';         // 'detenido' | 'reproduciendo' | 'pausado'
+  let modo = null;                 // 'sistema' (Web Speech) | 'red' (voz en línea)
   let idxFragmento = 0;
   let desplazamiento = 0;          // carácter desde donde se hablará el fragmento actual
   let desplazamientoInicial = 0;   // desplazamiento con el que inició la utterance actual
@@ -226,6 +242,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
   let ultimaAccionWc = 0;
   let generacion = 0;              // invalida los callbacks de utterances canceladas
   let hablandoInternamente = false;
+  let algunaVezSono = false;       // ya produjo audio alguna vez (afina la paciencia del vigilante)
   let erroresSeguidos = 0;
   let intentosSinAudio = 0;
   let calibrado = false;
@@ -235,8 +252,25 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
   let timerKeepAlive = null;
   let timerHabla = null;
 
+  // ----- estado del motor EN LÍNEA (respaldo) -----
+  let audioRed = null;             // elemento <audio> (uno solo, se reutiliza en cadena)
+  let audioListo = -1;             // fragmento que tiene cargado el audio ahora mismo
+  let seekPendiente = 0;           // fracción 0..1 del fragmento a la que ir al cargar
+  let genRed = 0;                  // generación con la que se cargó el audio actual
+  let idRed = 0;                   // intento de carga en curso (cada cargarRed: +1)
+  let audioIdRed = -1;             // intento al que pertenecen el audio y sus eventos
+  let endpointRed = 0;             // espejo en uso (0 o 1)
+  let fallosRed = 0;               // fallos seguidos de carga en línea
+  let timerCargaRed = null;        // vigilante de "no cargó nunca"
+  let durReales = [];              // duración real (s) aprendida por fragmento
+  let ultimoTiempoRed = -1;        // para detectar audio estancado
+  let ultimoProgresoRedWc = 0;
+
   // ----- tiempos (la Web Speech API no da duración real: se estima y calibra) -----
-  const durFragmento = function (i) { return Math.max(0.7, fragmentos[i].length / cps); };
+  const durFragmento = function (i) {
+    if (durReales[i] && isFinite(durReales[i]) && durReales[i] > 0) return durReales[i];
+    return Math.max(0.7, fragmentos[i].length / cps);
+  };
   const inicioDeFragmento = function (i) {
     let t = 0;
     for (let k = 0; k < i; k++) t += durFragmento(k);
@@ -245,7 +279,156 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
   const duracionTotal = function () { return inicioDeFragmento(fragmentos.length); };
   const contenidoAWall = function (t) { return t / velocidad; };
 
-  // ----- voces -----
+  // ---------- MOTOR EN LÍNEA (respaldo sin voces del sistema) ----------
+  // Dos espejos públicos de Google Translate TTS (sin claves). Si uno
+  // falla, se alterna al otro; tras 4 fallos seguidos, aviso y alto.
+  const PROVEEDORES_RED = [
+    function (tl, texto) {
+      return 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + tl + '&q=' + encodeURIComponent(texto);
+    },
+    function (tl, texto) {
+      return 'https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=' + tl + '&q=' + encodeURIComponent(texto);
+    }
+  ];
+
+  function idiomaRed() {
+    const base = idiomaNormalizado.split('-')[0].toLowerCase();
+    return /^[a-z]{2,3}$/.test(base) ? base : 'es';
+  }
+
+  function hayVocesAhora() {
+    if (!soportado) return false;
+    try { return (window.speechSynthesis.getVoices() || []).length > 0; } catch (e) { return false; }
+  }
+
+  function elegirModo() {
+    const antes = modo;
+    modo = hayVocesAhora() ? 'sistema' : 'red';
+    if (modo !== antes) { raiz.dataset.modo = modo; actualizarNota(); }
+  }
+
+  function cambiarAModoRed(motivo) {
+    if (modo === 'red') return;
+    modo = 'red';
+    raiz.dataset.modo = 'red';
+    if (soportado) { try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ } }
+    if (motivo) mostrarNota(motivo, false);
+    if (estado === 'reproduciendo') {
+      desplazamiento = offsetActualDelFragmento();
+      programarHabla(); // sigue desde donde iba, ya en línea
+    }
+  }
+
+  function crearAudioRed(idIntento) {
+    // Elemento de audio de UN intento: el id capturado aquí decide qué eventos cuentan.
+    const audio = new Audio();
+    audio.preload = 'auto';
+    try { audio.setAttribute('playsinline', ''); } catch (e) { /* ignorar */ }
+    audio.addEventListener('loadedmetadata', function () {
+      clearTimeout(timerCargaRed); // cargó: cancela el vigilante
+      if (idIntento !== idRed || modo !== 'red' || genRed !== generacion) return;
+      algunaVezSono = true;
+      nota.hidden = true;
+      const d = audio.duration;
+      if (isFinite(d) && d > 0) {
+        durReales[idxFragmento] = d;
+        const frag = fragmentos[idxFragmento] || '';
+        if (frag.length >= 30) {           // mismo criterio de calibración que el motor de sistema
+          const real = frag.length / d;
+          if (real >= 6 && real <= 40) { cps = real; calibrado = true; }
+        }
+        if (seekPendiente > 0) {
+          try { audio.currentTime = Math.min(seekPendiente, 0.98) * d; } catch (e) { /* ignorar */ }
+        }
+        seekPendiente = 0;
+      }
+    });
+    audio.addEventListener('ended', function () {
+      if (idIntento !== idRed || modo !== 'red' || genRed !== generacion || estado !== 'reproduciendo') return;
+      fallosRed = 0;
+      avanzarFragmento(); // cadena: carga el siguiente fragmento
+    });
+    audio.addEventListener('error', function () {
+      if (idIntento !== idRed || modo !== 'red' || genRed !== generacion || estado !== 'reproduciendo') return;
+      tratarFalloRed();
+    });
+    return audio;
+  }
+
+  function resetearAudioRed() {
+    clearTimeout(timerCargaRed);
+    seekPendiente = 0;
+    audioListo = -1;
+    audioIdRed = -1; // los eventos del audio viejo ya no cuentan
+    if (audioRed) {
+      try { audioRed.pause(); } catch (e) { /* ignorar */ }
+      try { audioRed.removeAttribute('src'); audioRed.load(); } catch (e) { /* ignorar */ }
+    }
+  }
+
+  function cargarRed(i) {
+    if (modo !== 'red' || !fragmentos.length) return;
+    if (i >= fragmentos.length) { finalizar(); return; }
+    const frag = fragmentos[i].slice(desplazamiento);
+    if (!frag) { avanzarFragmento(); return; }
+    desplazamientoInicial = desplazamiento;
+    desplazamientoEnVivo = desplazamiento;
+    // elemento FRESCO por intento: los eventos de un intento viejo mueren con su elemento
+    if (audioRed) {
+      try { audioRed.pause(); } catch (e) { /* ignorar */ }
+      try { audioRed.removeAttribute('src'); } catch (e) { /* ignorar */ }
+    }
+    audioRed = crearAudioRed(++idRed);
+    audioIdRed = idRed;
+    const idIntento = idRed; // identidad del intento para su promesa de play()
+    clearTimeout(timerCargaRed);
+    audioRed.src = PROVEEDORES_RED[endpointRed](idiomaRed(), frag);
+    seekPendiente = fragmentos[i].length ? desplazamiento / fragmentos[i].length : 0;
+    audioListo = i;
+    genRed = generacion;
+    audioRed.playbackRate = clamp(velocidad, 0.25, 2);
+    ultimoTiempoRed = -1;
+    ultimoProgresoRedWc = performance.now();
+    try {
+      const promesa = audioRed.play();
+      if (promesa && promesa.catch) {
+        promesa.catch(function () {
+          // el rechazo viejo (lo abortamos NOSOTROS al pasar al siguiente intento) no cuenta
+          if (idIntento !== idRed || audioIdRed !== idRed) return;
+          tratarFalloRed();
+        });
+      }
+    } catch (e) {
+      if (idIntento !== idRed || audioIdRed !== idRed) return;
+      tratarFalloRed();
+    }
+    timerCargaRed = setTimeout(function () { tratarFalloRed(); }, 9000); // no cargó en 9 s
+  }
+
+  function tratarFalloRed() {
+    if (modo !== 'red' || estado !== 'reproduciendo') return;
+    if (audioIdRed !== idRed) return; // fallo de un intento viejo (ya tratado o caducado)
+    clearTimeout(timerCargaRed);
+    fallosRed += 1;
+    if (fallosRed >= 4) {
+      mostrarNota('No se pudo cargar la voz en línea. Revisa tu conexión a internet o instala una voz del sistema en tu navegador.', true);
+      detener();
+      return;
+    }
+    endpointRed = (endpointRed + 1) % PROVEEDORES_RED.length; // probar el otro espejo
+    cargarRed(idxFragmento);
+  }
+
+  function limpiarCanal() {
+    clearTimeout(timerHabla);
+    if (modo === 'red') {
+      resetearAudioRed();
+    } else if (soportado) {
+      try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ }
+    }
+  }
+
+  // ---------- VOCES DEL SISTEMA ----------
   function cargarVoces() {
     if (!soportado) return;
     let todas = [];
@@ -276,20 +459,27 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
   function actualizarNota() {
     let mensaje = '';
     let bloquear = false;
-    if (!soportado) {
-      mensaje = 'Tu navegador no admite lectura de voz. Prueba con Chrome, Edge, Firefox o Safari actualizados.';
-      bloquear = true;
-    } else if (!fragmentos.length) {
+    if (!fragmentos.length) {
       mensaje = 'No hay texto para leer.';
       bloquear = true;
     } else {
-      let voces = [];
-      try { voces = window.speechSynthesis.getVoices() || []; } catch (e) { /* ignorar */ }
-      if (sinVocesSistema) {
-        mensaje = 'Este navegador no tiene voces instaladas. Instala una voz del sistema o usa Chrome o Edge.';
+      let voces = 0;
+      if (soportado) {
+        try { voces = (window.speechSynthesis.getVoices() || []).length; } catch (e) { voces = 0; }
+      }
+      const sinVoces = !soportado || voces === 0;
+      if (sinVoces && typeof navigator !== 'undefined' && navigator.onLine === false) {
+        // sin voces Y sin internet: nada puede sonar todavía
+        mensaje = !soportado
+          ? 'Tu navegador no admite la voz del sistema y ahora no hay internet. Conéctate para poder escuchar la lectura.'
+          : 'Este navegador no tiene voces instaladas y ahora no hay internet. Conéctate para poder escuchar la lectura.';
         bloquear = true;
-      } else if (!voces.length) {
-        mensaje = 'Cargando voces del sistema…';
+      } else if (sinVoces) {
+        mensaje = !soportado
+          ? 'Tu navegador no admite la voz del sistema. Se usará la voz en línea (necesita internet).'
+          : (sinVocesSistema
+            ? 'Este navegador no tiene voces instaladas. Se usará la voz en línea (necesita internet).'
+            : 'Cargando voces del sistema… (si no hay, se usará la voz en línea)');
       } else if (!voz) {
         mensaje = 'No hay voz para «' + idiomaNormalizado + '»; se usará la voz predeterminada del navegador.';
       }
@@ -301,7 +491,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     barra.style.opacity = bloquear ? '.55' : '';
   }
 
-  // ----- interfaz -----
+  // ---------- interfaz ----------
   function actualizarUI() {
     const total = duracionTotal();
     const pos = clamp(posContenido, 0, total);
@@ -313,9 +503,10 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     tiempo.textContent = formatearTiempo(contenidoAWall(pos)) + ' / ' + formatearTiempo(contenidoAWall(total));
     btnPrincipal.innerHTML = estado === 'reproduciendo' ? SVG.pausa : SVG.play;
     btnPrincipal.setAttribute('aria-label', estado === 'reproduciendo' ? 'Pausar' : 'Reproducir');
+    raiz.dataset.estado = estado;
   }
 
-  // ----- temporizadores (tick de progreso + keepalive anti-cuelgue de Chrome) -----
+  // ---------- temporizadores (tick de progreso + keepalive anti-cuelgue de Chrome) ----------
   function detenerTemporizadores() {
     if (timerTick) { clearInterval(timerTick); timerTick = null; }
     if (timerKeepAlive) { clearInterval(timerKeepAlive); timerKeepAlive = null; }
@@ -326,6 +517,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     inicioTickWc = performance.now();
     timerTick = setInterval(tick, 100);
     timerKeepAlive = setInterval(function () {
+      if (modo !== 'sistema') return;
       try {
         if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
           window.speechSynthesis.resume();
@@ -338,14 +530,33 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     if (!raiz.isConnected) { detener(); return; }          // se sacó del DOM: autolimpieza
     if (estado !== 'reproduciendo') return;
     const ahora = performance.now();
+    if (modo === 'red') {
+      // posición REAL desde el audio (no hay que estimar nada)
+      if (audioRed && isFinite(audioRed.duration) && audioRed.duration > 0) {
+        posContenido = clamp(inicioDeFragmento(idxFragmento) + audioRed.currentTime, 0, duracionTotal());
+      }
+      // vigilante de red: ¿el audio quedó estancado a mitad de la reproducción?
+      if (audioRed && !audioRed.paused) {
+        if (audioRed.currentTime !== ultimoTiempoRed) {
+          ultimoTiempoRed = audioRed.currentTime;
+          ultimoProgresoRedWc = ahora;
+        } else if (ahora - ultimoProgresoRedWc > 12000) {
+          ultimoProgresoRedWc = ahora;
+          tratarFalloRed();
+        }
+      }
+      actualizarUI();
+      return;
+    }
+    // ---- modo sistema (igual que siempre) ----
     const finFrag = inicioDeFragmento(idxFragmento) + durFragmento(idxFragmento);
     posContenido = clamp(baseContenido + ((ahora - inicioTickWc) / 1000) * velocidad, 0, finFrag);
-    // vigilante: si el motor de voz se quedó colgado, reintentar desde donde iba
+    // vigilante: si el motor de voz se quedó colgado, reintentar; si no hay caso, pasar EN LÍNEA
     if (!hablandoInternamente && ahora - ultimaAccionWc > 1500) {
+      const limite = algunaVezSono ? 4 : 2; // nunca sonó → pierde la confianza antes
       intentosSinAudio += 1;
-      if (intentosSinAudio > 4) {
-        mostrarNota('No se pudo reproducir la voz en este navegador.', true);
-        detener();
+      if (intentosSinAudio > limite) {
+        cambiarAModoRed('La voz del sistema no respondió; se usará la voz en línea (necesita internet).');
         return;
       }
       ultimaAccionWc = ahora;
@@ -356,7 +567,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     actualizarUI();
   }
 
-  // ----- lectura -----
+  // ---------- lectura (motor de sistema) ----------
   function calibrar(frag) {
     if (calibrado || desplazamientoInicial !== 0 || !inicioFragmentoWc) return;
     const wc = (performance.now() - inicioFragmentoWc) / 1000;
@@ -366,7 +577,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
   }
 
   function hablarActual(enGesto) {
-    if (!soportado || !fragmentos.length) return;
+    if (!soportado || modo !== 'sistema' || !fragmentos.length) return;
     if (idxFragmento >= fragmentos.length) { finalizar(); return; }
     if (!fragmentos[idxFragmento].slice(desplazamiento)) { avanzarFragmento(); return; }
     ultimaAccionWc = performance.now();
@@ -381,6 +592,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
   }
 
   function programarHabla() {
+    if (modo === 'red') { cargarRed(idxFragmento); return; }
     clearTimeout(timerHabla);
     const gen = generacion;
     timerHabla = setTimeout(function () {
@@ -407,6 +619,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     u.onstart = function () {
       if (gen !== generacion) return;
       hablandoInternamente = true;
+      algunaVezSono = true;
       intentosSinAudio = 0;
       erroresSeguidos = 0;
       inicioFragmentoWc = performance.now();
@@ -431,8 +644,8 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
       if (tipo === 'interrupted' || tipo === 'canceled') return;
       erroresSeguidos += 1;
       if (erroresSeguidos >= 3) {
-        mostrarNota('No se pudo reproducir la voz en este navegador.', true);
-        detener();
+        // la voz del sistema está fallando una y otra vez → pasar a la voz en línea
+        cambiarAModoRed('La voz del sistema no respondió; se usará la voz en línea (necesita internet).');
         return;
       }
       avanzarFragmento();
@@ -469,9 +682,13 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     if (alTerminar) { try { alTerminar(); } catch (e) { /* ignorar */ } }
   }
 
-  // posición precisa dentro del fragmento actual (boundary si existe, sino estimada)
+  // posición precisa dentro del fragmento actual (boundary/audio si existe, sino estimada)
   function offsetActualDelFragmento() {
     const frag = fragmentos[idxFragmento] || '';
+    if (modo === 'red' && audioRed && isFinite(audioRed.duration) && audioRed.duration > 0) {
+      const fraccion = clamp(audioRed.currentTime / audioRed.duration, 0, 1);
+      return clamp(Math.floor(fraccion * frag.length), desplazamiento, Math.max(desplazamiento, frag.length - 1));
+    }
     if (desplazamientoEnVivo > desplazamiento) {
       return Math.min(desplazamientoEnVivo, Math.max(0, frag.length - 1));
     }
@@ -480,30 +697,49 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     return clamp(Math.floor((dentroFrag / durI) * frag.length), desplazamiento, Math.max(desplazamiento, frag.length - 1));
   }
 
-  // ----- controles -----
+  // ---------- controles ----------
   function reproducir(desdeGesto) {
-    if (!soportado || !fragmentos.length) return;
+    if (!fragmentos.length) return;
     if (jugadorActivo && jugadorActivo !== api) jugadorActivo.detener();
     jugadorActivo = api;
     cargarVoces();
-    if (estado === 'pausado' && window.speechSynthesis.speaking) {
-      try { window.speechSynthesis.resume(); } catch (e) { /* ignorar */ }
-      estado = 'reproduciendo';
-      erroresSeguidos = 0;
-      intentosSinAudio = 0;
-      iniciarTemporizadores();
-      actualizarUI();
-      return;
+    elegirModo();
+    if (estado === 'pausado') {
+      if (modo === 'red' && audioListo === idxFragmento && audioRed && audioRed.src && audioRed.paused) {
+        // el audio pausado conserva su posición: solo seguir
+        audioRed.playbackRate = clamp(velocidad, 0.25, 2);
+        try {
+          const promesa = audioRed.play();
+          if (promesa && promesa.catch) promesa.catch(function () { tratarFalloRed(); });
+        } catch (e) { tratarFalloRed(); }
+        estado = 'reproduciendo';
+        erroresSeguidos = 0; intentosSinAudio = 0; fallosRed = 0;
+        iniciarTemporizadores();
+        actualizarUI();
+        return;
+      }
+      if (modo === 'sistema' && window.speechSynthesis.speaking) {
+        try { window.speechSynthesis.resume(); } catch (e) { /* ignorar */ }
+        estado = 'reproduciendo';
+        erroresSeguidos = 0;
+        intentosSinAudio = 0;
+        iniciarTemporizadores();
+        actualizarUI();
+        return;
+      }
+      // pausado pero sin canal vivo → cae al arranque normal (retoma desde desplazamiento)
     }
     generacion += 1;
     clearTimeout(timerHabla);
-    try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ }
-    try { window.speechSynthesis.resume(); } catch (e) { /* ignorar */ }
+    limpiarCanal();
     estado = 'reproduciendo';
     erroresSeguidos = 0;
     intentosSinAudio = 0;
+    fallosRed = 0;
     iniciarTemporizadores();
-    if (desdeGesto) {
+    if (modo === 'red') {
+      cargarRed(idxFragmento); // en el mismo gesto del clic
+    } else if (desdeGesto) {
       hablarActual(true); // hablar en el mismo gesto del clic (requisito de iOS)
     } else {
       programarHabla();
@@ -512,13 +748,17 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
   }
 
   function pausar() {
-    if (!soportado || estado !== 'reproduciendo') return;
+    if (estado !== 'reproduciendo') return;
     clearTimeout(timerHabla);
     detenerTemporizadores();
     desplazamiento = offsetActualDelFragmento();
     baseContenido = posContenido;
+    if (modo === 'red') {
+      if (audioRed) { try { audioRed.pause(); } catch (e) { /* ignorar */ } }
+    } else {
+      try { window.speechSynthesis.pause(); } catch (e) { /* ignorar */ }
+    }
     estado = 'pausado';
-    try { window.speechSynthesis.pause(); } catch (e) { /* ignorar */ }
     actualizarUI();
   }
 
@@ -527,7 +767,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     clearTimeout(timerHabla);
     detenerTemporizadores();
     hablandoInternamente = false;
-    if (soportado) { try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ } }
+    limpiarCanal();
     if (jugadorActivo === api) jugadorActivo = null;
     estado = 'detenido';
     idxFragmento = 0;
@@ -543,16 +783,16 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     generacion += 1;
     clearTimeout(timerHabla);
     hablandoInternamente = false;
-    if (soportado) { try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ } }
+    limpiarCanal();
     idxFragmento = i;
     desplazamiento = clamp(off, 0, Math.max(0, (fragmentos[i] || '').length - 1));
     baseContenido = inicioDeFragmento(i) + (desplazamiento / Math.max(1, fragmentos[i].length)) * durFragmento(i);
     posContenido = baseContenido;
     if (hablarAhora) {
       estado = 'reproduciendo';
-      if (soportado) { try { window.speechSynthesis.resume(); } catch (e) { /* ignorar */ } }
+      if (modo === 'sistema' && soportado) { try { window.speechSynthesis.resume(); } catch (e) { /* ignorar */ } }
       iniciarTemporizadores();
-      programarHabla();
+      if (modo === 'red') cargarRed(i); else programarHabla();
     }
     actualizarUI();
   }
@@ -572,7 +812,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     clearTimeout(timerHabla);
     detenerTemporizadores();
     hablandoInternamente = false;
-    if (soportado) { try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ } }
+    limpiarCanal();
     idxFragmento = i;
     desplazamiento = off;
     desplazamientoEnVivo = 0;
@@ -582,7 +822,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     if (seguir) {
       estado = 'reproduciendo';
       iniciarTemporizadores();
-      programarHabla();
+      if (modo === 'red') cargarRed(i); else programarHabla();
     } else if (estado === 'pausado') {
       baseContenido = posContenido; // queda pausado; al dar play continúa desde aquí
     }
@@ -593,7 +833,7 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     buscar(posContenido + segundosWall * velocidad);
   }
 
-  // ----- eventos -----
+  // ---------- eventos ----------
   btnPrincipal.addEventListener('click', function () {
     if (estado === 'reproduciendo') pausar(); else reproducir(true);
   });
@@ -614,18 +854,23 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
       iniciarDesde(idxFragmento, offsetActualDelFragmento(), true);
     } else if (estado === 'pausado') {
       // descartar el audio pausado para que al reanudar use la nueva velocidad
-      generacion += 1;
-      clearTimeout(timerHabla);
-      hablandoInternamente = false;
-      try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ }
-      desplazamiento = offsetActualDelFragmento();
+      if (modo === 'red') {
+        desplazamiento = offsetActualDelFragmento(); // el audio pausado aún sabe su tiempo
+        resetearAudioRed();
+      } else {
+        generacion += 1;
+        clearTimeout(timerHabla);
+        hablandoInternamente = false;
+        try { window.speechSynthesis.cancel(); } catch (e) { /* ignorar */ }
+        desplazamiento = offsetActualDelFragmento();
+      }
       actualizarUI();
     } else {
       actualizarUI();
     }
   });
 
-  // ----- inicialización -----
+  // ---------- inicialización ----------
   if (soportado) {
     cargarVoces();
     try {
@@ -639,6 +884,11 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
       } catch (e) { /* ignorar */ }
     }, 3000);
   }
+  elegirModo(); // decide 'sistema' | 'red' desde ya (se vuelve a decidir en cada reproducir)
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', actualizarNota);  // vuelve la conexión → desbloquea
+    window.addEventListener('offline', actualizarNota);
+  }
   actualizarNota();
   actualizarUI();
 
@@ -648,7 +898,10 @@ export function renderTTS(contenedorDestino, idioma, texto, opciones = {}) {
     reproducir: function () { reproducir(false); },
     pausar: pausar,
     detener: detener,
-    estaReproduciendo: function () { return estado === 'reproduciendo'; }
+    estaReproduciendo: function () { return estado === 'reproduciendo'; },
+    info: function () {
+      return { modo: modo, estado: estado, velocidad: velocidad, total: Math.round(duracionTotal()) };
+    }
   };
   return api;
 }
