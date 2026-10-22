@@ -640,6 +640,15 @@ export function respuestaSimple(config = {}) {
       }
     }
 
+    // v5.1 — CORRECCIÓN: con UN solo campo definido por 'respuestas'
+    // (el formulario que genera el editor), sus equivalentes SON la
+    // solución. Antes se validaba contra 'respuestaCorrecta' (que el
+    // código generado no trae) y NINGUNA respuesta contaba como
+    // correcta. 'respuestaCorrecta' sigue ganando si viene.
+    if (camposSol && nCampos === 1 && !soluciones.length && camposSol[0].length) {
+      soluciones.push(...camposSol[0]);
+    }
+
     // Rótulos de cada campo (defecto: "Respuesta 1", "Respuesta 2"…)
     let rotulos = null;
     if (Array.isArray(etiquetas) && etiquetas.length === nCampos && nCampos > 0) {
@@ -1020,7 +1029,7 @@ export function respuestaSimple(config = {}) {
     // Estado inicial por tipo y rol
     if (esDoc) {
       chip("Vista docente", "");
-      feedback("Intentos libres, puntaje local arriba y nada se guarda.", "");
+      //feedback("Intentos libres, puntaje local arriba y nada se guarda.", "");
     } else if (esExamen) {
       chip("Sin enviar", "");
       feedback("El examen enviará todas tus respuestas al final.", "");
@@ -1227,10 +1236,10 @@ export function respuestaSimple(config = {}) {
           registrarPuntoDocente(perfil, clase, qid, ganado);
           if (revelar) {
             chip(envios === 1 ? "Resuelta" : "Resuelta (intento " + envios + ")", "bien");
-            feedback("¡Correcta! Vista docente: el puntaje está arriba y nada se guarda.", "ok");
+            feedback("¡Correcta! Vista docente.", "ok");
           } else {
             chip("Enviada", "");
-            feedback("Respuesta enviada. Vista docente: el puntaje está arriba y nada se guarda.", "");
+            feedback("Respuesta enviada.", "");
           }
           resolverUnaVez(ganado);
           return ganado;
@@ -1279,7 +1288,7 @@ export function respuestaSimple(config = {}) {
           bloquear();
           btnEnviar.textContent = "Sin más intentos";
           chip("Intentos agotados", "mal");
-          decirSolucion("Incorrecta otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión.", "mal");
+          decirSolucion("Incorrecta otra vez. Se agotaron tus intentos.", "mal");
           resolverUnaVez(0);
         }
         return null;
