@@ -1,23 +1,43 @@
 // ============================================================
-// clases.js — Página "Clases" (js/components/clases.js)
+// clases.js — VISTA de piezas: Clases · Exámenes · Tareas ·
+//             Recursos (js/components/clases.js) · v5
 //
-// Se abre desde la tarjeta "Clases" del inicio (import dinámico).
+// UNA SOLA implementación para las cuatro páginas del inicio:
+//   renderPiezas(perfil, contenedor, tipo)  con  tipo =
+//     "clase" | "examen" | "tarea" | "recurso"
+//   · clases.js    → render(perfil, contenedor) = piezas "clase"
+//   · examenes.js  → piezas "examen"
+//   · tareas.js    → piezas "tarea"
+//   · recursos.js  → piezas "recurso"
 //
-// Estructura de datos en Firestore:
-//   clases/{grado}/{materiaId}/{idClase}
-//     { dia, unidad, leccion, clase, creadoEn, creadoPor }
+// GUARDADO (todo "como clases" en Firestore):
+//   clases/{grado}/{materiaId}/{id}
+//     { tipo:"clase"|"examen"|"tarea"|"recurso",
+//       visible:true|false, dia, unidad, leccion, clase (título),
+//       creadoEn, creadoPor }
+//   · EXÁMENES y TAREAS viven EXACTAMENTE IGUAL que las clases:
+//     cambia solo el campo tipo. El contenido (.js) vive en
+//     public/clases/{grado}/{materiaId}/{id}.js.
 //
-// Contenido de cada clase (se creará después):
-//   public/clases/{grado}/{materiaId}/{idClase}.js
-//   → exporta render(perfil, contenedor, clase). Si el archivo no
-//     existe, al hacer clic en la tarjeta solo avisa "no disponible".
+// VISIBLE / INVISIBLE (docente):
+//   · Cada tarjeta del docente lleva el OJO: visible ⇄ invisible.
+//     Es UN boolean en Firebase (clase.visible). Una pieza invisible
+//     NO se muestra al estudiante — para él no existe.
 //
-// DOCENTE: chips de grado y materia (se eligen en modal), buscador
-// en tiempo real y botón "Crear clase" (día, unidad, lección, clase).
-// ESTUDIANTE: elige SU materia en un modal (chip) y solo ve las clases
-// de ESA materia; buscador + caché localStorage de todo su grado para
-// pintar el listado al instante. Las tarjetas NO muestran la materia
-// (ya está elegida arriba).
+// ESTUDIANTE:
+//   · Elige SU materia (chip) y ve las piezas VISIBLES de ese tipo,
+//     SEPARADAS POR UNIDAD (Unidad 1, Unidad 2… y «General» al final
+//     si algo no tiene unidad).
+//
+// DOCENTE:
+//   · Chips de grado y materia · buscador · botón «Crear …» (día,
+//     unidad, lección, título) · ojo visible/invisible por pieza ·
+//     MODAL DE RESULTADOS por pieza: cada estudiante del grado con
+//     su nota POR ACTIVIDAD y la NOTA FINAL (viene de notas/{uid}/
+//     clases/{claseId}; la misma nota queda espejada en el user del
+//     estudiante: users/{uid}.notas.{claseId} = nota del día/clase).
+//
+// NAVEGACIÓN: la flecha «Volver» vuelve al INICIO en todas las vistas.
 //
 // Convención: CSS implícito · 100% responsivo · bajo la userbar.
 // ============================================================
@@ -46,14 +66,52 @@ export const MATERIAS = [
   { id: "artes", nombre: "Artes" },
 ];
 
+/* ---------------- Tipos de pieza ---------------- */
+
+export const TIPOS = {
+  clase: {
+    etiqueta: "clase",
+    plural: "Clases",
+    icono: "book",
+    color: "#2563eb",
+    crear: "Crear clase",
+    descrip: "Las clases de la materia",
+  },
+  examen: {
+    etiqueta: "examen",
+    plural: "Exámenes",
+    icono: "file-earmark-text",
+    color: "#ef4444",
+    crear: "Crear examen",
+    descrip: "Pruebas que no se pueden salir sin enviar",
+  },
+  tarea: {
+    etiqueta: "tarea",
+    plural: "Tareas",
+    icono: "list-check",
+    color: "#7c3aed",
+    crear: "Crear tarea",
+    descrip: "Tareas para hacer fuera de clase",
+  },
+  recurso: {
+    etiqueta: "recurso",
+    plural: "Recursos",
+    icono: "folder2-open",
+    color: "#16a34a",
+    crear: "Crear recurso",
+    descrip: "Material y archivos de apoyo",
+  },
+};
+
 /* ---------------- Estado del módulo ---------------- */
 
 let perfilActual = null;
 let contenedorActual = null;
 let esDocente = false;
+let tipoActual = "clase";
 let gradoSel = null;      // docente: id numérico del grado
-let materiaSel = null;    // docente: id de MATERIAS
-let clasesCache = [];     // listado en memoria (ya ordenado)
+let materiaSel = null;    // materia elegida (docente y estudiante)
+let piezasCache = [];     // listado en memoria (ya ordenado)
 let textoBusqueda = "";
 let cargando = false;
 let estilosListos = false;
@@ -61,6 +119,9 @@ let estilosListos = false;
 const CLAVE_SEL_DOCENTE = "mco_clases_docente";       // última selección del docente
 const CLAVE_SEL_ESTUDIANTE = "mco_clases_estudiante"; // última materia del estudiante
 const claveCacheEstudiante = (grado) => `mco_clases_g${grado}`;
+// caché del DOCENTE por tipo (pintado instantáneo + frescura Firestore)
+const claveCacheDocente = (grado, materia, tipo) =>
+  `mco_piezas_g${grado}_${materia}_${tipo}`;
 
 const PALETA = ["#7c3aed", "#ef4444", "#f97316", "#2563eb", "#16a34a", "#0891b2"];
 const colorDeMateria = (materiaId) => {
@@ -86,7 +147,7 @@ function normalizar(texto) {
 
 // "Sumas con llevando" → "sumas-con-llevando" (para ids de archivo)
 function slug(texto) {
-  return normalizar(texto).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "clase";
+  return normalizar(texto).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "pieza";
 }
 
 function nombreGrado(id) {
@@ -96,6 +157,10 @@ function nombreGrado(id) {
 
 function materiaDe(id) {
   return MATERIAS.find((m) => m.id === id) || { id, nombre: id };
+}
+
+function tipoDe(id) {
+  return TIPOS[id] || TIPOS.clase;
 }
 
 // Toast de aviso (mismo patrón que auth.js)
@@ -113,14 +178,52 @@ function notify(mensaje, variant = "warning", duracion = 4000) {
   }
 }
 
-// Orden: día → unidad → lección → título (siempre se ve UNA sola materia)
-function compararClases(a, b) {
+// Orden: día → unidad → lección → título (siempre UNA materia y tipo)
+function compararPiezas(a, b) {
   const d = (Number(a.dia) || 0) - (Number(b.dia) || 0);
   if (d !== 0) return d;
-  const u = (Number(a.unidad) || 0) - (Number(b.unidad) || 0);
+  const ua = Number(a.unidad);
+  const ub = Number(b.unidad);
+  const u = (Number.isFinite(ua) ? ua : Number.MAX_SAFE_INTEGER) -
+            (Number.isFinite(ub) ? ub : Number.MAX_SAFE_INTEGER);
   if (u !== 0) return u;
   const l = (Number(a.leccion) || 0) - (Number(b.leccion) || 0);
-  return l !== 0 ? l : String(a.clase).localeCompare(String(b.clase), "es");
+  return l !== 0 ? l : String(a.clase || "").localeCompare(String(b.clase || ""), "es");
+}
+
+// Etiqueta del grupo de unidad: "Unidad 3" · el texto tal cual · "General"
+function etiquetaUnidad(u) {
+  const t = String(u ?? "").trim();
+  return t === "" ? "General" : /^-?\d+(\.\d+)?$/.test(t) ? "Unidad " + t : t;
+}
+
+// Agrupa la lista por unidad: [{ unidad, etiqueta, piezas }]
+// — numéricas primero (asc), luego las de texto (alfabético),
+//   «General» (sin unidad) SIEMPRE al final.
+function gruposPorUnidad(lista) {
+  const mapa = new Map();
+  lista.forEach((c) => {
+    const t = String(c.unidad ?? "").trim();
+    const esNum = t !== "" && /^-?\d+(\.\d+)?$/.test(t);
+    const clave = t === "" ? "§general" : (esNum ? "§num:" + t : "§txt:" + normalizar(t));
+    if (!mapa.has(clave)) mapa.set(clave, { clave, unidad: t, esNum, piezas: [] });
+    mapa.get(clave).piezas.push(c);
+  });
+  const grupos = [...mapa.values()];
+  const rango = (g) =>
+    g.clave === "§general" ? 2 : g.esNum ? 0 : 1;
+  grupos.sort((a, b) => {
+    const ra = rango(a);
+    const rb = rango(b);
+    if (ra !== rb) return ra - rb;
+    if (a.esNum && b.esNum) return Number(a.unidad) - Number(b.unidad);
+    return a.unidad.localeCompare(b.unidad, "es");
+  });
+  return grupos.map((g) => ({
+    unidad: g.unidad,
+    etiqueta: etiquetaUnidad(g.unidad),
+    piezas: g.piezas.sort(compararPiezas),
+  }));
 }
 
 /* ---------------- CSS implícito ---------------- */
@@ -212,6 +315,34 @@ function inyectarEstilos() {
     .clases-btn-crear:hover { background: #6d28d9; }
     .clases-btn-crear:active { transform: scale(.98); }
 
+    /* ── Encabezado de UNIDAD (separación por unidad) ── */
+    .pz-unidad {
+      margin: 1.35rem 0 .7rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .pz-unidad:first-child { margin-top: 0; }
+    .pz-unidad h3 {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #4c1d95;
+      white-space: nowrap;
+    }
+    .pz-unidad::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #e5e7eb;
+    }
+    .pz-unidad span {
+      font-size: .74rem;
+      font-weight: 700;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
     .clases-listado {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -241,6 +372,7 @@ function inyectarEstilos() {
     .clase-cab {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: .35rem;
       margin-bottom: .55rem;
     }
@@ -253,6 +385,20 @@ function inyectarEstilos() {
       background: var(--acento-fondo, #f3f0ff);
       color: var(--acento, #7c3aed);
     }
+    /* Distintivo INVISIBLE (solo lo ve el docente) */
+    .clase-oculta {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .18rem .55rem;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 800;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+    }
+    .clase-card.esta-oculta { opacity: .78; border-style: dashed; }
 
     .clase-card h3 {
       margin: 0 0 .2rem;
@@ -265,6 +411,29 @@ function inyectarEstilos() {
       font-size: .8rem;
       color: #9ca3af;
     }
+
+    /* Acciones del docente EN la tarjeta (ojo · resultados) */
+    .clase-acciones {
+      display: flex;
+      gap: .4rem;
+      margin-top: .7rem;
+    }
+    .clase-accion {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      color: #6b7280;
+      border-radius: .55rem;
+      padding: .3rem .6rem;
+      font-size: .76rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: border-color .15s ease, color .15s ease, background .15s ease;
+    }
+    .clase-accion:hover { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
+    .clase-accion.activa { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
 
     .clases-vacio {
       border: 2px dashed #e5e7eb;
@@ -284,7 +453,7 @@ function inyectarEstilos() {
       font-size: .92rem;
     }
 
-    /* Modales de selección y creación */
+    /* Modales de selección, creación y resultados */
     .clases-dialogo { --width: min(500px, 92vw); }
     .clases-dialogo::part(panel) { border-radius: 1.25rem; }
     .clases-dialogo sl-button[variant="primary"]::part(base) {
@@ -329,6 +498,86 @@ function inyectarEstilos() {
     .clases-form { display: grid; gap: .75rem; }
     .clases-form sl-input { width: 100%; }
 
+    /* ── Modal de RESULTADOS (docente) ── */
+    .pz-dialogo-resultados { --width: min(860px, 94vw); }
+    .pz-res-info {
+      margin: 0 0 .8rem;
+      font-size: .88rem;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+    .pz-res-info strong { color: #7c3aed; }
+    .pz-res-cargando {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      color: #6b7280;
+      font-size: .9rem;
+      padding: 1.2rem 0;
+    }
+    .pz-res-cargando[hidden] { display: none; }
+    .pz-res-tabla {
+      max-height: min(420px, 55vh);
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: .8rem;
+    }
+    .pz-res-tabla table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .84rem;
+    }
+    .pz-res-tabla th, .pz-res-tabla td {
+      padding: .5rem .6rem;
+      border-bottom: 1px solid #f1f0f7;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .pz-res-tabla th {
+      position: sticky;
+      top: 0;
+      background: #f9f7ff;
+      color: #4c1d95;
+      font-size: .74rem;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      z-index: 1;
+    }
+    .pz-res-tabla th small {
+      display: block;
+      font-size: .68rem;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: none;
+      letter-spacing: 0;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pz-res-tabla td.num { text-align: center; font-variant-numeric: tabular-nums; }
+    .pz-res-tabla tr:last-child td { border-bottom: none; }
+    .pz-res-total {
+      font-weight: 800;
+      color: #4c1d95;
+      text-align: center;
+    }
+    .pz-res-estado {
+      display: inline-block;
+      padding: .12rem .5rem;
+      border-radius: 999px;
+      font-size: .7rem;
+      font-weight: 800;
+    }
+    .pz-res-estado.enviado { background: #dcfce7; color: #15803d; }
+    .pz-res-estado.curso   { background: #fef9c3; color: #a16207; }
+    .pz-res-estado.nada    { background: #f3f4f6; color: #6b7280; }
+    .pz-res-vacio {
+      padding: 1.4rem 1rem;
+      text-align: center;
+      color: #6b7280;
+      font-size: .9rem;
+    }
+
     /* Celular: buscador y botón apilados */
     @media (max-width: 767px) {
       .clases-buscador-fila { flex-direction: column; align-items: stretch; }
@@ -342,16 +591,27 @@ function inyectarEstilos() {
 /* ---------------- Render ---------------- */
 
 /**
- * Página "Clases" (la llama inicio.js al hacer clic en la tarjeta).
- * @param {object} perfil           perfil del usuario (users/{uid})
- * @param {HTMLElement} contenedor  dónde dibujar (main#app)
+ * Página «Clases» (la llama inicio.js al hacer clic en la tarjeta).
  */
 export function render(perfil, contenedor) {
+  return renderPiezas(perfil, contenedor, "clase");
+}
+export { render as renderClases };
+
+/**
+ * Página genérica de un TIPO de pieza (clase/examen/tarea/recurso).
+ * Es la que usan clases.js, examenes.js, tareas.js y recursos.js.
+ * @param {object} perfil           perfil del usuario (users/{uid})
+ * @param {HTMLElement} contenedor  dónde dibujar (main#app)
+ * @param {string} tipo             "clase" | "examen" | "tarea" | "recurso"
+ */
+export function renderPiezas(perfil, contenedor, tipo = "clase") {
   if (!perfil || !contenedor) return;
+  tipoActual = TIPOS[tipo] ? tipo : "clase";
   perfilActual = perfil;
   contenedorActual = contenedor;
   esDocente = perfil.rol === "docente";
-  clasesCache = [];
+  piezasCache = [];
   textoBusqueda = "";
   inyectarEstilos();
 
@@ -372,11 +632,10 @@ export function render(perfil, contenedor) {
     }
   } catch (e) { /* localStorage no disponible: ignorar */ }
 
-  renderUserbar(perfil, "Clases");
+  renderUserbar(perfil, tipoDe(tipoActual).plural);
   renderInterno();
   cargarListado();
 }
-export { render as renderClases };
 
 function guardarSel() {
   try {
@@ -389,6 +648,8 @@ function guardarSel() {
 }
 
 function renderInterno() {
+  const info = tipoDe(tipoActual);
+
   // Docente: chips de grado y materia · Estudiante: solo chip de materia
   const chips = esDocente ? `
       <button class="clases-chip" id="chip-grado">
@@ -409,7 +670,7 @@ function renderInterno() {
 
   const crearDocente = esDocente ? `
       <button class="clases-btn-crear" id="btn-crear">
-        <sl-icon name="plus-lg"></sl-icon> Crear clase
+        <sl-icon name="plus-lg"></sl-icon> ${escapeHtml(info.crear)}
       </button>` : "";
 
   contenedorActual.innerHTML = `
@@ -425,7 +686,7 @@ function renderInterno() {
         <sl-input class="clases-buscador" id="buscador" clearable
                   placeholder="${esDocente
                     ? "Buscar por día, unidad, lección o título..."
-                    : "Buscar clase..."}">
+                    : "Buscar " + escapeHtml(info.etiqueta) + "..."}">
           <sl-icon name="search" slot="prefix"></sl-icon>
         </sl-input>
         ${crearDocente}
@@ -460,32 +721,48 @@ function renderInterno() {
 /** Carga el listado según el rol y la selección actual. */
 function cargarListado() {
   if (esDocente) {
-    if (gradoSel != null && materiaSel) cargarClasesDocente();
+    if (gradoSel != null && materiaSel) cargarDocente();
     else pintarListado();
   } else {
     // Estudiante: solo se carga cuando ya eligió materia
-    if (materiaSel) cargarClasesEstudiante();
+    if (materiaSel) cargarEstudiante();
     else pintarListado();
   }
 }
 
 function cardHtml(c) {
   const color = colorDeMateria(c.materiaId);
-  // Sin chip de materia: la vista ya filtra por UNA sola materia
+  const oculta = esDocente && c.visible === false;
+  const sub = (c.unidad != null && c.unidad !== "") || (c.leccion != null && c.leccion !== "")
+    ? `Unidad ${escapeHtml(String(c.unidad ?? "—"))} · Lección ${escapeHtml(String(c.leccion ?? "—"))}`
+    : "Material de apoyo";
+
   return `
-    <article class="clase-card" data-id="${escapeHtml(c.id)}"
+    <article class="clase-card${oculta ? " esta-oculta" : ""}" data-id="${escapeHtml(c.id)}"
              style="--acento:${color};--acento-fondo:${rgba(color, 0.12)}">
       <div class="clase-cab">
-        <span class="clase-dia">Día ${escapeHtml(String(c.dia))}</span>
+        ${c.dia != null && c.dia !== "" ? `<span class="clase-dia">Día ${escapeHtml(String(c.dia))}</span>` : ""}
+        ${oculta ? `<span class="clase-oculta"><sl-icon name="eye-slash"></sl-icon> Invisible</span>` : ""}
       </div>
-      <h3>${escapeHtml(c.clase)}</h3>
-      <p>Unidad ${escapeHtml(String(c.unidad))} · Lección ${escapeHtml(String(c.leccion))}</p>
+      <h3>${escapeHtml(c.clase || c.id)}</h3>
+      <p>${sub}</p>
+      ${esDocente ? `
+      <div class="clase-acciones">
+        <button class="clase-accion${oculta ? "" : " activa"}" data-acc="ojo" title="${oculta ? "Hacerla visible para los estudiantes" : "Hacerla invisible: no existirá para los estudiantes"}">
+          <sl-icon name="${oculta ? "eye-slash" : "eye"}"></sl-icon> ${oculta ? "Invisible" : "Visible"}
+        </button>
+        ${c.tipo !== "recurso" ? `
+        <button class="clase-accion" data-acc="resultados" title="Resultados del estudiante por actividad y nota final">
+          <sl-icon name="clipboard-data"></sl-icon> Resultados
+        </button>` : ""}
+      </div>` : ""}
     </article>`;
 }
 
 function pintarListado() {
   const zona = contenedorActual.querySelector("#zona-listado");
   if (!zona) return;
+  const info = tipoDe(tipoActual);
 
   // Docente: sin grado o materia elegidos todavía
   if (esDocente && (gradoSel == null || !materiaSel)) {
@@ -494,7 +771,7 @@ function pintarListado() {
       <div class="clases-vacio">
         <sl-icon name="mortarboard"></sl-icon>
         <h3>${faltaGrado ? "Elige un grado" : "Elige una materia"}</h3>
-        <p>Selecciona ${faltaGrado ? "el grado" : "la materia"} para ver sus clases.</p>
+        <p>Selecciona ${faltaGrado ? "el grado" : "la materia"} para ver sus ${escapeHtml(info.plural.toLowerCase())}.</p>
         <button class="clases-btn-crear" id="btn-elegir">
           Elegir ${faltaGrado ? "grado" : "materia"}
         </button>
@@ -520,24 +797,28 @@ function pintarListado() {
       <div class="clases-vacio">
         <sl-icon name="journal-bookmark"></sl-icon>
         <h3>Elige una materia</h3>
-        <p>Selecciona la materia para ver sus clases.</p>
+        <p>Selecciona la materia para ver sus ${escapeHtml(info.plural.toLowerCase())}.</p>
         <button class="clases-btn-crear" id="btn-elegir-materia">Elegir materia</button>
       </div>`;
     zona.querySelector("#btn-elegir-materia").addEventListener("click", abrirModalMateria);
     return;
   }
 
-  if (cargando && clasesCache.length === 0) {
-    zona.innerHTML = `<p class="clases-cargando">Cargando clases…</p>`;
+  if (cargando && piezasCache.length === 0) {
+    zona.innerHTML = `<p class="clases-cargando">Cargando ${escapeHtml(info.plural.toLowerCase())}…</p>`;
     return;
   }
 
   const texto = normalizar(textoBusqueda);
-  const visibles = clasesCache.filter((c) => {
-    // Estudiante: solo las clases de SU materia elegida
-    if (!esDocente && c.materiaId !== materiaSel) return false;
+  const visibles = piezasCache.filter((c) => {
+    // Estudiante: SOLO su materia, SOLO este tipo y SOLO las VISIBLES
+    // (una pieza invisible no existe para el estudiante)
+    if (!esDocente) {
+      if (c.materiaId !== materiaSel) return false;
+      if (c.visible === false) return false;
+    }
     if (!texto) return true;
-    const campo = normalizar([c.dia, c.unidad, c.leccion, c.clase].join(" "));
+    const campo = normalizar([c.dia, c.unidad, c.leccion, c.clase, c.id].join(" "));
     return campo.includes(texto);
   });
 
@@ -545,54 +826,94 @@ function pintarListado() {
     zona.innerHTML = texto
       ? `<div class="clases-vacio">
            <h3>Sin resultados</h3>
-           <p>Ninguna clase coincide con «${escapeHtml(textoBusqueda)}».</p>
+           <p>Ninguna ${escapeHtml(info.etiqueta)} coincide con «${escapeHtml(textoBusqueda)}».</p>
          </div>`
       : `<div class="clases-vacio">
-           <sl-icon name="journals"></sl-icon>
-           <h3>No hay clases todavía</h3>
+           <sl-icon name="${info.icono}"></sl-icon>
+           <h3>No hay ${escapeHtml(info.plural.toLowerCase())} todavía</h3>
            <p>${esDocente
-             ? "Usa el botón «Crear clase» para añadir la primera."
-             : "Cuando tu docente cree clases de esta materia, aparecerán aquí."}</p>
+             ? "Usa el botón «" + escapeHtml(info.crear) + "» para añadir la primera."
+             : "Cuando tu docente cree " + escapeHtml(info.plural.toLowerCase()) + " de esta materia, aparecerán aquí."}</p>
          </div>`;
     return;
   }
 
-  zona.innerHTML = `<div class="clases-listado">${visibles.map(cardHtml).join("")}</div>`;
+  // SEPARADO POR UNIDAD: grupos con su encabezado + tarjetas
+  const grupos = gruposPorUnidad(visibles);
+  zona.innerHTML = grupos.map((g) => `
+    <div class="pz-unidad">
+      <h3>${escapeHtml(g.etiqueta)}</h3>
+      <span>${g.piezas.length} ${escapeHtml(g.piezas.length === 1 ? info.etiqueta : info.plural.toLowerCase())}</span>
+    </div>
+    <div class="clases-listado">${g.piezas.map(cardHtml).join("")}</div>`).join("");
 
   // Clic en cada tarjeta → abrir su contenido
   zona.querySelectorAll(".clase-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      const clase = visibles.find((c) => c.id === card.dataset.id);
-      if (clase) abrirClase(clase);
+    const hallar = () => visibles.find((c) => c.id === card.dataset.id);
+    card.addEventListener("click", (e) => {
+      const clase = hallar();
+      if (!clase) return;
+      const acc = e.target.closest?.("[data-acc]");
+      if (acc) {
+        e.stopPropagation();
+        if (acc.dataset.acc === "ojo") alternarVisible(clase);
+        else if (acc.dataset.acc === "resultados") abrirResultados(clase);
+        return;
+      }
+      abrirPieza(clase);
     });
   });
 }
 
 /* ---------------- Datos (Firestore + localStorage) ---------------- */
 
-async function cargarClasesDocente() {
+// El docente SOLO ve las piezas de ESTE tipo (las otras van en su página)
+function deTipo(lista) {
+  return lista.filter((c) => (c.tipo || "clase") === tipoActual);
+}
+
+async function cargarDocente() {
   cargando = true;
+  // 1) Caché local: pintado instantáneo
+  let cache = [];
+  try {
+    cache = JSON.parse(localStorage.getItem(claveCacheDocente(gradoSel, materiaSel, tipoActual)) || "[]");
+  } catch (e) { cache = []; }
+  if (Array.isArray(cache) && cache.length) {
+    piezasCache = deTipo(cache).map((c) => ({
+      grado: gradoSel, materiaId: materiaSel, materia: materiaDe(materiaSel).nombre, ...c,
+    }));
+  }
   pintarListado();
+
+  // 2) Frescura: Firestore
   try {
     const lista = await db.clases.listar(gradoSel, materiaSel);
-    clasesCache = lista
+    piezasCache = deTipo(lista)
       .map((c) => ({
         grado: gradoSel,
         materiaId: materiaSel,
         materia: materiaDe(materiaSel).nombre,
         ...c,
       }))
-      .sort(compararClases);
+      .sort(compararPiezas);
+    try {
+      localStorage.setItem(claveCacheDocente(gradoSel, materiaSel, tipoActual), JSON.stringify(piezasCache));
+    } catch (e) { /* ignorar */ }
   } catch (e) {
-    clasesCache = [];
-    notify("No se pudieron cargar las clases: " + (e?.code || "error"), "danger");
+    if (!piezasCache.length) {
+      piezasCache = [];
+      notify("No se pudieron cargar las piezas: " + (e?.code || "error"), "danger");
+    } else {
+      notify("Mostrando copia guardada (sin conexión con Firestore).", "warning");
+    }
   } finally {
     cargando = false;
     pintarListado();
   }
 }
 
-async function cargarClasesEstudiante() {
+async function cargarEstudiante() {
   const grado = (perfilActual.grados || [])[0];
   if (grado == null) {
     pintarListado();
@@ -604,12 +925,12 @@ async function cargarClasesEstudiante() {
   try {
     cache = JSON.parse(localStorage.getItem(claveCacheEstudiante(grado)) || "[]");
   } catch (e) { cache = []; }
-  clasesCache = Array.isArray(cache) ? cache : [];
+  piezasCache = Array.isArray(cache) ? deTipo(cache) : [];
   pintarListado();
 
   // 2) Frescura: Firestore (todas las materias del grado, en paralelo)
   cargando = true;
-  if (clasesCache.length === 0) pintarListado();
+  if (piezasCache.length === 0) pintarListado();
   try {
     const grupos = await Promise.all(
       MATERIAS.map(async (m) => {
@@ -617,13 +938,13 @@ async function cargarClasesEstudiante() {
         return lista.map((c) => ({ grado, materiaId: m.id, materia: m.nombre, ...c }));
       })
     );
-    clasesCache = grupos.flat().sort(compararClases);
+    piezasCache = grupos.flat().sort(compararPiezas);
     try {
-      localStorage.setItem(claveCacheEstudiante(grado), JSON.stringify(clasesCache));
+      localStorage.setItem(claveCacheEstudiante(grado), JSON.stringify(piezasCache));
     } catch (e) { /* ignorar */ }
   } catch (e) {
-    if (clasesCache.length === 0) {
-      notify("No se pudieron cargar las clases: " + (e?.code || "error"), "danger");
+    if (piezasCache.length === 0) {
+      notify("No se pudieron cargar las piezas: " + (e?.code || "error"), "danger");
     } else {
       notify("Mostrando copia guardada (sin conexión con Firestore).", "warning");
     }
@@ -633,28 +954,56 @@ async function cargarClasesEstudiante() {
   }
 }
 
-/* ---------------- Abrir contenido de una clase ---------------- */
+/* ---------------- Visible ⇄ invisible (boolean en Firebase) ---------------- */
 
-async function abrirClase(clase) {
+async function alternarVisible(c) {
+  const nuevo = c.visible === false;
+  try {
+    await db.clases.actualizar(c.grado, c.materiaId, c.id, { visible: nuevo });
+    c.visible = nuevo;
+    try {
+      localStorage.setItem(
+        claveCacheDocente(c.grado, c.materiaId, tipoActual),
+        JSON.stringify(piezasCache)
+      );
+    } catch (e) { /* ignorar */ }
+    pintarListado();
+    notify(
+      nuevo
+        ? "«" + (c.clase || c.id) + "» es VISIBLE: los estudiantes ya la ven."
+        : "«" + (c.clase || c.id) + "» quedó INVISIBLE: para los estudiantes no existe.",
+      "success"
+    );
+  } catch (e) {
+    notify("No se pudo cambiar la visibilidad: " + (e?.code || e?.message || "error"), "danger");
+  }
+}
+
+/* ---------------- Abrir contenido de una pieza ---------------- */
+
+async function abrirPieza(clase) {
+  // El contenido vive en public/clases/{grado}/{materia}/{id}.js y usa
+  // rutas "../../../js/…" (3 carpetas más adentro, con components,
+  // componentes y utils). Desde js/components/, "../../" es public/.
   const ruta = `../../clases/${clase.grado}/${clase.materiaId}/${clase.id}.js`;
   try {
     const mod = await import(ruta);
     if (typeof mod.render === "function") {
       mod.render(perfilActual, contenedorActual, clase);
     } else {
-      notify("El contenido de esta clase todavía no está disponible.");
+      notify("El contenido de esta " + tipoDe(tipoActual).etiqueta + " todavía no está disponible.");
     }
   } catch (e) {
     console.info("[clases] contenido esperado en: public" + ruta.replace("../../", "/"));
-    notify("El contenido de esta clase todavía no está disponible.");
+    notify("El contenido de esta " + tipoDe(tipoActual).etiqueta + " todavía no está disponible.");
   }
 }
 
 /* ---------------- Modales ---------------- */
 
-function crearDialogo(label, html) {
+function crearDialogo(claseCss, label, html) {
   const d = document.createElement("sl-dialog");
-  d.className = "clases-dialogo";
+  d.className = claseCss || "clases-dialogo";
   d.setAttribute("label", label);
   d.innerHTML = html;
   document.body.append(d);
@@ -665,7 +1014,7 @@ function crearDialogo(label, html) {
 }
 
 function abrirModalGrado() {
-  const d = crearDialogo("Elige el grado", `
+  const d = crearDialogo("", "Elige el grado", `
     <div class="clases-opciones">
       ${GRADOS.map((g) => `
         <button class="clases-opcion ${g.id === gradoSel ? "activa" : ""}" data-grado="${g.id}">
@@ -688,7 +1037,7 @@ function abrirModalGrado() {
 }
 
 function abrirModalMateria() {
-  const d = crearDialogo("Elige la materia", `
+  const d = crearDialogo("", "Elige la materia", `
     <div class="clases-opciones">
       ${MATERIAS.map((m) => `
         <button class="clases-opcion ${m.id === materiaSel ? "activa" : ""}" data-materia="${m.id}">
@@ -711,62 +1060,190 @@ function abrirModalMateria() {
 }
 
 function abrirModalCrear() {
+  const info = tipoDe(tipoActual);
   if (gradoSel == null || !materiaSel) {
     notify("Elige primero grado y materia.", "warning");
     return;
   }
 
-  const d = crearDialogo("Crear clase", `
+  // Para CLASE día/unidad/lección son obligatorios (van a la hoja
+  // D{día}·U{unidad}·L{lección}); para examen/tarea/recurso quedan
+  // opcionales (agrupan y ordenan).
+  const esClase = tipoActual === "clase";
+  const op = esClase ? "" : ` <span style="color:#9ca3af;font-weight:400">(opcional)</span>`;
+
+  const d = crearDialogo("", info.crear, `
     <p class="clases-crear-info">
       Grado: <strong>${escapeHtml(nombreGrado(gradoSel))}</strong> ·
       Materia: <strong>${escapeHtml(materiaDe(materiaSel).nombre)}</strong>
     </p>
     <div class="clases-form">
-      <sl-input id="c-dia" type="number" min="1" label="Día" placeholder="Ej. 1"
-                help-text="Número de día de la clase (1, 2, 3...)"></sl-input>
-      <sl-input id="c-unidad" label="Unidad" placeholder="Ej. 1"></sl-input>
-      <sl-input id="c-leccion" label="Lección" placeholder="Ej. 1"></sl-input>
-      <sl-input id="c-clase" label="Clase (título)" placeholder="Ej. Sumas con llevando"></sl-input>
+      <sl-input id="c-dia" type="number" min="1" label="Día${op}" placeholder="Ej. 1"
+                help-text="${esClase ? "Número de día de la clase (1, 2, 3...)" : "Número de día (opcional)"}"></sl-input>
+      <sl-input id="c-unidad" label="Unidad${op}" placeholder="Ej. 1"></sl-input>
+      <sl-input id="c-leccion" label="Lección${op}" placeholder="Ej. 1"></sl-input>
+      <sl-input id="c-clase" label="${escapeHtml(info.etiqueta.charAt(0).toUpperCase() + info.etiqueta.slice(1))} (título)" placeholder="Ej. Sumas con llevando"></sl-input>
     </div>
-    <sl-button slot="footer" variant="primary" pill id="c-guardar">Crear clase</sl-button>`);
+    <sl-button slot="footer" variant="primary" pill id="c-guardar">${escapeHtml(info.crear)}</sl-button>`);
 
   d.querySelector("#c-guardar").addEventListener("click", async () => {
     const guardar = d.querySelector("#c-guardar");
-    const dia = Number(d.querySelector("#c-dia").value);
+    const diaRaw = String(d.querySelector("#c-dia").value || "").trim();
+    const dia = diaRaw === "" ? null : Number(diaRaw);
     const unidad = String(d.querySelector("#c-unidad").value || "").trim();
     const leccion = String(d.querySelector("#c-leccion").value || "").trim();
     const titulo = String(d.querySelector("#c-clase").value || "").trim();
 
-    if (!Number.isInteger(dia) || dia < 1) {
+    if (dia !== null && (!Number.isInteger(dia) || dia < 1)) {
       notify("El día debe ser un número entero mayor a 0.", "warning");
       return;
     }
-    if (!unidad || !leccion || !titulo) {
-      notify("Completa unidad, lección y título de la clase.", "warning");
+    if (esClase && (dia === null || !unidad || !leccion || !titulo)) {
+      notify("Completa día, unidad, lección y título de la clase.", "warning");
+      return;
+    }
+    if (!titulo) {
+      notify("Escribe el título de la " + info.etiqueta + ".", "warning");
       return;
     }
 
     guardar.loading = true;
     try {
-      const id = `d${dia}-u${slug(unidad)}-l${slug(leccion)}-${slug(titulo)}`;
+      // id tipo-clase:  d1-u1-l1-sumas  ·  examen: examen-d2-u3-l1-… (o sin D·U·L)
+      const partes = [];
+      if (dia != null) partes.push("d" + dia);
+      if (unidad) partes.push("u" + slug(unidad));
+      if (leccion) partes.push("l" + slug(leccion));
+      const idBase = (esClase ? "" : tipoActual + "-") + partes.join("-") + "-" + slug(titulo);
+      const id = idBase.replace(/^-+/, "");
       if (await db.clases.existe(gradoSel, materiaSel, id)) {
-        notify("Ya existe una clase con esos datos en esta materia.", "danger");
+        notify("Ya existe una " + info.etiqueta + " con esos datos en esta materia.", "danger");
         return;
       }
       await db.clases.crear(gradoSel, materiaSel, id, {
-        dia,
+        tipo: tipoActual,
+        visible: true,          // el docente la puede apagar con el ojo
+        dia: dia != null ? dia : "",
         unidad,
         leccion,
         clase: titulo,
         creadoPor: perfilActual?.uid || "",
       }); // db.js añade creadoEn
-      notify(`Clase creada. Contenido en: clases/${gradoSel}/${materiaSel}/${id}.js`, "success", 6000);
+      notify(
+        info.etiqueta.charAt(0).toUpperCase() + info.etiqueta.slice(1) +
+        " creada. Contenido (.js) en: clases/" + gradoSel + "/" + materiaSel + "/" + id + ".js",
+        "success", 6500
+      );
       d.hide();
-      cargarClasesDocente();
+      cargarDocente();
     } catch (e) {
-      notify("No se pudo crear la clase: " + (e?.code || e?.message || "error"), "danger");
+      notify("No se pudo crear: " + (e?.code || e?.message || "error"), "danger");
     } finally {
       guardar.loading = false;
     }
   });
 }
+
+/* ---------------- MODAL DE RESULTADOS (docente) ----------------
+   Por pieza: cada estudiante del grado con su nota POR ACTIVIDAD
+   (una columna por pregunta respondida) y la NOTA FINAL. Viene de
+   notas/{uid}/clases/{claseId} en Firestore (la misma nota que
+   bloquea las actividades ya respondidas y que queda espejada en
+   users/{uid}.notas.{claseId} como nota del día/clase). */
+
+function estadoNota(nota) {
+  if (!nota || nota.preguntas == null || !Object.keys(nota.preguntas).length) {
+    return { txt: "Sin empezar", cls: "nada" };
+  }
+  if (nota.enviado) return { txt: "Enviado", cls: "enviado" };
+  return { txt: "En curso", cls: "curso" };
+}
+
+function abrirResultados(clase) {
+  if (gradoSel == null) {
+    notify("Elige primero el grado.", "warning");
+    return;
+  }
+
+  const d = crearDialogo(
+    "pz-dialogo-resultados",
+    "Resultados — " + (clase.clase || clase.id),
+    `
+    <p class="pz-res-info">
+      <strong>${escapeHtml(clase.clase || clase.id)}</strong> ·
+      ${escapeHtml(nombreGrado(clase.grado))} · ${escapeHtml(clase.materia || materiaDe(clase.materiaId).nombre)}
+      <br/>Nota por actividad y nota final (retroalimentación). El total también vive
+      espejado en el perfil de cada estudiante (nota del día) y en Google Sheets.
+    </p>
+    <div class="pz-res-cargando" id="pr-cargando">
+      <sl-spinner></sl-spinner> Cargando estudiantes y notas…
+    </div>
+    <div class="pz-res-tabla" id="pr-tabla" hidden></div>`
+  );
+
+  (async () => {
+    try {
+      // 1) Estudiantes del grado (users/{uid} con ese grado)
+      const estudiantes = (await db.usuarios.porGrado(gradoSel))
+        .filter((x) => x.rol !== "docente")
+        .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
+
+      // 2) Nota de CADA estudiante en ESTA pieza (mejor esfuerzo)
+      const filas = await db.notas.deEstudiantes(estudiantes, clase.id);
+
+      // 3) Columnas = actividades (qid) en el orden en que aparecieron
+      const qids = [];
+      filas.forEach((f) => {
+        const ps = f.nota && f.nota.preguntas ? f.nota.preguntas : {};
+        Object.keys(ps).forEach((q) => { if (!qids.includes(q)) qids.push(q); });
+      });
+
+      const tabla = d.querySelector("#pr-tabla");
+      d.querySelector("#pr-cargando").hidden = true;
+
+      if (!filas.length) {
+        tabla.hidden = false;
+        tabla.innerHTML = `<div class="pz-res-vacio">No hay estudiantes registrados en ${escapeHtml(nombreGrado(gradoSel))}.</div>`;
+        return;
+      }
+
+      tabla.hidden = false;
+      tabla.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Estudiante</th>
+              ${qids.map((q, i) => `
+                <th title="${escapeHtml(q)}">A${i + 1}<small>${escapeHtml(q)}</small></th>`).join("")}
+              <th title="Nota final (suma de las actividades)">Nota final</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filas.map((f) => {
+              const ps = f.nota && f.nota.preguntas ? f.nota.preguntas : {};
+              const est = estadoNota(f.nota);
+              return `
+                <tr>
+                  <td>${escapeHtml(f.nombre || "(sin nombre)")}${f.nie !== "" ? ` <small style="color:#9ca3af">· ${escapeHtml(String(f.nie))}</small>` : ""}</td>
+                  ${qids.map((q) => `<td class="num">${ps[q] != null ? escapeHtml(String(ps[q])) : "—"}</td>`).join("")}
+                  <td class="pz-res-total">${f.nota && f.nota.preguntas ? escapeHtml(String(f.nota.puntos ?? 0)) : "—"}</td>
+                  <td><span class="pz-res-estado ${est.cls}">${est.txt}</span></td>
+                </tr>`;
+            }).join("")}
+          </tbody>
+        </table>`;
+    } catch (e) {
+      d.querySelector("#pr-cargando").hidden = true;
+      const tabla = d.querySelector("#pr-tabla");
+      tabla.hidden = false;
+      tabla.innerHTML = `
+        <div class="pz-res-vacio">
+          No se pudieron leer los resultados (${escapeHtml(String(e?.code || e?.message || "error"))}).<br/>
+          Revisa las reglas de Firestore: el docente necesita leer
+          <b>users</b> y <b>notas/{uid}/clases</b> de su grado.
+        </div>`;
+    }
+  })();
+}
+

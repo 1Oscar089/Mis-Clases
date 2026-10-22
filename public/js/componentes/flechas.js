@@ -1,10 +1,10 @@
 // ============================================================
 // flechas.js — FLECHAS de navegación (anterior / siguiente)
-// (js/componentes/flechas.js) · v1
+// (js/componentes/flechas.js) · v1.1
 //
 // Dibuja la barra de flechas para AVANZAR o REGRESAR (la que usan
-// las láminas de section.js, pero sirve sola para cualquier cosa:
-// carruseles, galerías, navegación propia…).
+// las láminas de section.js y la presentación, pero sirve sola para
+// cualquier cosa: carruseles, galerías, navegación propia…).
 //
 //   ← Anterior         2 / 5         Siguiente →
 //
@@ -15,6 +15,10 @@
 // · Una flecha DESHABILITADA (puedeAnterior / puedeSiguiente) se ve
 //   tenue y no responde. Cambia el estado cuando quieras con los
 //   métodos .setPuedeAnterior() / .setPuedeSiguiente().
+// · NUEVO v1.1 — .mostrarAnterior(bool) / .mostrarSiguiente(bool)
+//   OCULTAN o muestran una flecha (display:none). Sirve para que la
+//   flecha "aparezca" cuando toque, como en las láminas del modo
+//   lectura: al mostrarse entra con una animación suavecita.
 // · En medio puedes poner un TEXTO libre ("Lámina 2 de 5") o un
 //   CONTADOR ("2 / 5") con .setTexto() / .setContador().
 // · El texto SIEMPRE va escapado y admite formato del proyecto:
@@ -39,6 +43,9 @@
 // ─── DEVUELVE ─── la barra <nav class="comp-flechas"> con métodos:
 //   .setPuedeAnterior(bool)      habilita/deshabilita ←
 //   .setPuedeSiguiente(bool)     habilita/deshabilita →
+//   .mostrarAnterior(bool)       v1.1: muestra/oculta ← (oculta =
+//                                no ocupa lugar; al mostrarse anima)
+//   .mostrarSiguiente(bool)      v1.1: muestra/oculta → (igual)
 //   .setTexto(texto)             cambia el texto central ("" lo quita)
 //   .setContador(actual, total)  atajo: texto central "actual / total"
 //   .deshabilitar(bool)          deshabilita TODO (p. ej. durante una
@@ -53,6 +60,7 @@
 //   });
 //   nav.setContador(2, 5);
 //   nav.setPuedeAnterior(actual > 0);
+//   nav.mostrarSiguiente(false);   // la esconde hasta que toque
 // ============================================================
 
 import { inyectarEstilos, aplicarAncho, aplicarTamano } from "./base.js";
@@ -92,6 +100,9 @@ function estilos() {
       white-space: nowrap;
       transition: border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .1s ease;
     }
+    /* Oculta de verdad (pisa el display:inline-flex, como el hidden
+       de los pasos): sin esta regla hidden no esconde el botón */
+    .comp-flecha-btn[hidden] { display: none; }
     .comp-flecha-btn:hover:not(:disabled) {
       border-color: #7c3aed;
       color: #7c3aed;
@@ -110,6 +121,22 @@ function estilos() {
       color: #7c3aed;
     }
     .comp-flecha-btn:disabled .comp-flecha-flecha { color: inherit; }
+
+    /* Aparición animada (v1.1): la flecha "entra" cuando se muestra */
+    @keyframes comp-flecha-entrar-atras {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes comp-flecha-entrar-adelante {
+      from { opacity: 0; transform: translateX(12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .comp-flecha-btn.comp-flecha-animada[data-dir="atras"] {
+      animation: comp-flecha-entrar-atras .28s ease both;
+    }
+    .comp-flecha-btn.comp-flecha-animada[data-dir="adelante"] {
+      animation: comp-flecha-entrar-adelante .28s ease both;
+    }
 
     .comp-flechas-texto {
       flex: 1;
@@ -190,6 +217,21 @@ export function crearFlechas(opciones = {}) {
   };
   nav.setPuedeSiguiente = (puede) => {
     if (btnAdelante) btnAdelante.disabled = !puede;
+  };
+  // v1.1 — visibilidad aparte del estado habilitado: una flecha se
+  // puede estar OCULTA (aún no toca) aunque esté "habilitada".
+  nav.mostrarAnterior = (mostrar) => {
+    if (btnAtras) btnAtras.hidden = !mostrar;
+  };
+  nav.mostrarSiguiente = (mostrar) => {
+    if (!btnAdelante) return;
+    btnAdelante.hidden = !mostrar;
+    if (mostrar) {
+      // animación de entrada (reinicia si ya estaba)
+      btnAdelante.classList.remove("comp-flecha-animada");
+      void btnAdelante.offsetWidth;
+      btnAdelante.classList.add("comp-flecha-animada");
+    }
   };
   nav.setTexto = (t) => { textoActual = t == null ? "" : String(t); pintarTexto(); };
   nav.setContador = (actual, total) => {

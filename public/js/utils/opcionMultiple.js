@@ -630,9 +630,14 @@ export async function sumarPuntos(perfil, clase, preguntaId, puntos, opciones = 
   recalcular(nota);
   guardarNotaLocal(perfil.uid, clase.id, nota);
 
-  // 1) Firestore vía db.js (fuente de verdad de la nota)
+  // 1) Firestore vía db.js (fuente de verdad de la nota). Se pasa el
+  //    CONTEXTO de la pieza para el espejo users/{uid}.notas (nota del día).
   try {
-    await db.notas.guardar(perfil.uid, clase.id, nota);
+    await db.notas.guardar(perfil.uid, clase.id, nota, {
+      tipo,
+      clase,
+      titulo: opciones.titulo,
+    });
   } catch (e) {
     console.warn("[nota] Firestore no disponible, queda en localStorage:", e?.code || e);
   }
@@ -667,7 +672,11 @@ export async function finalizarExamen(perfil, clase, opciones = {}) {
   guardarNotaLocal(perfil.uid, clase.id, nota);
 
   try {
-    await db.notas.guardar(perfil.uid, clase.id, nota);
+    await db.notas.guardar(perfil.uid, clase.id, nota, {
+      tipo: "examen",
+      clase,
+      titulo,
+    });
   } catch (e) {
     console.warn("[finalizarExamen] Firestore no disponible:", e?.code || e);
   }
@@ -703,11 +712,34 @@ export async function guardarPreguntaExamen(perfil, clase, preguntaId, ganado) {
   recalcular(nota);
   guardarNotaLocal(perfil.uid, clase.id, nota);
   try {
-    await db.notas.guardar(perfil.uid, clase.id, nota);
+    await db.notas.guardar(perfil.uid, clase.id, nota, { tipo: "examen", clase });
   } catch (e) {
     console.warn("[examen] Firestore no disponible, queda en localStorage:", e?.code || e);
   }
   return nota;
+}
+
+/** NUEVO v6 — MARCA DE SALIDA FORZADA (estudiante, examen): deja
+ *  escrito en localStorage que el examen quedó ENVIADO con lo que
+ *  llevaba. La llama la página del examen en `pagehide` (cierre de
+ *  pestaña / recarga / logout) mientras NO se haya enviado: es una
+ *  escritura SÍNCRONA, sobrevive al cierre. En la próxima visita la
+ *  página ve nota.enviado → auto-finaliza (reporta el TOTAL al Sheet;
+ *  lo no respondido ya quedó sin puntos = incorrecto).
+ *  Devuelve true si dejó la marca. Docente: no hace nada. */
+export function marcarEnvioPendiente(perfil, clase) {
+  if (!perfil?.uid || !clase?.id || esDocente(perfil)) return false;
+  try {
+    const nota = leerNotaLocal(perfil.uid, clase.id);
+    if (nota.enviado) return false;                       // ya estaba enviada
+    if (!Object.keys(nota.preguntas || {}).length) return false;  // nada respondido
+    nota.enviado = true;
+    nota.tipo = "examen";
+    guardarNotaLocal(perfil.uid, clase.id, nota);
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /* ---------------- Componente ---------------- */

@@ -1,6 +1,6 @@
 // ============================================================
 // encabezado.js — ENCABEZADO de la clase (js/componentes/encabezado.js)
-// (js/componentes/encabezado.js) · v1
+// (js/componentes/encabezado.js) · v2
 //
 // Franja inicial de cada clase: a la izquierda los chips
 //   [Día N] [Unidad N] [Lección N]
@@ -45,8 +45,18 @@
 // Nota: poné UN solo encabezado por página.
 // ============================================================
 
-import { db } from "../data/db.js";
+// v2 — CERO import estático de ../data/db.js: se trae SOLO cuando
+// hacen falta datos (clase por id / nota guardada) y si falla, el
+// encabezado queda igual (chips + puntaje en 0). Así el bloque nunca
+// rompe por una copia vieja o ausente de otra carpeta.
 import { inyectarEstilos, aplicarAncho } from "./base.js";
+
+// db.js bajo demanda (mejor esfuerzo): devuelve el módulo o null.
+function dbQuizas() {
+  return import("../data/db.js")
+    .then((m) => (m && m.db) || null)
+    .catch(() => null);
+}
 
 function redondear1(n) {
   return Math.round(Number(n) * 10) / 10;
@@ -222,6 +232,8 @@ export function crearEncabezado(opciones = {}) {
   /* --- datos que faltan: clase por id y nota guardada --- */
   (async () => {
     try {
+      const db = await dbQuizas();
+      if (!db) return;   // sin capa de datos: queda chips + 0, sin error
       // Chips: si no vino la clase completa, buscarla por id
       if (!opc.clase && opc.claseId != null && opc.grado != null && opc.materiaId) {
         const lista = await db.clases.listar(opc.grado, opc.materiaId);

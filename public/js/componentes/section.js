@@ -1,6 +1,14 @@
 // ============================================================
 // section.js — SECCIONES / LÁMINAS con flechas para avanzar y regresar
-// (js/componentes/section.js) · v1
+// (js/componentes/section.js) · v4
+//
+// ─── NUEVO v4 · REGLA DEL DOCUMENTO CORRIDO ───
+//   · Con UNA sola lámina: NO hay flechas ni paginación — el
+//     contenido queda como un DOCUMENTO CORRIDO (todo a la vista).
+//   · Con DOS o más: se ve UNA a la vez y se avanza con
+//     «Siguiente →» (y «← Anterior» para regresar), con contador.
+//   · Esta regla vale igual en el editor «Crear» y en el código
+//     generado: el documento se comporta SIEMPRE igual.
 //
 // Divide el contenido de la clase en LÁMINAS: se ve UNA a la vez y
 // abajo (o arriba) van las flechas ← Anterior / Siguiente → con el
@@ -11,6 +19,25 @@
 //   │  (contenido de la lámina)      │
 //   └────────────────────────────────┘
 //   ← Anterior        2 / 5         Siguiente →
+//
+// ─── NUEVO v3 · flechas según la POSICIÓN (defecto) ───
+//   · Las láminas comparten el MISMO ANCHO estándar (el ancho del
+//     bloque) y SOLO se ve una: las demás quedan escondidas.
+//   · La PRIMERA lámina muestra SOLO la flecha Siguiente →.
+//   · Las INTERMEDIAS muestran AMBAS flechas (← Anterior y →).
+//   · La ÚLTIMA muestra SOLO ← Anterior (ya no existe Siguiente).
+//
+// ─── Opcional · modo LECTURA (avance: "lectura") ───
+//   · La flecha Siguiente → NO se ve de entrada: APARECE cuando se
+//     TERMINA de leer la lámina (al llegar con el scroll al final de
+//     su contenido). Entra con una animación suavecita.
+//   · Si la lámina es corta y entra completa en pantalla, la flecha
+//     aparece de inmediato.
+//   · En la ÚLTIMA lámina jamás hay Siguiente (solo Anterior).
+//   · Una lámina terminada QUEDA terminada: al volver, la flecha ya
+//     está (no vuelve a exigir el scroll).
+//   · (La v1 de flechas fijas se obtiene con avance: "libre": todas
+//     visibles, apagadas en los extremos.)
 //
 // Cada lámina acepta LO QUE SEA, mezclado libremente:
 //   · "texto con **formato** y $fórmulas$"   → un párrafo
@@ -25,12 +52,24 @@
 //   inicio            Índice de la lámina inicial (defecto 0).
 //   flechas           true (defecto) dibuja la navegación. Con false
 //                     no hay flechas: navega tú con .ir()/.siguiente().
+//   avance            "estandar" (DEFECTO, v3): flechas según la
+//                     posición — primera: solo Siguiente · intermedias:
+//                     ambas · última: solo Anterior.
+//                     "lectura": la flecha Siguiente aparece al
+//                     terminar de leer cada lámina (ver arriba).
+//                     "libre": todas las flechas visibles, apagadas
+//                     en los extremos (como la v1).
+//   desplazar         true (defecto en lectura): al cambiar de lámina
+//                     la página se desliza hasta ella (solo si hace
+//                     falta, con margen para la userbar). false → no
+//                     desplaza.
 //   mostrarContador   true (defecto) → "2 / 5" entre las flechas.
 //   formatoContador   (i, n) => texto. Defecto: `${i} / ${n}`.
 //   etiquetaAnterior  Defecto "Anterior".  etiquetaSiguiente: "Siguiente".
 //   posicionFlechas   "abajo" (defecto) | "arriba".
 //   circular          true → al final se vuelve al inicio (y viceversa).
-//                     Defecto false: en los extremos la flecha se apaga.
+//                     SOLO funciona con avance: "libre" (en lectura la
+//                     última lámina nunca tiene Siguiente). Defecto false.
 //   tarjeta           true → cada lámina dentro de una tarjeta con
 //                     borde y sombra (look de diapositiva). Defecto
 //                     false: flujo del documento, sin caja.
@@ -38,8 +77,9 @@
 //                     se aplica como ALTO MÍNIMO para que todas luzcan
 //                     parejas. Defecto: el alto de cada contenido.
 //   teclado           true → las flechas ←/→ del teclado navegan
-//                     (ignora teclas cuando se escribe en un campo).
-//                     Defecto false (por si hay varias en la página).
+//                     (en lectura, → solo funciona si la lámina ya se
+//                     terminó de leer; ignora teclas cuando se escribe
+//                     en un campo). Defecto false.
 //   alCambiar         (indice, elementoLamina) → se llama en cada cambio.
 //   ancho             Ancho del bloque: número, fracción 0..1 o CSS.
 //                     Sin ancho → bloque entero.
@@ -52,6 +92,9 @@
 //   .actual         índice de la lámina visible (getter)
 //   .total          cuántas láminas hay
 //   .lamina(i)      el elemento de la lámina i (por si quieres tocarlo)
+//   .terminada(i)   v2: true si la lámina i ya se terminó de leer
+//                   (sin argumento = la visible). En modo "libre"
+//                   siempre true.
 //   .nav            la barra de flechas (métodos de flechas.js)
 //
 // USO:
@@ -64,6 +107,8 @@
 //       [ "Primero veamos el **transportador**.", imagenEl ],
 //       { titulo: "Practiquemos", items: [ listaEl, "¡Tú puedes!" ] },
 //     ],
+//     // avance: "libre",     // flechas fijas (comportamiento v1)
+//     // tarjeta: true, teclado: true, alto: 320,
 //     alCambiar: (i) => console.log("Lámina", i + 1),
 //   });
 // ============================================================
@@ -89,6 +134,8 @@ function estilos() {
       font-size: .98rem;
       line-height: 1.65;
       color: #374151;
+      /* margen para la userbar fija al deslizar hasta la lámina */
+      scroll-margin-top: 4.6rem;
     }
     .comp-seccion[hidden] { display: none; }
     .comp-seccion.comp-seccion-animada {
@@ -97,6 +144,16 @@ function estilos() {
     @keyframes comp-seccion-entrar {
       from { opacity: 0; transform: translateY(7px); }
       to   { opacity: 1; transform: translateY(0); }
+    }
+    /* Punto invisible al FINAL de cada lámina: cuando entra en
+       pantalla, la lámina se da por leída (modo lectura) */
+    .comp-seccion-fin {
+      display: block;
+      height: 1px;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
     }
 
     /* Look de diapositiva (tarjeta: true) */
@@ -177,6 +234,14 @@ export function crearSecciones(opciones = {}) {
       ? [opc.secciones]
       : [];
 
+  // v3: modo de avance. "estandar" (defecto) = flechas por posición
+  // (primera: solo Siguiente · intermedias: ambas · última: solo
+  // Anterior); "lectura" = Siguiente al terminar de leer; "libre" =
+  // flechas fijas de la v1. Circular solo en estandar/libre.
+  const lectura = (opc.avance ?? "estandar") === "lectura";
+  const libre = (opc.avance ?? "estandar") === "libre";
+  const circularActivo = !!opc.circular && !lectura;
+
   const raiz = document.createElement("section");
   raiz.className = "comp-secciones";
   if (opc.tarjeta) raiz.classList.add("comp-secciones-tarjeta");
@@ -193,19 +258,59 @@ export function crearSecciones(opciones = {}) {
         ? String(opc.alto)
         : null;
 
-  // --- Láminas ---
+  // --- Láminas (+ punto de fin para el modo lectura) ---
   const laminas = lista.map((item) => {
     const lamina = document.createElement("div");
     lamina.className = "comp-seccion";
     lamina.hidden = true;
     lamina.append(construirBloque(item));
+
+    const fin = document.createElement("span");
+    fin.className = "comp-seccion-fin";
+    fin.setAttribute("aria-hidden", "true");
+    lamina.append(fin);
+
     if (altoCSS) lamina.style.minHeight = altoCSS;
     escenario.append(lamina);
     return lamina;
   });
 
   const total = laminas.length;
+
+  // v4 - DOCUMENTO CORRIDO: con una sola lamina no hay paginacion
+  // (ni flechas, ni ocultar): todo queda a la vista, como un
+  // documento continuo. Con 2 o mas se avanza con Siguiente.
+  const corrido = total <= 1;
+  if (corrido) raiz.classList.add("comp-secciones-corrida");
+
   let actual = 0;
+
+  // --- Lectura: qué láminas ya se terminaron de leer ---
+  const terminadas = new Set();
+  let observador = null;
+
+  if (lectura && "IntersectionObserver" in window && total) {
+    observador = new IntersectionObserver((entradas) => {
+      entradas.forEach((entrada) => {
+        if (entrada.isIntersecting) terminar(Number(entrada.target.__indice));
+      });
+    });
+    laminas.forEach((lamina, i) => {
+      const punto = lamina.querySelector(".comp-seccion-fin");
+      punto.__indice = i;
+      observador.observe(punto);
+    });
+  } else if (lectura) {
+    // Sin IntersectionObserver (navegador viejo): no exigir scroll
+    for (let i = 0; i < total; i++) terminadas.add(i);
+  }
+
+  const terminar = (i) => {
+    if (i == null || Number.isNaN(i) || i < 0 || i >= total) return;
+    if (terminadas.has(i)) return;
+    terminadas.add(i);
+    if (i === actual) refrescarNav(); // aparece la flecha si es la visible
+  };
 
   const animar = (lamina) => {
     lamina.classList.remove("comp-seccion-animada");
@@ -213,10 +318,26 @@ export function crearSecciones(opciones = {}) {
     lamina.classList.add("comp-seccion-animada");
   };
 
+  // v2: al cambiar de lámina, deslizar la página hasta ella (solo si
+  // hace falta: si ya se ve completa, no molesta).
+  const desplazarHasta = (lamina) => {
+    if (opc.desplazar === false) return;
+    let rect;
+    try { rect = lamina.getBoundingClientRect(); } catch (e) { return; }
+    if (!rect) return;
+    const fuera = rect.top < 0 || rect.top > window.innerHeight * 0.55;
+    if (!fuera) return;
+    try {
+      lamina.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e) {
+      lamina.scrollIntoView();
+    }
+  };
+
   const ir = (i) => {
     if (!total) return actual;
     let destino = Number(i) || 0;
-    if (opc.circular) {
+    if (circularActivo) {
       destino = ((destino % total) + total) % total;
     } else {
       destino = Math.max(0, Math.min(total - 1, destino));
@@ -226,6 +347,7 @@ export function crearSecciones(opciones = {}) {
     actual = destino;
     animar(laminas[actual]);
     refrescarNav();
+    if (lectura) desplazarHasta(laminas[actual]);
     if (typeof opc.alCambiar === "function") opc.alCambiar(actual, laminas[actual]);
     return actual;
   };
@@ -234,8 +356,33 @@ export function crearSecciones(opciones = {}) {
   let nav = null;
   const refrescarNav = () => {
     if (!nav) return;
-    nav.setPuedeAnterior(opc.circular ? total > 1 : actual > 0);
-    nav.setPuedeSiguiente(opc.circular ? total > 1 : actual < total - 1);
+    if (lectura) {
+      // v3 — igual regla de posición: en la 1.ª no se ve Anterior.
+      nav.setPuedeAnterior(true);
+      nav.setPuedeSiguiente(true);
+      nav.mostrarAnterior(actual > 0);
+      // → Siguiente: SOLO existe si hay lámina siguiente Y esta ya
+      // se terminó de leer. En la ÚLTIMA lámina jamás aparece.
+      nav.mostrarSiguiente(actual < total - 1 && terminadas.has(actual));
+    } else if (libre) {
+      // v1 — flechas siempre visibles, solo apagadas en los extremos.
+      nav.setPuedeAnterior(circularActivo ? total > 1 : actual > 0);
+      nav.setPuedeSiguiente(circularActivo ? total > 1 : actual < total - 1);
+      nav.mostrarAnterior(true);
+      nav.mostrarSiguiente(true);
+    } else if (circularActivo) {
+      nav.setPuedeAnterior(true);
+      nav.setPuedeSiguiente(true);
+      nav.mostrarAnterior(total > 1);
+      nav.mostrarSiguiente(total > 1);
+    } else {
+      // v3 — por posición: PRIMERA → solo Siguiente · INTERMEDIAS →
+      // ambas · ÚLTIMA → solo Anterior.
+      nav.setPuedeAnterior(true);
+      nav.setPuedeSiguiente(true);
+      nav.mostrarAnterior(actual > 0);
+      nav.mostrarSiguiente(actual < total - 1);
+    }
     if (opc.mostrarContador !== false && total) {
       const texto = typeof opc.formatoContador === "function"
         ? opc.formatoContador(actual + 1, total)
@@ -246,7 +393,7 @@ export function crearSecciones(opciones = {}) {
     }
   };
 
-  if (opc.flechas !== false && total > 0) {
+  if (opc.flechas !== false && total > 1) {
     nav = crearFlechas({
       alAnterior: () => ir(actual - 1),
       alSiguiente: () => ir(actual + 1),
@@ -257,7 +404,8 @@ export function crearSecciones(opciones = {}) {
     else raiz.append(nav);
   }
 
-  // --- Teclado (opcional): ← / → navegan si no se está escribiendo ---
+  // --- Teclado (opcional): ← / → navegan si no se está escribiendo.
+  //     En lectura, → solo pasa si la lámina ya se terminó. ---
   if (opc.teclado) {
     const esCampo = (el) =>
       el instanceof HTMLElement &&
@@ -271,7 +419,9 @@ export function crearSecciones(opciones = {}) {
       if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
       if (!raiz.isConnected) return;
       if (e.key === "ArrowLeft") { ir(actual - 1); e.preventDefault(); }
-      else { ir(actual + 1); e.preventDefault(); }
+      else if ((circularActivo || libre || actual < total - 1) && (!lectura || terminadas.has(actual))) {
+        ir(actual + 1); e.preventDefault();
+      }
     });
   }
 
@@ -282,16 +432,26 @@ export function crearSecciones(opciones = {}) {
   Object.defineProperty(raiz, "actual", { get: () => actual });
   Object.defineProperty(raiz, "total", { get: () => total });
   raiz.lamina = (i) => laminas[i] || null;
+  raiz.terminada = (i) => {
+    if (!lectura) return true;
+    const indice = i == null ? actual : Number(i);
+    return terminadas.has(indice);
+  };
   raiz.nav = nav;
 
-  // Estado inicial
-  if (total) {
-    const inicial = opc.circular
+  // Estado inicial (sin animación de entrada ni desplazamiento).
+  // v4: en documento corrido NADA se oculta — la lámina queda
+  // siempre a la vista.
+  if (total && !corrido) {
+    const inicial = circularActivo
       ? ((Number(opc.inicio) || 0) % total + total) % total
       : Math.max(0, Math.min(total - 1, Number(opc.inicio) || 0));
     laminas.forEach((l, k) => { l.hidden = k !== inicial; });
     actual = inicial;
     laminas[actual].hidden = false;
+  } else if (total) {
+    laminas.forEach((l) => { l.hidden = false; });
+    actual = 0;
   }
   refrescarNav();
 

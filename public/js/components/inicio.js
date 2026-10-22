@@ -130,6 +130,12 @@ function tarjetasDe(perfil) {
         desc: "Registro de asistencia",
       },
       {
+        titulo: "Crear",
+        icono: "magic",
+        color: "#db2777", // rosa
+        desc: "Editor visual: arma tu clase, tarea o examen",
+      },
+      {
         titulo: "Estudiantes",
         icono: "people",
         color: "#0891b2", // cian
