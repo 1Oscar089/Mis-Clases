@@ -1,61 +1,28 @@
 // ============================================================
-// CLASE — Mis Clases Online · archivo de contenido EN BLANCO
-// d1-u1-l1-prueba-de-opcion-multiple.js
+// CLASE generada con el editor «Crear» — Mis Clases Online
+// Tipo: clase · ID: — · Título: Mis Clases Online
+// Fecha: 22 de octubre de 2026
 //
-// ─── DÓNDE VA ESTE ARCHIVO ───
-//   public/clases/{grado}/{materia}/{id}.js
-//   p. ej.  public/clases/8/matematica-y-datos/d1-u1-l1-prueba-de-opcion-multiple.js
-//   Está 3 carpetas adentro: por eso las rutas "../../../js/…"
-//   llegan justo a la carpeta js/ del proyecto (ahí están
-//   components, componentes y utils). Funciona igual con Live
-//   Server (raíz del proyecto, URL con /public/) que con un
-//   servidor puesto directamente en public/: las rutas relativas
-//   no cambian.
+// CÓMO USARLO
+//   1. Guarda este archivo (con el nombre del ID) 3 carpetas
+//      dentro de donde está js/:  clases/{grado}/{materia}/mi-clase.js
+//      p. ej.  public/clases/8/algebra/mi-clase.js  — desde ahí
+//      las rutas ../../../js/… apuntan a la carpeta js/ del
+//      proyecto (ahí están components, componentes y utils).
+//   2. Se abre desde «Clases» con render(perfil, contenedor, clase).
 //
-// ─── CÓMO SE ABRE ───
-//   La vista «Clases» carga este archivo y llama:
-//     render(perfil, contenedor, clase)
+// CARGA A PRUEBA DE RUTAS: los módulos NO se importan arriba
+// (un archivo faltante mataba la página entera con «Failed to
+// fetch…»). Se cargan con cargar(), que reintenta sin caché,
+// verifica las exportaciones y avisa el motivo exacto.
 //
-// ─── QUÉ TRAE (estructura básica, en blanco) ───
-//   · Flecha «← Volver» al inicio (la llevan clase, tarea y examen).
-//   · Barra superior con el usuario (renderUserbar).
-//   · UNA SECCIÓN por defecto: l1, un espacio en blanco de 820×420 px.
-//
-// ─── REGLA DE SECCIONES (igual en el editor «Crear» y aquí) ───
-//   · 1 sección  → documento CORRIDO: todo a la vista, sin flechas.
-//   · 2 o más    → se ve UNA a la vez y se avanza con «Siguiente →»
-//                  (y «← Anterior» para regresar), con contador.
-//   Para agregar una sección más: crea otra lámina y ponla en la
-//   lista —  const l2 = lamina(420);  …  secciones: [l1, l2],
-//
-// ─── CÓMO AGREGAR ELEMENTOS (2 líneas por bloque) ───
-//   Dentro de montar():
-//     1) Carga la fábrica (una sola vez, junto a las otras):
-//          const { crearTitulo } = await cargar("../../../js/componentes/titulo.js", ["crearTitulo"]);
-//     2) Coloca el bloque dentro de la sección:
-//          crearTitulo({ texto: "Mi título", contenedor: l1 });
-//
-//   · contenedor: l1                   → el bloque se apila solito
-//     (lo más fácil cuando escribes a mano).
-//   · contenedor: pon(l1, 20, 20, 780) → caja con posición y medida
-//     exactas en px (así sale del editor «Crear» al guardar).
-//
-//   Fábricas disponibles:
-//     js/componentes/  → titulo, subtitulo, parrafo, lista, tabla,
-//                        enlace, imagen, formula, codigo, cita,
-//                        aviso, detalles, separador, svg, section…
-//     js/utils/        → opcionMultiple, respuestaSimple,
-//                        multipleOpcion, video, sopaLetras,
-//                        crucigrama, ordenar, relacionar, tts…
-//
-// ─── MÁS ABAJO, dentro de montar(), hay ejemplos LISTOS: quita el
-//     // de los que necesites y ajusta los textos. ───
+// PARA AGREGAR UN BLOQUE NUEVO (dentro de montar()):
+//   1. si su fábrica aún no está, UNA línea cargar() más —
+//        const { crearParrafo } = await cargar("../../../js/componentes/parrafo.js", ["crearParrafo"]);
+//   2. UNA línea del bloque, dentro de su lámina —
+//        crearParrafo({ texto: "…", contenedor: pon(l1, 0, 240, 820) });
+// (las posiciones y medidas en px salieron del editor al guardar).
 // ============================================================
-
-// ── Título de la página (se ve en la barra de arriba) ──
-const TITULO = "Prueba de opción múltiple";   // ← cámbialo aquí
-import { respuestaSimple } from "../../../js/utils/respuestaSimple.js";
-import { crearFlechas } from "../../../js/componentes/flechas.js";
 
 let estilosListos = false;
 
@@ -79,6 +46,13 @@ function inyectarEstilos() {
       margin-bottom: 1rem;
     }
     .cg-volver:hover { border-color: #7c3aed; color: #7c3aed; }
+    .cg-aviso {
+      display: flex; align-items: center; gap: .4rem;
+      border: 2px solid #dc2626; background: #fef2f2; color: #b91c1c;
+      border-radius: .7rem; padding: .6rem .8rem;
+      font-size: .85rem; font-weight: 600; margin-bottom: 1rem;
+    }
+    .cg-aviso[hidden] { display: none; }
     .cg-fallo {
       border: 2px solid #dc2626; background: #fef2f2; color: #b91c1c;
       border-radius: .8rem; padding: .9rem 1rem; font-size: .9rem;
@@ -94,10 +68,7 @@ function inyectarEstilos() {
 }
 
 // ─── Carga de módulos A PRUEBA DE RUTAS (con reintento) ───
-// Nada de imports estáticos: si UN archivo faltara o fuera copia
-// vieja, la página entera moría con «Failed to fetch…». cargar()
-// reintenta sin caché, verifica las exportaciones y, si algo falla,
-// AVISA con el motivo exacto sin tumbar la página.
+
 const MCO_MODULOS = new Map();
 
 async function cargar(spec, nombres) {
@@ -121,10 +92,10 @@ async function cargar(spec, nombres) {
   return mod;
 }
 
-// ─── Ayudantes (para que agregar bloques sea fácil) ───
+// ─── Ayudantes (incluidos para que agregar bloques sea fácil) ───
 
-// Una SECCIÓN (lámina) del documento: su ESPACIO en blanco.
-// La página mide 820 de ancho; si le pasas un ancho menor, se respeta.
+// Una LÁMINA (sección) del documento: su ESPACIO en px.
+// El documento completo mide 820; con ancho menor se respeta.
 function lamina(altoPx, anchoPx) {
   const d = document.createElement("div");
   d.className = "cg-lamina";
@@ -133,8 +104,8 @@ function lamina(altoPx, anchoPx) {
   return d;
 }
 
-// La CAJA de un bloque dentro de la sección: posición y medida en px.
-// Pásasela como `contenedor` al crear el bloque.
+// La CAJA de un bloque dentro de la lámina: posición y medida en
+// px (las que salieron del editor). Pásasela como `contenedor`.
 function pon(laminaDestino, x, y, ancho, alto) {
   const caja = document.createElement("div");
   caja.className = "cg-bloque";
@@ -153,7 +124,7 @@ function fondo(laminaDestino, x, y) {
   return caja;
 }
 
-// ─── Contenido de la clase (lo llama la vista al abrirla) ───
+// Contenido de la pieza (lo llama la vista al abrirla)
 export function render(perfil, contenedor, clase) {
   if (!perfil || !contenedor) return;
   inyectarEstilos();
@@ -170,7 +141,7 @@ export function render(perfil, contenedor, clase) {
   // Todo el montaje es asíncrono (los módulos van con cargar()):
   // si algo falta, la página AVISA en vez de morir en blanco.
   montar(perfil, contenedor, clase).catch((e) => {
-    console.warn("[mco-clase]", e);
+    console.warn("[mco-generada]", e);
     const zona = contenedor.querySelector("#cg-lienzo");
     if (zona) {
       const fallo = document.createElement("div");
@@ -185,12 +156,14 @@ async function montar(perfil, contenedor, clase) {
   const lienzo = contenedor.querySelector("#cg-lienzo");
   const volver = contenedor.querySelector("#cg-volver");
 
-  // ── Módulos base (con reintento y aviso claro si falta uno) ──
-  const { renderUserbar } = await cargar("../../../js/components/userbar.js", ["renderUserbar"]);
-  const { renderInicio }  = await cargar("../../../js/components/inicio.js",  ["renderInicio"]);
+  // ── Módulos usados (con reintento y aviso claro si falta uno) ──
+  const { crearFlechas } = await cargar("../../../js/componentes/flechas.js", ["crearFlechas"]);
   const { crearSecciones } = await cargar("../../../js/componentes/section.js", ["crearSecciones"]);
+  const { crearTitulo } = await cargar("../../../js/componentes/titulo.js", ["crearTitulo"]);
+  const { renderInicio } = await cargar("../../../js/components/inicio.js", ["renderInicio"]);
+  const { renderUserbar } = await cargar("../../../js/components/userbar.js", ["renderUserbar"]);
 
-  renderUserbar(perfil, TITULO);
+  renderUserbar(perfil, "Mis Clases Online");
 
   // ── Volver: la flecha al INICIO (la llevan clase, tarea y examen) ──
   volver.addEventListener("click", () => {
@@ -198,94 +171,30 @@ async function montar(perfil, contenedor, clase) {
     renderInicio(perfil, contenedor);
   });
 
-  // ════ SECCIÓN 1 (por defecto) — espacio en blanco de 820×420 px ════
-  const l1 = lamina(640);
-  const l2 = lamina(420);
-  
-  // ── AGREGA TUS BLOQUES AQUÍ ──
-  // 1) FÁBRICAS: quita el // de las que vayas a usar (una línea cada una).
-  // const { crearTitulo }    = await cargar("../../../js/componentes/titulo.js",    ["crearTitulo"]);
-  // const { crearSubtitulo } = await cargar("../../../js/componentes/subtitulo.js", ["crearSubtitulo"]);
-  // const { crearParrafo }   = await cargar("../../../js/componentes/parrafo.js",   ["crearParrafo"]);
-  // const { crearLista }     = await cargar("../../../js/componentes/lista.js",     ["crearLista"]);
-  // const { opcionMultiple } = await cargar("../../../js/utils/opcionMultiple.js",  ["opcionMultiple"]);
-  //
-  // 2) BLOQUES dentro de la sección (quita el // y ajusta):
-  // crearTitulo({ texto: "Prueba de opción múltiple", contenedor: l1 });
-  // crearParrafo({ texto: "Lee con atención y elige la respuesta correcta. Admite **negrita**, *cursiva* y $fórmulas$ como $\\frac{3}{4}$.", contenedor: l1 });
-  // crearLista({
-  //   contenedor: l1,
-  //   items: [
-  //     "Primera indicación.",
-  //     "Segunda indicación.",
-  //   ],
-  // });
-  // opcionMultiple({
-  //   contenedor: l1,
-  //   perfil,                       // el perfil del usuario (ya está aquí)
-  //   clase,                        // la clase abierta (ya está aquí)
-  //   tipo: "clase",                // "clase" | "tarea" | "examen"
-  //   indicacion: "¿Cuánto es $\\frac{1}{2} + \\frac{1}{4}$?",
-  //   respuestas: ["$\\frac{3}{4}$", "$\\frac{2}{6}$", "1", "$\\frac{1}{8}$"],
-  //   respuestaCorrecta: 1,         // 1 = primera
-  //   puntaje: 1,
-  // });
-  //
-  // ¿Posición exacta (como el editor)? Usa pon():
-  //   crearTitulo({ texto: "Mi título", contenedor: pon(l1, 20, 20, 780) });
+    // ════ Sección 1 — espacio de 820×468 px ════
+    const l1 = lamina(468, 820);
 
-  // ── Documento final: con UNA sección queda CORRIDO (sin flechas).
-  //    Cuando agregues otra lámina — const l2 = lamina(420); — ponla
-  //    en la lista:  secciones: [l1, l2]  → se ve UNA a la vez y se
-  //    avanza con «Siguiente →» (igual que en el editor «Crear»). ──
+  // ── Título · mide 760×51 px ──
+  crearTitulo({
+    texto: "LA  __CELULA__",
+    alineacion: "centro",
+    contenedor: pon(l1, 20, 0, 760, 51)
+  });
 
+  // ── Flechas de navegación · mide 820×78 px ──
+  crearFlechas({
+    alAnterior: () => { /* TODO: acción ← */ },
+    alSiguiente: () => { /* TODO: acción → */ },
+    puedeAnterior: false,
+    puedeSiguiente: true,
+    contenedor: pon(l1, 0, 390, 820, 78)
+  });
 
+  // ── Documento final: CORRIDO con 1 sección; con 2 o más, una a la vez ──
   crearSecciones({
     contenedor: lienzo,
     secciones: [l1],
   });
-  respuestaSimple({
-    contenedor: l1,           // elemento del DOM donde insertar la pregunta
-    perfil,               // perfil del usuario (users/{uid}: uid, rol, nie?)
-    clase,                // { id, grado, materiaId, materia?, dia?, unidad?, leccion? }
-    tipo: "clase",        // "clase" | "tarea" | "examen"  (defecto: "clase")
-    indicacion: "¿Que horas son las 23?",
-    respuestaCorrecta: "11:00", // texto esperado (o LISTA)
-    puntaje: 2,           // valor de esta pregunta (0 a 10)
-    // columnas: 2,       // NUEVO v5: la pregunta ocupa LA MITAD del ancho
-    //                    //  (dos preguntas en el MISMO contenedor quedan
-    //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
-    ancho: "280px",    // NUEVO v5: ancho fijo ("50%", "18rem", 0.5…)
-    // id: "p7",          // (opcional) identificador único y estable
-  }).then((ganado) => { /* nota ganada en ESTA pregunta (oculta) */ });
-
-  const nav = crearFlechas({
-    contenedor: l1,
-    alAnterior: () => irA(actual - 1),
-    alSiguiente: () => irA(actual + 1),
-  });
-  nav.setContador(2, 2);
-  nav.mostrarSiguiente(false);   // la esconde hasta que toque
-  nav.setPuedeAnterior(actual > 0);
-
-  crearSecciones({
-    contenedor: lienzo,
-    secciones: [l2],
-  });
-    respuestaSimple({
-    contenedor: l2,           // elemento del DOM donde insertar la pregunta
-    perfil,               // perfil del usuario (users/{uid}: uid, rol, nie?)
-    clase,                // { id, grado, materiaId, materia?, dia?, unidad?, leccion? }
-    tipo: "clase",        // "clase" | "tarea" | "examen"  (defecto: "clase")
-    indicacion: "¿Que horas son las 24?",
-    respuestaCorrecta: "12:00", // texto esperado (o LISTA)
-    puntaje: 2,           // valor de esta pregunta (0 a 10)
-    // columnas: 2,       // NUEVO v5: la pregunta ocupa LA MITAD del ancho
-    //                    //  (dos preguntas en el MISMO contenedor quedan
-    //                    //  LADO A LADO; 3 = tercio, 4 = cuarto)
-    ancho: "280px",    // NUEVO v5: ancho fijo ("50%", "18rem", 0.5…)
-    // id: "p7",          // (opcional) identificador único y estable
-  }).then((ganado) => { /* nota ganada en ESTA pregunta (oculta) */ });
 
   contenedor.setAttribute("data-mco-listo", "1");   // TODO quedó montado
 }

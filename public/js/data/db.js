@@ -1,5 +1,5 @@
 // ============================================================
-// db.js — ÚNICA capa de acceso a datos (js/data/db.js) · v2
+// db.js — ÚNICA capa de acceso a datos (js/data/db.js) · v3
 //
 // REGLA DEL PROYECTO: NINGÚN otro archivo toca Firestore o Sheets.
 //   · Firebase AUTH (login Google) queda en components/auth.js:
@@ -25,6 +25,12 @@
 //             materia, grado, titulo, enviado, actualizadoEn }
 //         (el espejo es de mejor esfuerzo: si falla, la nota vive
 //         igual en notas/ y en Google Sheets).
+//
+// NUEVO EN v3:
+//   · db.clases.eliminar(grado, materiaId, id)
+//       → borra UNA pieza. La usa el EDITOR de recursos al MOVER un
+//         recurso a otro grado/materia (crea la copia en el nuevo
+//         lugar y elimina el doc viejo).
 //
 // ESTRUCTURA DE LAS PIEZAS (clases, tareas, exámenes y recursos):
 //   TODAS viven en Firestore como clases:
@@ -53,6 +59,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   getDocs,
   query,
@@ -145,6 +152,14 @@ const clases = {
       doc(firestore, "clases", String(grado), materiaId, id),
       campos || {}
     );
+  },
+
+  /** NUEVO v3 — Elimina UNA pieza. La usa el editor de recursos al
+   *  MOVER un recurso a otro grado/materia: primero se crea la copia
+   *  en el nuevo lugar (mismo id) y después se borra este doc.
+   *  Puede lanzar (Firestore = fuente de verdad). */
+  async eliminar(grado, materiaId, id) {
+    await deleteDoc(doc(firestore, "clases", String(grado), materiaId, id));
   },
 };
 

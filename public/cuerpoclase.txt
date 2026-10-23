@@ -1,0 +1,274 @@
+// ============================================================
+// CLASE — Mis Clases Online · ESQUELETO DE PRUEBA
+// d1-u1-l1-prueba-de-opcion-multiple.js
+//
+// ─── QUÉ ES ───
+//   La estructura básica de una clase con DOS SECCIONES, un reloj
+//   de referencia en cada una y las FLECHAS Anterior / Siguiente
+//   (salen solas por haber 2 secciones). Reemplaza los relojes por
+//   tus bloques y listo: el esqueleto ya está armado.
+//
+// ─── DÓNDE VA ESTE ARCHIVO ───
+//   public/clases/{grado}/{materia}/{id}.js
+//   p. ej.  public/clases/8/matematica-y-datos/d1-u1-l1-prueba-de-opcion-multiple.js
+//   Está 3 carpetas adentro: por eso las rutas "../../../js/…" y
+//   "../../../recursos/…" llegan justo a esas carpetas del proyecto.
+//   Funciona igual con Live Server (raíz del proyecto, URL con
+//   /public/) que con un servidor puesto directamente en public/.
+//
+// ─── CÓMO SE ABRE ───
+//   La vista «Clases» carga este archivo y llama:
+//     render(perfil, contenedor, clase)
+//
+// ─── QUÉ TRAE (esqueleto) ───
+//   · Flecha «← Volver» al inicio (la llevan clase, tarea y examen).
+//   · Barra superior con el usuario (renderUserbar).
+//   · SECCIÓN 1 (l1, 820×420 px) → un reloj marcando las 10:30.
+//   · SECCIÓN 2 (l2, 820×420 px) → un reloj marcando las 3:45.
+//   · Flechas «← Anterior · 1 / 2 · Siguiente →» automáticas.
+//
+// ─── REGLA DE SECCIONES (igual en el editor «Crear» y aquí) ───
+//   · 1 sección  → documento CORRIDO: todo a la vista, sin flechas.
+//   · 2 o más    → se ve UNA a la vez y se avanza con «Siguiente →»
+//                  (y «← Anterior» para regresar), con contador.
+//   Para agregar una sección más:  const l3 = lamina(420);  …
+//   secciones: [l1, l2, l3],
+//
+// ─── FLECHAS DE LA SECCIÓN (importante) ───
+//   NO hace falta importar flechas.js para las secciones: con 2 o
+//   más láminas las flechas SALEN SOLAS. Para controlar el documento
+//   desde tu código, guárdalo al crearlo (ya está hecho aquí):
+//     const doc = crearSecciones({ … });
+//   y usa:
+//     doc.ir(0)        va a la lámina i (la 1.ª = 0)
+//     doc.siguiente()  avanza          doc.anterior()  regresa
+//     doc.actual       lámina visible  doc.total       cuántas hay
+//
+// ─── CÓMO AGREGAR ELEMENTOS (2 líneas por bloque) ───
+//   Dentro de montar():
+//     1) Carga la fábrica (una sola vez, junto a las otras):
+//          const { crearTitulo } = await cargar("../../../js/componentes/titulo.js", ["crearTitulo"]);
+//     2) Coloca el bloque dentro de su sección:
+//          crearTitulo({ texto: "Mi título", contenedor: l1 });
+//
+//   · contenedor: l1                   → el bloque se apila solito
+//     (lo más fácil cuando escribes a mano).
+//   · contenedor: pon(l1, 20, 20, 780) → caja con posición y medida
+//     exactas en px (así sale del editor «Crear» al guardar).
+//
+//   Fábricas disponibles:
+//     js/componentes/  → titulo, subtitulo, parrafo, lista, tabla,
+//                        enlace, imagen, formula, codigo, cita,
+//                        aviso, detalles, separador, svg, section…
+//     js/utils/        → opcionMultiple, respuestaSimple,
+//                        multipleOpcion, video, sopaLetras,
+//                        crucigrama, ordenar, relacionar, tts…
+//     recursos/js/visuales/  → reloj y otros dibujos SVG (sin imports)
+//
+// ─── EL RELOJ DE REFERENCIA ───
+//   Viene de  recursos/js/visuales/reloj.js  (función dibujarReloj):
+//     dibujarReloj({ hora: 10, minutos: 30, tamano: 220, contenedor: l1 });
+//   Cambia «hora» y «minutos» (o borra esas 2 líneas y pon tus
+//   bloques) — nada más que tocar.
+// ============================================================
+
+// ── Título de la página (se ve en la barra de arriba) ──
+const TITULO = "Prueba de opción múltiple";   // ← cámbialo aquí
+
+let estilosListos = false;
+
+function inyectarEstilos() {
+  if (estilosListos) return;
+  estilosListos = true;
+  const estilo = document.createElement("style");
+  estilo.id = "mco-generada-estilos";
+  estilo.textContent = `
+    .mco-generada {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 1.25rem clamp(1rem, 4vw, 2rem) 2.5rem;
+      font-family: system-ui, sans-serif;
+    }
+    .cg-volver {
+      display: inline-flex; align-items: center; gap: .3rem;
+      border: 1px solid #e5e7eb; background: #ffffff; color: #4b5563;
+      border-radius: 999px; padding: .42rem .85rem;
+      font-size: .85rem; font-weight: 600; cursor: pointer;
+      margin-bottom: 1rem;
+    }
+    .cg-volver:hover { border-color: #7c3aed; color: #7c3aed; }
+    .cg-fallo {
+      border: 2px solid #dc2626; background: #fef2f2; color: #b91c1c;
+      border-radius: .8rem; padding: .9rem 1rem; font-size: .9rem;
+      line-height: 1.5; margin-bottom: 1rem;
+    }
+    .cg-fallo b { display: block; margin-bottom: .3rem; }
+    .cg-lienzo { position: relative; isolation: isolate; }
+    .cg-lamina { position: relative; }
+    .cg-bloque { position: absolute; z-index: 1; }
+    .cg-fondo { position: absolute; z-index: 0; }
+  `;
+  document.head.append(estilo);
+}
+
+// ─── Carga de módulos A PRUEBA DE RUTAS (con reintento) ───
+// Nada de imports estáticos: si UN archivo faltara o fuera copia
+// vieja, la página entera moría con «Failed to fetch…». cargar()
+// reintenta sin caché, verifica las exportaciones y, si algo falla,
+// AVISA con el motivo exacto sin tumbar la página.
+const MCO_MODULOS = new Map();
+
+async function cargar(spec, nombres) {
+  if (!MCO_MODULOS.has(spec)) {
+    MCO_MODULOS.set(
+      spec,
+      import(spec).catch(() => {
+        // reintento ÚNICO sin caché (Live Server recién arrancado…)
+        const url = spec + (spec.includes("?") ? "&" : "?") + "mco=" + Date.now();
+        return import(url).catch(() => {
+          throw new Error("No se pudo cargar " + spec + " — revisa que ese archivo exista en tu proyecto (viene en la entrega) y recarga con F5.");
+        });
+      })
+    );
+  }
+  const mod = await MCO_MODULOS.get(spec);
+  const faltan = (nombres || []).filter((n) => typeof mod[n] !== "function");
+  if (faltan.length) {
+    throw new Error("El archivo " + spec + " SÍ está, pero no exporta " + faltan.join(", ") + ": es una copia vieja. Reemplázalo con el de la última entrega y recarga (F5).");
+  }
+  return mod;
+}
+
+// ─── Ayudantes (para que agregar bloques sea fácil) ───
+
+// Una SECCIÓN (lámina) del documento: su ESPACIO en blanco.
+// La página mide 820 de ancho; si le pasas un ancho menor, se respeta.
+function lamina(altoPx, anchoPx) {
+  const d = document.createElement("div");
+  d.className = "cg-lamina";
+  if (altoPx) d.style.minHeight = Math.round(altoPx) + "px";
+  if (anchoPx && anchoPx < 820) d.style.width = Math.round(anchoPx) + "px";
+  return d;
+}
+
+// La CAJA de un bloque dentro de la sección: posición y medida en px.
+// Pásasela como `contenedor` al crear el bloque.
+function pon(laminaDestino, x, y, ancho, alto) {
+  const caja = document.createElement("div");
+  caja.className = "cg-bloque";
+  caja.style.left = x + "px";
+  caja.style.top = y + "px";
+  if (ancho) caja.style.width = ancho + "px";
+  if (alto) caja.style.minHeight = alto + "px";
+  laminaDestino.appendChild(caja);
+  return caja;
+}
+
+// Igual que pon() pero para una figura de FONDO (debajo del texto).
+function fondo(laminaDestino, x, y) {
+  const caja = pon(laminaDestino, x, y);
+  caja.className = "cg-fondo";
+  return caja;
+}
+
+// ─── Contenido de la clase (lo llama la vista al abrirla) ───
+export function render(perfil, contenedor, clase) {
+  if (!perfil || !contenedor) return;
+  inyectarEstilos();
+  contenedor.removeAttribute("data-mco-listo");   // se marca al terminar montar()
+
+  contenedor.innerHTML = `
+    <div class="mco-generada">
+      <button class="cg-volver" id="cg-volver" type="button">
+        <sl-icon name="arrow-left"></sl-icon> Volver
+      </button>
+      <div class="cg-lienzo" id="cg-lienzo"></div>
+    </div>`;
+
+  // Todo el montaje es asíncrono (los módulos van con cargar()):
+  // si algo falta, la página AVISA en vez de morir en blanco.
+  montar(perfil, contenedor, clase).catch((e) => {
+    console.warn("[mco-clase]", e);
+    const zona = contenedor.querySelector("#cg-lienzo");
+    if (zona) {
+      const fallo = document.createElement("div");
+      fallo.className = "cg-fallo";
+      fallo.innerHTML = "<b>No se pudo armar la clase.</b> " + (e && e.message ? e.message : e);
+      zona.appendChild(fallo);
+    }
+  });
+}
+
+async function montar(perfil, contenedor, clase) {
+  const lienzo = contenedor.querySelector("#cg-lienzo");
+  const volver = contenedor.querySelector("#cg-volver");
+
+  // ── Módulos usados (con reintento y aviso claro si falta uno) ──
+  const { renderUserbar } = await cargar("../../../js/components/userbar.js", ["renderUserbar"]);
+  const { renderInicio }  = await cargar("../../../js/components/inicio.js",  ["renderInicio"]);
+  const { crearSecciones } = await cargar("../../../js/componentes/section.js", ["crearSecciones"]);
+  const { dibujarReloj }  = await cargar("../../../recursos/js/visuales/reloj.js", ["dibujarReloj"]);
+
+  renderUserbar(perfil, TITULO);
+
+  // ── Volver: la flecha al INICIO (la llevan clase, tarea y examen) ──
+  volver.addEventListener("click", () => {
+    renderUserbar(perfil);
+    renderInicio(perfil, contenedor);
+  });
+
+  // ════ SECCIÓN 1 — espacio de 820×420 px · reloj de referencia ════
+  const l1 = lamina(420);
+  dibujarReloj({ hora: 10, minutos: 30, tamano: 220, contenedor: l1 });
+
+  // ── MÁS BLOQUES DE LA SECCIÓN 1 (quita el // y ajusta) ──
+  // const { crearTitulo }    = await cargar("../../../js/componentes/titulo.js",    ["crearTitulo"]);
+  // const { crearParrafo }   = await cargar("../../../js/componentes/parrafo.js",   ["crearParrafo"]);
+  // const { crearLista }     = await cargar("../../../js/componentes/lista.js",     ["crearLista"]);
+  // const { opcionMultiple } = await cargar("../../../js/utils/opcionMultiple.js",  ["opcionMultiple"]);
+  //
+  // crearTitulo({ texto: "¿Qué hora es?", contenedor: l1 });
+  // crearParrafo({ texto: "Mira el reloj y responde. Admite **negrita**, *cursiva* y $fórmulas$ como $\\frac{3}{4}$.", contenedor: l1 });
+  // opcionMultiple({
+  //   contenedor: l1,
+  //   perfil,                       // el perfil del usuario (ya está aquí)
+  //   clase,                        // la clase abierta (ya está aquí)
+  //   tipo: "clase",                // "clase" | "tarea" | "examen"
+  //   indicacion: "¿Qué hora marca el reloj?",
+  //   respuestas: ["Las 10:30", "Las 10:00", "Las 3:45", "Las 12:30"],
+  //   respuestaCorrecta: 1,         // 1 = primera
+  //   puntaje: 1,
+  // });
+
+  // ════ SECCIÓN 2 — espacio de 820×420 px · reloj de referencia ════
+  const l2 = lamina(420);
+  dibujarReloj({ hora: 3, minutos: 45, tamano: 220, contenedor: l2 });
+
+  // ── MÁS BLOQUES DE LA SECCIÓN 2 (igual que arriba, con contenedor: l2) ──
+  // crearTitulo({ texto: "Otra hora", contenedor: l2 });
+  // crearParrafo({ texto: "Segunda parte de la clase.", contenedor: l2 });
+
+  // ── Documento final: con 2 secciones se ve UNA a la vez y las
+  //    flechas «← Anterior · 1 / 2 · Siguiente →» SALEN SOLAS.
+  //    Más secciones:  const l3 = lamina(420);  …  secciones: [l1, l2, l3],
+  //
+  //    El documento se guarda en `doc` por si quieres controlarlo:
+  //      doc.siguiente()   doc.anterior()   doc.ir(0)
+  //      doc.actual        (lámina visible, 0 = primera)
+  //      doc.total         (cuántas láminas hay)
+  //
+  //    ¿Flechas PROPIAS aparte? (opcional — así SÍ se escribe, con
+  //    las funciones del propio doc, sin inventar nombres):
+  //      const { crearFlechas } = await cargar("../../../js/componentes/flechas.js", ["crearFlechas"]);
+  //      crearFlechas({
+  //        contenedor: lienzo,
+  //        alAnterior:  () => doc.anterior(),
+  //        alSiguiente: () => doc.siguiente(),
+  //      });
+  const doc = crearSecciones({
+    contenedor: lienzo,
+    secciones: [l1, l2],
+  });
+
+  contenedor.setAttribute("data-mco-listo", "1");   // TODO quedó montado
+}

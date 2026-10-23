@@ -1,5 +1,5 @@
 // ============================================================
-// crear.js — EDITOR VISUAL «Crear» (js/components/crear.js) · v5
+// crear.js — EDITOR VISUAL «Crear» (js/components/crear.js) · v6
 //
 // La vista del DOCENTE para armar clases, tareas y exámenes sin
 // escribir código. Se abre desde la tarjeta «Crear» del inicio y
@@ -36,6 +36,22 @@
 //   6. Con UNA sección el documento queda CORRIDO; con DOS o más
 //      se avanza con «Siguiente» (y «Anterior»). Igual en el
 //      editor y en el código descargado.
+//
+// NOVEDADES v6 — formato de texto y formularios «¿Cuántas?»:
+//   · Los campos de texto muestran una BARRA DE FORMATO con botones
+//     (N negrita, I cursiva, ƒ fórmula, x², x₂, color, …) y una
+//     VISTA PREVIA «Así se ve» debajo: escribes **negrita** o
+//     $x^2+1$ y VES el resultado antes de guardar. Las marcas se
+//     pueden COMBINAR («anidar»): el **minuto** marca $10{:}30$.
+//     Lo que admite cada campo: los componentes (título, párrafo,
+//     lista, aviso, cita…) admiten TODAS las marcas; las
+//     indicaciones y opciones de las utils admiten $fórmulas$.
+//   · Los bloques con LISTAS de datos (respuestas, opciones,
+//     parejas, palabras…) preguntan «¿Cuántas?» y generan ESAS
+//     FILAS IDÉNTICAS numeradas: una fila = una respuesta (se
+//     cuentan solas). Con círculo o casilla se marca LA correcta
+//     sin escribir números. Escribir 5 respuestas ya no es
+//     adivinar un formato de líneas.
 //
 // RUTAS (a prueba de errores):
 //   · Este editor VIVE en js/components/crear.js. Desde aquí,
@@ -204,8 +220,17 @@ function jsSource(v, nivel = 1) {
 
 const RAIZ_JS = new URL("../", import.meta.url);
 
+/* Las entradas del REGISTRO se escriben DESDE la carpeta js/, EXCEPTO
+   las visuales ("recursos/js/visuales/…"), que viven en la raíz del
+   proyecto (al lado de js/, NO dentro). Sin este caso especial el
+   editor buscaba /js/recursos/… y el bloque salía «FALTA el archivo»
+   aunque el recurso estuviera en su sitio. */
+const RAIZ_APP = new URL("../../", import.meta.url);   // raíz del proyecto
+
 function urlDeRecurso(r) {
-  return new URL(r.archivo, RAIZ_JS).href;
+  const a = String((r && r.archivo) || "");
+  if (a.startsWith("recursos/")) return new URL(a, RAIZ_APP).href;
+  return new URL(a, RAIZ_JS).href;
 }
 
 /* ============================================================
@@ -226,11 +251,30 @@ function urlDeRecurso(r) {
                  EXACTAMENTE los que el JS necesita:
                    k    clave del valor
                    et   etiqueta visible
-                   tipo "texto"|"area"|"num"|"sino"|"opcion"|"lineas"|"json"
+                   tipo "texto"|"area"|"num"|"sino"|"opcion"|
+                        "lineas"|"json"|"repetidor"
                    req  true = obligatorio (se marca con ●)
                    ops  opciones (para tipo "opcion")
                    def  valor por defecto
                    ej   placeholder / ejemplo
+                   formato true → barra de formato COMPLETA + vista
+                        previa «Así se ve»; "f" → solo botón de
+                        $fórmula$ (lo que ese campo admite de verdad)
+                 tipo "repetidor" (v6): contador «¿Cuántas?» + N filas
+                   idénticas numeradas. Escribe SIEMPRE el mismo
+                   formato de líneas que el JS ya leía, así que la
+                   vista previa y el código generado no cambian:
+                   cuantas   { et, def, min, max } del contador
+                   columnas  [{ clave, et, req, formato, ej,
+                                resto (une la celda a la línea de la
+                                1.ª columna con " | "), json (nombre
+                                de la propiedad en modo JSON) }]
+                   etiqueta  { clave, et } columna extra con SU clave
+                   marca     { tipo: "radio"|"checks", clave, et }
+                             marca la(s) correcta(s) sin escribir nºs
+                   serializa "json” → filas con extras se guardan
+                             como arreglo JSON (lista con párrafo)
+                   ayuda     línea de explicación bajo el contador
      aOpciones(valores, ctx)  → objeto de opciones para la llamada
                  REAL (ctx.perfil, ctx.clase, ctx.tipo ya vienen listos)
      aCodigo(valores, ctx)    → (opcional) el MISMO objeto pero para
@@ -266,7 +310,7 @@ const REGISTRO = [
     funcion: "crearAviso",
     descripcion: "Caja de colores para lo importante (info, éxito, advertencia, error).",
     params: [
-      { k: "texto", et: "Texto", tipo: "area", req: true, ej: "El examen se ve **una sola vez**." },
+      { k: "texto", et: "Texto", tipo: "area", req: true, formato: true, ej: "El examen se ve **una sola vez** y dura $45$ minutos." },
       { k: "tipo", et: "Tipo", tipo: "opcion", ops: ["info", "exito", "advertencia", "error"], def: "info" },
       { k: "titulo", et: "Rótulo corto", tipo: "texto", ej: "Atención" },
       { k: "icono", et: "Mostrar icono", tipo: "sino", def: true },
@@ -285,7 +329,7 @@ const REGISTRO = [
     id: "calendario",
     nombre: "Calendario del mes",
     cat: "visuales",
-    archivo: "../recursos/js/visuales/calendario.js",
+    archivo: "recursos/js/visuales/calendario.js",
     imports: ["dibujarCalendario"],
     funcion: "dibujarCalendario",
     descripcion: "Calendario real del mes pedido (el idioma sale del nombre del mes).",
@@ -296,7 +340,14 @@ const REGISTRO = [
       { k: "iniciaEn", et: "La semana empieza en", tipo: "opcion", ops: ["lunes", "domingo"], def: "lunes" },
       { k: "ancho", et: "Ancho del calendario (px)", tipo: "num", ej: "320" },
       { k: "mostrarFestividades", et: "Marcar festividades", tipo: "sino" },
-      { k: "festividades", et: "Festividades (una por línea: día | nombre)", tipo: "lineas", ej: "15 | Día de la Independencia" },
+      { k: "festividades", et: "Festividades del mes", tipo: "repetidor",
+        cuantas: { et: "¿Cuántas festividades?", def: 0, min: 0, max: 30 },
+        columnas: [
+          { clave: "dia", et: "Día del mes", req: true, ej: "15" },
+          { clave: "nombre", et: "Nombre que se muestra", ej: "Día de la Independencia", resto: true },
+        ],
+        ayuda: "Cada fila es un día festivo que se marca en el calendario. Deja 0 si no quieres marcar ninguno.",
+      },
     ],
     aOpciones: (v) => ({
       mes: v.mes || "",
@@ -327,7 +378,7 @@ const REGISTRO = [
     funcion: "crearCita",
     descripcion: "Frase destacada con barra morada; admite autor y fuente.",
     params: [
-      { k: "texto", et: "Cita", tipo: "area", req: true, ej: "Las matemáticas son la poesía de las ciencias." },
+      { k: "texto", et: "Cita", tipo: "area", req: true, formato: true, ej: "Las matemáticas son la *poesía* de las ciencias." },
       { k: "autor", et: "Autor", tipo: "texto", ej: "Lorca" },
       { k: "fuente", et: "Fuente", tipo: "texto", ej: "clase de literatura" },
       { k: "tamano", et: "Tamaño del texto (px)", tipo: "num" },
@@ -371,8 +422,14 @@ const REGISTRO = [
     funcion: "crearDetalles",
     descripcion: "Caja plegable: rótulo visible + contenido oculto (soluciones, glosario).",
     params: [
-      { k: "titulo", et: "Rótulo", tipo: "texto", req: true, ej: "Ver la solución" },
-      { k: "contenido", et: "Contenido oculto (un párrafo por línea)", tipo: "area", req: true, ej: "Paso 1: cuenta de 5 en 5…\nPaso 2: resta el total…" },
+      { k: "titulo", et: "Rótulo", tipo: "texto", req: true, formato: true, ej: "Ver la **solución**" },
+      { k: "contenido", et: "Párrafos ocultos", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántos párrafos?", def: 2, min: 1, max: 12 },
+        columnas: [
+          { clave: "contenido", et: "Párrafo", req: true, formato: true, ej: "Paso 1: cuenta de 5 en 5…" },
+        ],
+        ayuda: "Cada fila es un párrafo dentro de la caja desplegable. Admiten **negrita** y $fórmulas$.",
+      },
       { k: "abierto", et: "Arrancar abierto", tipo: "sino" },
       { k: "tamano", et: "Tamaño del texto (px)", tipo: "num" },
     ],
@@ -424,7 +481,7 @@ const REGISTRO = [
     funcion: "crearEnlace",
     descripcion: "Link a otra clase, Drive, video o PDF (texto o botón morado).",
     params: [
-      { k: "texto", et: "Texto visible", tipo: "texto", req: true, ej: "Hoja de trabajo (PDF)" },
+      { k: "texto", et: "Texto visible", tipo: "texto", req: true, formato: true, ej: "Hoja de trabajo (PDF)" },
       { k: "url", et: "Dirección (URL)", tipo: "texto", req: true, ej: "https://…" },
       { k: "tipo", et: "Tipo", tipo: "opcion", ops: ["texto", "boton"], def: "texto" },
       { k: "externo", et: "Abrir en pestaña nueva", tipo: "sino", def: true },
@@ -515,7 +572,7 @@ const REGISTRO = [
     funcion: "crearFormatoTexto",
     descripcion: "Texto libre con TODAS las marcas: **negrita**, $fórmulas$, {{color}}…",
     params: [
-      { k: "texto", et: "Texto (con marcas)", tipo: "area", req: true, ej: "El agua es H~2~O y el **sulfato** es ==peligroso==. $x^2+1$" },
+      { k: "texto", et: "Texto (con marcas)", tipo: "area", req: true, formato: true, ej: "El agua es H~2~O y el **sulfato** es ==peligroso==. $x^2+1$" },
       { k: "tamano", et: "Tamaño (px)", tipo: "num" },
       { k: "alineacion", et: "Alineación", tipo: "opcion", ops: OPS_ALINEACION },
     ],
@@ -559,7 +616,15 @@ const REGISTRO = [
     funcion: "crearLista",
     descripcion: "Viñetas o numerada; cada elemento admite párrafo y sublistas (JSON).",
     params: [
-      { k: "items", et: "Elementos (JSON o una línea c/u)", tipo: "area", req: true, ej: '["Las manecillas: **hora** y **minuto**.", {"texto": "La hora en punto", "parrafo": "El minutero apunta al 12.", "sublista": ["En punto", "Y media"]}]' },
+      { k: "items", et: "Elementos de la lista", tipo: "repetidor", req: true, serializa: "json",
+        cuantas: { et: "¿Cuántos elementos?", def: 3, min: 1, max: 30 },
+        columnas: [
+          { clave: "items", et: "Texto del elemento", req: true, formato: true, json: "texto", ej: "Las manecillas: **hora** y **minuto**." },
+          { clave: "items", et: "Párrafo debajo (opcional)", formato: true, json: "parrafo", ej: "El minutero apunta al 12." },
+          { clave: "items", et: "Sublista (opcional, separa con |)", formato: true, json: "sublista", ej: "En punto | Y media" },
+        ],
+        ayuda: "Cada fila es un elemento de la lista (se numeran solas). Si le pones párrafo o sublista, el elemento queda completo en el código.",
+      },
       { k: "tipo", et: "Tipo", tipo: "opcion", ops: ["vineta", "numerada"], def: "vineta" },
       { k: "tamano", et: "Tamaño del texto (px)", tipo: "num" },
     ],
@@ -579,7 +644,7 @@ const REGISTRO = [
     funcion: "crearParrafo",
     descripcion: "Párrafo normal con todo el formato del proyecto.",
     params: [
-      { k: "texto", et: "Texto", tipo: "area", req: true, ej: "El **minuto** es la manecilla *larga*." },
+      { k: "texto", et: "Texto", tipo: "area", req: true, formato: true, ej: "El **minuto** es la manecilla *larga*. Marca las $10{:}30$." },
       { k: "tamano", et: "Tamaño (px)", tipo: "num" },
       { k: "alineacion", et: "Alineación", tipo: "opcion", ops: OPS_ALINEACION },
     ],
@@ -660,7 +725,7 @@ const REGISTRO = [
     funcion: "crearSubtitulo",
     descripcion: "Encabezado por nivel: orden 1 (h2)… orden 6 (el más pequeño).",
     params: [
-      { k: "texto", et: "Texto", tipo: "texto", req: true, ej: "1 · La hora en punto" },
+      { k: "texto", et: "Texto", tipo: "texto", req: true, formato: true, ej: "1 · La hora **en punto**" },
       { k: "orden", et: "Orden (1–6)", tipo: "num", def: 1 },
       { k: "tamano", et: "Tamaño (px)", tipo: "num" },
       { k: "alineacion", et: "Alineación", tipo: "opcion", ops: OPS_ALINEACION },
@@ -735,7 +800,7 @@ const REGISTRO = [
     descripcion: "Tabla con filas/columnas y soporte de rowspan y colspan (JSON).",
     params: [
       { k: "contenido", et: "Contenido (matriz JSON)", tipo: "area", req: true, ej: '[["Figura", "Lados"], [{"texto": "Cuadrado", "rowspan": 1}, "4"]]' },
-      { k: "titulo", et: "Título (caption)", tipo: "texto" },
+      { k: "titulo", et: "Título (caption)", tipo: "texto", formato: true },
       { k: "primeraFila", et: "Primera fila = encabezado", tipo: "sino", def: true },
       { k: "primeraColumna", et: "Primera columna = encabezado", tipo: "sino" },
       { k: "franjas", et: "Filas alternas (zebra)", tipo: "sino", def: true },
@@ -768,7 +833,7 @@ const REGISTRO = [
     funcion: "crearTitulo",
     descripcion: "Título principal del documento (h1).",
     params: [
-      { k: "texto", et: "Texto", tipo: "texto", req: true, ej: "El reloj y el calendario" },
+      { k: "texto", et: "Texto", tipo: "texto", req: true, formato: true, ej: "El **reloj** y el calendario" },
       { k: "tamano", et: "Tamaño (px)", tipo: "num" },
       { k: "alineacion", et: "Alineación", tipo: "opcion", ops: OPS_ALINEACION },
     ],
@@ -790,8 +855,14 @@ const REGISTRO = [
     funcion: "blank",
     descripcion: "Texto con huecos [[respuesta]]; al enviar marca buenos/malos.",
     params: [
-      { k: "texto", et: "Texto con marcas [[respuesta]] o ___", tipo: "area", req: true, ej: "El agua hierve a [[100]] °C y el símbolo del hierro es ___." },
-      { k: "respuestas", et: "Respuestas de los ___ (una por línea, en orden)", tipo: "lineas", ej: "Fe\nAu" },
+      { k: "texto", et: "Texto con huecos [[respuesta]] o ___", tipo: "area", req: true, formato: "f", ej: "El agua hierve a [[100]] °C y el símbolo del hierro es ___." },
+      { k: "respuestas", et: "Respuestas de los huecos ___", tipo: "repetidor",
+        cuantas: { et: "¿Cuántos huecos ___?", def: 2, min: 0, max: 12 },
+        columnas: [
+          { clave: "respuestas", et: "Respuesta (alternativas con |)", ej: "Fe | hierro" },
+        ],
+        ayuda: "Cada fila da la respuesta de UN hueco ___, en orden (dentro puedes listar alternativas con |). Los huecos [[con respuesta]] no la necesitan.",
+      },
       { k: "puntaje", et: "Puntaje del bloque (0–10)", tipo: "num", def: 1 },
       { k: "mostrarCorrectas", et: "Revelar corrección al enviar (solo examen)", tipo: "sino" },
       paramColumnas(),
@@ -830,7 +901,14 @@ const REGISTRO = [
     funcion: "crucigrama",
     descripcion: "Crucigrama único por estudiante con nota al completarlo.",
     params: [
-      { k: "palabras", et: "Palabras (una por línea: PALABRA | pista)", tipo: "area", req: true, ej: "ELEFANTE | El animal terrestre más grande\nGATO | Maúlla y ronronea" },
+      { k: "palabras", et: "Palabras y pistas", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas palabras?", def: 4, min: 2, max: 15 },
+        columnas: [
+          { clave: "palabras", et: "PALABRA (sin espacios)", req: true, ej: "ELEFANTE" },
+          { clave: "palabras", et: "Pista (admite $fórmulas$)", formato: "f", resto: true, ej: "El animal terrestre más grande" },
+        ],
+        ayuda: "Cada fila es una palabra del crucigrama con su pista.",
+      },
       { k: "puntaje", et: "Puntaje del bloque (0–10)", tipo: "num", def: 2 },
       paramColumnas(),
       { k: "id", et: "id estable (opcional)", tipo: "texto" },
@@ -887,9 +965,15 @@ const REGISTRO = [
     funcion: "multipleOpcion",
     descripcion: "Marca VARIAS opciones y envía (1 o más correctas).",
     params: [
-      { k: "indicacion", et: "Indicación", tipo: "area", req: true, ej: "Marca todos los números pares." },
-      { k: "opciones", et: "Opciones (una por línea, 4–10)", tipo: "area", req: true, ej: "2\n3\n4\n7" },
-      { k: "correctas", et: "Números de las correctas (1 = primera)", tipo: "texto", req: true, ej: "1, 3" },
+      { k: "indicacion", et: "Indicación", tipo: "area", req: true, formato: "f", ej: "Marca todos los números pares: $2$, $3$, $4$, $7$." },
+      { k: "opciones", et: "Opciones", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas opciones?", def: 4, min: 2, max: 12 },
+        columnas: [
+          { clave: "opciones", et: "Opción (admite $fórmulas$)", req: true, formato: "f", ej: "$2$" },
+        ],
+        marca: { tipo: "checks", clave: "correctas", et: "Correcta" },
+        ayuda: "Cada fila es una opción; marca con la casilla TODAS las que son correctas (cada fila se numera sola).",
+      },
       { k: "puntaje", et: "Puntaje del bloque (0–10)", tipo: "num", def: 1 },
       { k: "penalizarErroneas", et: "Las equivocadas restan", tipo: "sino", def: true },
       { k: "mostrarCorrectas", et: "Revelar correctas al enviar (solo examen)", tipo: "sino" },
@@ -899,7 +983,7 @@ const REGISTRO = [
     aOpciones: (v, ctx) => ({
       indicacion: v.indicacion || "",
       opciones: lineas(v.opciones),
-      correctas: lineas(String(v.correctas || "").replace(/,/g, " ")).map(Number).filter(Number.isFinite),
+      correctas: String(v.correctas || "").split(/[\s,]+/).map((t) => Number(t)).filter((n) => Number.isInteger(n) && n > 0),
       puntaje: num(v.puntaje) ?? 1,
       penalizarErroneas: bool(v.penalizarErroneas, true),
       mostrarCorrectas: bool(v.mostrarCorrectas) || undefined,
@@ -912,7 +996,7 @@ const REGISTRO = [
     aCodigo: (v, ctx) => ({
       indicacion: v.indicacion || "",
       opciones: lineas(v.opciones),
-      correctas: lineas(String(v.correctas || "").replace(/,/g, " ")).map(Number).filter(Number.isFinite),
+      correctas: String(v.correctas || "").split(/[\s,]+/).map((t) => Number(t)).filter((n) => Number.isInteger(n) && n > 0),
       puntaje: num(v.puntaje) ?? 1,
       penalizarErroneas: bool(v.penalizarErroneas, true),
       mostrarCorrectas: bool(v.mostrarCorrectas) || undefined,
@@ -933,9 +1017,15 @@ const REGISTRO = [
     funcion: "opcionMultiple",
     descripcion: "Pregunta con UNA respuesta correcta entre 2 y 6 opciones.",
     params: [
-      { k: "indicacion", et: "Indicación", tipo: "area", req: true, ej: "¿Cuánto es $\\frac{3}{4} + \\frac{1}{4}$?" },
-      { k: "respuestas", et: "Respuestas (una por línea, 2–6)", tipo: "area", req: true, ej: "$\\frac{4}{8}$\n$\\frac{1}{2}$\n1\n$\\frac{3}{8}$" },
-      { k: "respuestaCorrecta", et: "Número de la correcta (1 = primera)", tipo: "num", req: true, ej: "2" },
+      { k: "indicacion", et: "Indicación", tipo: "area", req: true, formato: "f", ej: "¿Cuánto es $\\frac{3}{4} + \\frac{1}{4}$?" },
+      { k: "respuestas", et: "Respuestas", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas respuestas?", def: 4, min: 2, max: 6 },
+        columnas: [
+          { clave: "respuestas", et: "Respuesta (admite $fórmulas$)", req: true, formato: "f", ej: "$\\frac{1}{2}$" },
+        ],
+        marca: { tipo: "radio", clave: "respuestaCorrecta", et: "Correcta" },
+        ayuda: "Cada fila es una opción y se numera sola. Marca con el círculo CUÁL es la correcta (sin escribir números).",
+      },
       { k: "puntaje", et: "Puntaje (0–10)", tipo: "num", def: 1 },
       paramColumnas(),
       { k: "id", et: "id estable (opcional)", tipo: "texto" },
@@ -973,9 +1063,21 @@ const REGISTRO = [
     funcion: "ordenar",
     descripcion: "Arrastrar objetos a los campos numerados, en su orden correcto.",
     params: [
-      { k: "indicacion", et: "Indicación", tipo: "area", req: true, ej: "Ordena de MENOR a MAYOR." },
-      { k: "lista", et: "Objetos EN ORDEN correcto (una por línea, 3–10)", tipo: "area", req: true, ej: "-2\n$\\frac{1}{4}$\n$\\frac{1}{2}$\n5" },
-      { k: "distractores", et: "Distractores (0–8, no van en ningún campo)", tipo: "area", ej: "$\\sqrt{2}$" },
+      { k: "indicacion", et: "Indicación", tipo: "area", req: true, formato: "f", ej: "Ordena de MENOR a MAYOR." },
+      { k: "lista", et: "Objetos en orden correcto", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántos objetos?", def: 4, min: 2, max: 10 },
+        columnas: [
+          { clave: "lista", et: "Objeto (EN ORDEN correcto, admite $fórmulas$)", req: true, formato: "f", ej: "$\\frac{1}{4}$" },
+        ],
+        ayuda: "Cada fila es un objeto; el ORDEN de las filas ES el correcto (la página los muestra mezclados).",
+      },
+      { k: "distractores", et: "Distractores", tipo: "repetidor",
+        cuantas: { et: "¿Cuántos distractores?", def: 0, min: 0, max: 8 },
+        columnas: [
+          { clave: "distractores", et: "Distractor (no va en ningún campo)", formato: "f", ej: "$\\sqrt{2}$" },
+        ],
+        ayuda: "Objetos extra que aparecen mezclados pero NO pertenecen a ningún campo. Deja 0 si no quieres.",
+      },
       { k: "puntaje", et: "Puntaje del bloque (0–10)", tipo: "num", def: 1 },
       { k: "mostrarCorrectas", et: "Revelar orden al enviar (solo examen)", tipo: "sino" },
       paramColumnas(),
@@ -1047,9 +1149,15 @@ const REGISTRO = [
     funcion: "relacionar",
     descripcion: "Dos columnas: forma parejas con clic y envía (imágenes y $fórmulas$).",
     params: [
-      { k: "indicacion", et: "Indicación", tipo: "area", req: true, ej: "Relaciona cada figura con su área." },
-      { k: "izquierda", et: "Columna izquierda (una por línea, 3–10)", tipo: "area", req: true, ej: "Triángulo\nCírculo\nRectángulo" },
-      { k: "derecha", et: "Columna derecha (en el MISMO orden correcto)", tipo: "area", req: true, ej: "$\\frac{b \\cdot h}{2}$\n$\\pi r^2$\n$b \\cdot h$" },
+      { k: "indicacion", et: "Indicación", tipo: "area", req: true, formato: "f", ej: "Relaciona cada figura con su área." },
+      { k: "izquierda", et: "Parejas", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas parejas?", def: 3, min: 2, max: 10 },
+        columnas: [
+          { clave: "izquierda", et: "Tarjeta izquierda", req: true, formato: "f", ej: "Triángulo" },
+          { clave: "derecha", et: "Su pareja CORRECTA (derecha)", req: true, formato: "f", ej: "$\\frac{b \\cdot h}{2}$" },
+        ],
+        ayuda: "Cada fila forma una pareja: la tarjeta izquierda con SU correcta de la derecha. En la página las de la derecha se mezclan.",
+      },
       { k: "puntaje", et: "Puntaje del bloque (0–10)", tipo: "num", def: 1 },
       { k: "mostrarCorrectas", et: "Revelar parejas al enviar (solo examen)", tipo: "sino" },
       paramColumnas(),
@@ -1090,9 +1198,16 @@ const REGISTRO = [
     funcion: "respuestaSimple",
     descripcion: "Campo de texto o fórmula; acepta listas de equivalentes.",
     params: [
-      { k: "indicacion", et: "Indicación", tipo: "area", req: true, ej: "¿Quién escribió El Quijote?" },
-      { k: "respuestas", et: "Respuestas (una por campo; «a | b» = equivalentes)", tipo: "area", req: true, ej: "Miguel de Cervantes\nFe | hierro" },
-      { k: "etiquetas", et: "Etiquetas de los campos (opcional)", tipo: "area", ej: "Autor\nSímbolo" },
+      { k: "indicacion", et: "Indicación", tipo: "area", req: true, formato: "f", ej: "Escribe el resultado de $8 + 5$." },
+      { k: "respuestas", et: "Respuestas (campos del bloque)", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas respuestas?", def: 3, min: 1, max: 20 },
+        columnas: [
+          { clave: "respuestas", et: "Respuesta correcta", req: true, ej: "Miguel de Cervantes" },
+          { clave: "respuestas", et: "También vale (opcional, separa con |)", resto: true, ej: "Cervantes" },
+        ],
+        etiqueta: { clave: "etiquetas", et: "Etiqueta del campo (opcional)", ej: "Autor" },
+        ayuda: "Cada fila es UN campo de respuesta en la página (numerados como lista). «También vale» acepta otras respuestas igual de válidas, separadas por |.",
+      },
       { k: "esFormula", et: "La respuesta es una FÓRMULA (teclado matemático)", tipo: "sino" },
       { k: "puntaje", et: "Puntaje (0–10)", tipo: "num", def: 1 },
       paramColumnas(),
@@ -1139,7 +1254,13 @@ const REGISTRO = [
     funcion: "sopaLetras",
     descripcion: "Sopa de letras única por estudiante con nota al completarla.",
     params: [
-      { k: "palabras", et: "Palabras (una por línea, 2–12)", tipo: "area", req: true, ej: "GATO\nPERRO\nCONEJO\nRATÓN" },
+      { k: "palabras", et: "Palabras", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas palabras?", def: 6, min: 2, max: 16 },
+        columnas: [
+          { clave: "palabras", et: "Palabra", req: true, ej: "GATO" },
+        ],
+        ayuda: "Cada fila es una palabra que se esconde en la sopa de letras.",
+      },
       { k: "puntaje", et: "Puntaje del bloque (0–10)", tipo: "num", def: 2 },
       paramColumnas(),
       { k: "id", et: "id estable (opcional)", tipo: "texto" },
@@ -1256,7 +1377,7 @@ const REGISTRO = [
     id: "reloj",
     nombre: "Reloj de pared",
     cat: "visuales",
-    archivo: "../recursos/js/visuales/reloj.js",
+    archivo: "recursos/js/visuales/reloj.js",
     imports: ["dibujarReloj"],
     funcion: "dibujarReloj",
     descripcion: "Reloj cuadrado con la hora que le pidas (ideal para leer la hora).",
@@ -1455,7 +1576,11 @@ function rutaBonita(url) {
 // está en su lugar y el fallo fue otro: sintaxis, red, CDN…).
 async function diagnosticoFalta(urlBase, nivel = 0, vistos = new Set()) {
   let url;
-  try { url = new URL(urlBase, RAIZ_JS); } catch (e) { return null; }
+  // mismos apoyos que urlDeRecurso: js/ para el editor,
+  // raíz del proyecto para recursos/ (visuales…)
+  const base = String(urlBase || "");
+  const apoyo = base.startsWith("recursos/") ? RAIZ_APP : RAIZ_JS;
+  try { url = new URL(base, apoyo); } catch (e) { return null; }
   const clave = url.pathname;
   if (vistos.has(clave)) return null;
   vistos.add(clave);
@@ -2154,6 +2279,87 @@ function inyectarEstilosCrear() {
     }
     .cr-modal-pie .c-crece { flex: 1; }
 
+    /* ---------- v6: barra de formato + vista previa «Así se ve» ---------- */
+    .cr-fmtbar { display: flex; flex-wrap: wrap; gap: .18rem; margin-top: .22rem; }
+    .cr-fmt-btn {
+      border: 1px solid #e5e7eb; background: #ffffff; color: #4b5563;
+      font: inherit; font-size: .68rem; font-weight: 700;
+      border-radius: .4rem; padding: .12rem .4rem; cursor: pointer;
+      line-height: 1.15; min-width: 1.55rem;
+    }
+    .cr-fmt-btn:hover { border-color: #7c3aed; color: #7c3aed; background: #faf5ff; }
+    .cr-fmt-prev {
+      display: flex; align-items: baseline; gap: .45rem;
+      margin-top: .22rem; padding: .3rem .55rem;
+      background: #faf8ff; border: 1px dashed #ddd6fe; border-radius: .5rem;
+      font-size: .8rem; color: #374151; line-height: 1.55;
+      max-height: 5rem; overflow: auto;
+      overflow-wrap: break-word;
+    }
+    .cr-fmt-prev-et {
+      flex: none;
+      font-size: .6rem; font-weight: 800; letter-spacing: .06em;
+      text-transform: uppercase; color: #a78bfa;
+    }
+    .cr-fmt-prev-txt:empty::before { content: "—"; color: #c4b5fd; }
+
+    /* ---------- v6: repetidor «¿Cuántas?» ---------- */
+    .cr-rep {
+      border: 1px solid #ece9f6; background: #fbfaff;
+      border-radius: .6rem; padding: .45rem .5rem .55rem;
+    }
+    .cr-rep-error { border-color: #dc2626; background: #fef2f2; }
+    .cr-rep-top { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .cr-rep-top > label { flex: 1; font-size: .72rem; font-weight: 700; color: #6b7280; }
+    .cr-rep-cuantas {
+      display: inline-flex; align-items: center; gap: .3rem;
+      font-size: .72rem; color: #6b7280; font-weight: 600; white-space: nowrap;
+    }
+    .cr-rep-cuantas input {
+      width: 3.4rem; text-align: center;
+      border: 1px solid #e5e7eb; border-radius: .45rem;
+      padding: .22rem .3rem; font: inherit; font-size: .8rem; outline: none;
+    }
+    .cr-rep-cuantas input:focus { border-color: #a78bfa; }
+    .cr-rep-cuantas button {
+      width: 1.55rem; height: 1.55rem; line-height: 1;
+      border: 1px solid #e5e7eb; background: #ffffff; color: #4b5563;
+      border-radius: .45rem; font: inherit; font-weight: 800; cursor: pointer;
+      display: inline-grid; place-items: center;
+    }
+    .cr-rep-cuantas button:hover { border-color: #7c3aed; color: #7c3aed; }
+    .cr-rep-ayuda { margin: .3rem 0 .4rem; font-size: .68rem; color: #9ca3af; line-height: 1.45; }
+    .cr-rep-filas { display: flex; flex-direction: column; gap: .35rem; }
+    .cr-rep-fila {
+      display: grid; grid-template-columns: auto 1fr auto; gap: .4rem; align-items: start;
+      background: #ffffff; border: 1px solid #ece9f6; border-radius: .55rem;
+      padding: .34rem .42rem;
+    }
+    .cr-rep-fila.error { border-color: #dc2626; background: #fef2f2; }
+    .cr-rep-num {
+      width: 1.3rem; height: 1.3rem; display: grid; place-items: center;
+      background: #7c3aed; color: #ffffff; border-radius: 50%;
+      font-size: .64rem; font-weight: 800; margin-top: .12rem;
+    }
+    .cr-rep-celdas { display: grid; gap: .28rem; min-width: 0; }
+    .cr-rep-celdas > div > label {
+      display: block; font-size: .64rem; font-weight: 700; color: #6b7280;
+    }
+    .cr-rep-celdas input {
+      width: 100%; box-sizing: border-box;
+      border: 1px solid #e5e7eb; border-radius: .45rem;
+      padding: .24rem .4rem; font: inherit; font-size: .78rem; outline: none;
+    }
+    .cr-rep-celdas input:focus { border-color: #a78bfa; }
+    .cr-rep-marca {
+      display: inline-flex; align-items: center; gap: .28rem;
+      font-size: .68rem; font-weight: 700; color: #16a34a;
+      white-space: nowrap; margin-top: .14rem; cursor: pointer;
+    }
+    .cr-rep-marca input { accent-color: #16a34a; width: auto; }
+    .cr-rep-marca.radio { color: #6d28d9; }
+    .cr-rep-marca.radio input { accent-color: #7c3aed; }
+
     /* ---------- celular: las 3 divisiones se apilan ---------- */
     @media (max-width: 900px) {
       .crear-vista { height: auto; min-height: 0; }
@@ -2163,6 +2369,8 @@ function inyectarEstilosCrear() {
       .crear-centro { overflow: visible; }
       .crear-derecha { width: auto; min-width: 0; border-left: none; border-top: 1px solid #e5e7eb; }
       .cv-cuerpo { overflow: visible; }
+      .cr-rep-fila { grid-template-columns: auto 1fr; }
+      .cr-rep-marca { grid-column: 2; }
     }
   `;
   document.head.append(estilo);
@@ -2975,6 +3183,451 @@ function bloqueEl(b, seccion) {
   return el;
 }
 
+/* ============================================================
+   v6 — BARRA DE FORMATO + VISTA PREVIA «Así se ve»
+   ------------------------------------------------------------
+   Los campos de texto que admiten marcas (**negrita**, $fórmulas$…)
+   llevan botones que envuelven el texto seleccionado y una vista
+   previa con el MISMO motor que usa el documento:
+     · formato: true → TODAS las marcas (formatoTexto.js)
+     · formato: "f"  → solo $fórmulas$ (formatearFormulas.js, la
+       MISMA función textoConFormulas que usan las utils)
+   Así el docente VE el resultado antes de guardar y descubre qué
+   admite cada campo sin adivinar.
+   ============================================================ */
+
+const MARCAS_FORMATO = [
+  { abrir: "**", cerrar: "**", et: "N", title: "Negrita — **texto**" },
+  { abrir: "*", cerrar: "*", et: "I", title: "Cursiva — *texto*" },
+  { abrir: "__", cerrar: "__", et: "U", title: "Subrayado — __texto__" },
+  { abrir: "~~", cerrar: "~~", et: "S", title: "Tachado — ~~texto~~" },
+  { abrir: "$", cerrar: "$", et: "ƒ", title: "Fórmula matemática — $x^2$" },
+  { abrir: "^", cerrar: "^", et: "x²", title: "Superíndice — ^2^" },
+  { abrir: "~", cerrar: "~", et: "x₂", title: "Subíndice — ~2~ (H~2~O)" },
+  { abrir: "==", cerrar: "==", et: "marc", title: "Resaltado amarillo — ==texto==" },
+  { abrir: "{{", cerrar: "|rojo}}", et: "A", title: "Color — {{texto|rojo}} (rojo, azul, verde, naranja, morado, gris)" },
+  { abrir: "`", cerrar: "`", et: "code", title: "Código — `texto`" },
+];
+
+function envolverSeleccion(campo, abrir, cerrar) {
+  const ini = campo.selectionStart ?? campo.value.length;
+  const fin = campo.selectionEnd ?? ini;
+  const sel = campo.value.slice(ini, fin) || "texto";
+  campo.value = campo.value.slice(0, ini) + abrir + sel + cerrar + campo.value.slice(fin);
+  campo.focus();
+  const a = ini + abrir.length;
+  try { campo.setSelectionRange(a, a + sel.length); } catch (e) { /* campos sin selección */ }
+  campo.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function barraFormato(campo, nivel) {
+  const barra = document.createElement("div");
+  barra.className = "cr-fmtbar";
+  MARCAS_FORMATO.forEach((m) => {
+    if (nivel === "f" && m.abrir !== "$") return;   // solo la fórmula
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cr-fmt-btn";
+    b.title = m.title;
+    b.innerHTML =
+      m.abrir === "**" ? "<b>N</b>" :
+      m.abrir === "*" ? "<i>I</i>" :
+      m.abrir === "__" ? "<u>U</u>" :
+      m.abrir === "~~" ? "<s>S</s>" :
+      esc(m.et);
+    b.addEventListener("mousedown", (e) => e.preventDefault());   // conserva la selección
+    b.addEventListener("click", () => envolverSeleccion(campo, m.abrir, m.cerrar));
+    barra.appendChild(b);
+  });
+  return barra;
+}
+
+let katexVistaPromesa = null;
+
+// KaTeX para las vistas previas (mejor esfuerzo: sin red queda LaTeX plano legible)
+function asegurarKatexVista() {
+  if (!katexVistaPromesa) {
+    katexVistaPromesa = moduloDe({ id: "__vistaFormulas__", archivo: "utils/formatearFormulas.js" })
+      .then((mod) => (mod && typeof mod.cargarFormulas === "function" ? mod.cargarFormulas() : false))
+      .catch(() => false);
+  }
+  return katexVistaPromesa;
+}
+
+function previstaFormato(campo, nivel) {
+  const caja = document.createElement("div");
+  caja.className = "cr-fmt-prev";
+  caja.innerHTML = '<span class="cr-fmt-prev-et">Así se ve</span><span class="cr-fmt-prev-txt"></span>';
+  const vista = caja.querySelector(".cr-fmt-prev-txt");
+
+  let reloj = null;
+  let pasada = 0;
+
+  const pintar = async () => {
+    const miPasada = ++pasada;
+    const texto = String(campo.value ?? "");
+    if (!texto.trim()) { vista.textContent = ""; return; }
+    try {
+      if (nivel === "f") {
+        const mod = await moduloDe({ id: "__vistaFormulas__", archivo: "utils/formatearFormulas.js" });
+        if (miPasada !== pasada || !document.contains(caja)) return;
+        vista.innerHTML = mod && typeof mod.textoConFormulas === "function" ? mod.textoConFormulas(texto) : esc(texto);
+        if (/\$\$|\$|\\\(/.test(texto)) {
+          asegurarKatexVista().then(() => {
+            if (miPasada === pasada && document.contains(caja) && mod.textoConFormulas) {
+              vista.innerHTML = mod.textoConFormulas(texto);
+            }
+          });
+        }
+      } else {
+        const mod = await moduloDe({ id: "__vistaFormato__", archivo: "componentes/formatoTexto.js" });
+        if (miPasada !== pasada || !document.contains(caja)) return;
+        if (mod && typeof mod.formatoTexto === "function") {
+          vista.innerHTML = mod.formatoTexto(texto);
+          if (/\$\$|\$|\\\(/.test(texto)) {
+            asegurarKatexVista().then((ok) => {
+              if (ok && miPasada === pasada && document.contains(caja)) {
+                vista.innerHTML = mod.formatoTexto(texto);
+              }
+            });
+          }
+        } else {
+          vista.textContent = texto;
+        }
+      }
+    } catch (e) {
+      vista.textContent = texto;
+    }
+  };
+
+  campo.addEventListener("input", () => {
+    clearTimeout(reloj);
+    reloj = setTimeout(pintar, 250);
+  });
+  return caja;
+}
+
+/* ============================================================
+   v6 — REPETIDOR: «¿Cuántas?» + N filas idénticas numeradas
+   ------------------------------------------------------------
+   Cada fila se guarda con el MISMO formato de líneas que el JS del
+   bloque ya leía (una fila = una línea; columnas de la misma línea
+   unidas con « | »), así que la vista previa, los borradores viejos
+   y el código generado NO cambian. Solo mejora CÓMO se piden los
+   datos: se escribe la cantidad y aparecen ESAS filas, numeradas.
+   ============================================================ */
+
+function repClaveCuantas(p) {
+  return "_" + p.k + "_n";
+}
+
+// Lee las filas del repetidor desde b.valores (entiende borradores
+// viejos escritos a mano: son las mismas líneas de siempre).
+function repFilas(b, p) {
+  const extras = {};
+  (p.columnas || []).forEach((c) => {
+    if (!c.resto && c.clave !== p.k) extras[c.clave] = lineas(b.valores[c.clave]);
+  });
+  const etiquetas = p.etiqueta ? lineas(b.valores[p.etiqueta.clave]) : [];
+  const filas = [];
+
+  // modo JSON (lista con párrafo/sublista)
+  if (p.serializa === "json") {
+    const j = jsonSeguro(b.valores[p.k]);
+    if (j.ok && Array.isArray(j.valor)) {
+      j.valor.forEach((it) => {
+        const o = it && typeof it === "object" ? it : { texto: it };
+        filas.push({
+          celdas: (p.columnas || []).map((c) => {
+            const prop = o[c.json || "texto"];
+            if (Array.isArray(prop)) return prop.join(" | ");
+            return String(prop ?? "");
+          }),
+          etiqueta: "",
+          marca: false,
+        });
+      });
+      return filas;
+    }
+  }
+
+  lineas(b.valores[p.k]).forEach((linea, i) => {
+    // si esta clave tiene columnas «resto», la 1.ª columna es solo la
+    // parte ANTES del «|» (la de después es la celda resto)
+    const tieneResto = (p.columnas || []).some((x) => x.resto && x.clave === p.k);
+    const base = (() => {
+      if (!tieneResto) return linea;
+      const corte = linea.indexOf("|");
+      return corte >= 0 ? linea.slice(0, corte).trim() : linea.trim();
+    })();
+    filas.push({
+      celdas: (p.columnas || []).map((c) => {
+        if (c.resto) {
+          const corte = linea.indexOf("|");
+          return corte >= 0 ? linea.slice(corte + 1).trim() : "";
+        }
+        if (c.clave === p.k) return base;
+        return String(extras[c.clave]?.[i] ?? "");
+      }),
+      etiqueta: String(etiquetas[i] ?? ""),
+      marca: false,
+    });
+  });
+
+  // marca(s) correcta(s) guardadas (borradores viejos incluidos)
+  if (p.marca) {
+    if (p.marca.tipo === "radio") {
+      const i = (num(b.valores[p.marca.clave]) ?? 0) - 1;
+      if (i >= 0 && i < filas.length) filas[i].marca = true;
+    } else {
+      String(b.valores[p.marca.clave] ?? "")
+        .split(/[,\s]+/)
+        .map((t) => Number(t))
+        .filter((n) => Number.isFinite(n) && n >= 1 && n <= filas.length)
+        .forEach((n) => { filas[n - 1].marca = true; });
+    }
+  }
+
+  // v6: conservar las filas VACÍAS que el docente pidió (el contador
+  // «¿Cuántas?» quedó guardado) — si el formulario se repinta en
+  // mientras escribe, no se le colapsan las filas que aún no llenó.
+  const maximo = Number.isFinite(p.cuantas && p.cuantas.max) ? p.cuantas.max : 20;
+  const pedidas = Math.min(maximo, num(b.valores[repClaveCuantas(p)]) ?? 0);
+  while (filas.length < pedidas) {
+    filas.push({ celdas: (p.columnas || []).map(() => ""), etiqueta: "", marca: false });
+  }
+  return filas;
+}
+
+// Escribe las filas en b.valores con el formato de SIEMPRE.
+function repSerializar(b, p, filas) {
+  const grupos = new Map();
+  (p.columnas || []).forEach((c, idx) => {
+    if (!grupos.has(c.clave)) grupos.set(c.clave, []);
+    grupos.get(c.clave).push({ ...c, idx });
+  });
+
+  if (p.serializa === "json") {
+    const conExtras = filas.some((f) =>
+      (p.columnas || []).some((c, idx) => idx > 0 && String(f.celdas[idx] ?? "").trim())
+    );
+    if (conExtras) {
+      const arr = filas.map((f) => {
+        const o = {};
+        (p.columnas || []).forEach((c, idx) => {
+          const v = String(f.celdas[idx] ?? "").trim();
+          if (v && c.json) {
+            o[c.json] = c.json === "sublista"
+              ? v.split("|").map((s) => s.trim()).filter(Boolean)
+              : v;
+          }
+        });
+        return o;
+      });
+      b.valores[p.k] = JSON.stringify(arr);
+    } else {
+      b.valores[p.k] = filas.map((f) => String(f.celdas[0] ?? "").trim()).join("\n");
+    }
+  } else {
+    grupos.forEach((cols, clave) => {
+      if (cols.length > 1 || cols[0].resto) {
+        // columnas de la MISMA línea (se unen con « | »)
+        b.valores[clave] = filas
+          .map((f) => cols.map((c) => String(f.celdas[c.idx] ?? "").trim()).filter(Boolean).join(" | "))
+          .join("\n");
+      } else {
+        const c = cols[0];
+        b.valores[clave] = filas.map((f) => String(f.celdas[c.idx] ?? "").trim()).join("\n");
+      }
+    });
+  }
+
+  if (p.etiqueta) {
+    b.valores[p.etiqueta.clave] = filas.map((f) => String(f.etiqueta ?? "").trim()).join("\n");
+  }
+  if (p.marca) {
+    if (p.marca.tipo === "radio") {
+      const i = filas.findIndex((f) => f.marca);
+      b.valores[p.marca.clave] = i >= 0 ? String(i + 1) : "";
+    } else {
+      b.valores[p.marca.clave] = filas
+        .map((f, i) => (f.marca ? i + 1 : null))
+        .filter(Boolean)
+        .join(", ");
+    }
+  }
+  b.valores[repClaveCuantas(p)] = String(filas.length);
+}
+
+// ¿La fila está completa según sus columnas obligatorias?
+function repFilaIncompleta(p, fila) {
+  return (p.columnas || []).some((c, idx) => c.req && !String(fila.celdas[idx] ?? "").trim()) ||
+    !!(p.etiqueta && p.etiqueta.req && !String(fila.etiqueta ?? "").trim());
+}
+
+function campoRepetidor(b, p) {
+  const env = document.createElement("div");
+  env.className = "cr-rep";
+  env.dataset.rep = p.k;
+  env.dataset.k = p.k;
+
+  const filas = repFilas(b, p);
+  const cuantas = p.cuantas || {};
+  const MIN = Number.isFinite(cuantas.min) ? cuantas.min : 1;
+  const MAX = Number.isFinite(cuantas.max) ? cuantas.max : 20;
+  // v6: un bloque NUEVO arranca con las filas por defecto (p. ej. 3 respuestas)
+  // listas para escribir; los bloques con datos guardados abren con sus filas.
+  if (!filas.length) {
+    const defN = Math.max(MIN, Math.min(MAX, Math.round(Number(cuantas.def ?? MIN) || 0)));
+    for (let i = 0; i < defN; i++) {
+      filas.push({ celdas: (p.columnas || []).map(() => ""), etiqueta: "", marca: false });
+    }
+  }
+
+  // ---- contador «¿Cuántas?» ----
+  const top = document.createElement("div");
+  top.className = "cr-rep-top";
+  const et = document.createElement("label");
+  et.innerHTML = esc(p.et) + (p.req ? ' <span class="req" title="Obligatorio">●</span>' : "");
+  top.appendChild(et);
+
+  const zona = document.createElement("span");
+  zona.className = "cr-rep-cuantas";
+  zona.innerHTML = esc(cuantas.et || "¿Cuántas?") + " ";
+  const btnMenos = document.createElement("button");
+  btnMenos.type = "button";
+  btnMenos.textContent = "−";
+  btnMenos.title = "Una fila menos";
+  const inN = document.createElement("input");
+  inN.type = "number";
+  inN.min = String(MIN);
+  inN.max = String(MAX);
+  inN.value = String(Math.max(filas.length, MIN));
+  const btnMas = document.createElement("button");
+  btnMas.type = "button";
+  btnMas.textContent = "+";
+  btnMas.title = "Una fila más";
+  zona.append(btnMenos, inN, btnMas);
+  top.appendChild(zona);
+  env.appendChild(top);
+
+  const ayuda = document.createElement("p");
+  ayuda.className = "cr-rep-ayuda";
+  ayuda.textContent = p.ayuda || "Cada fila es un dato del bloque; se numeran solas.";
+  env.appendChild(ayuda);
+
+  const cont = document.createElement("div");
+  cont.className = "cr-rep-filas";
+  env.appendChild(cont);
+
+  const sincronizar = () => {
+    repSerializar(b, p, filas);
+    guardarBorrador();
+  };
+
+  const pintarFilas = () => {
+    inN.value = String(filas.length);
+    cont.innerHTML = "";
+    filas.forEach((fila, i) => {
+      const filaEl = document.createElement("div");
+      filaEl.className = "cr-rep-fila";
+      filaEl.dataset.repIdx = String(i);
+
+      const numEl = document.createElement("span");
+      numEl.className = "cr-rep-num";
+      numEl.textContent = String(i + 1);
+      filaEl.appendChild(numEl);
+
+      const celdas = document.createElement("div");
+      celdas.className = "cr-rep-celdas";
+      (p.columnas || []).forEach((c, idx) => {
+        const envC = document.createElement("div");
+        const etC = document.createElement("label");
+        etC.innerHTML = esc(c.et) + (c.req ? ' <span class="req">●</span>' : "");
+        envC.appendChild(etC);
+        const inC = document.createElement("input");
+        inC.type = "text";
+        inC.value = valorCampo(fila.celdas[idx] ?? "");
+        inC.placeholder = c.ej || "";
+        inC.addEventListener("input", () => {
+          fila.celdas[idx] = inC.value;
+          filaEl.classList.remove("error");
+          env.classList.remove("cr-rep-error");
+          sincronizar();
+        });
+        envC.appendChild(inC);
+        if (c.formato) envC.appendChild(barraFormato(inC, c.formato));   // mini barra, sin vista previa
+        celdas.appendChild(envC);
+      });
+
+      if (p.etiqueta) {
+        const envE = document.createElement("div");
+        const etE = document.createElement("label");
+        etE.textContent = p.etiqueta.et || "Etiqueta";
+        envE.appendChild(etE);
+        const inE = document.createElement("input");
+        inE.type = "text";
+        inE.value = valorCampo(fila.etiqueta ?? "");
+        inE.placeholder = p.etiqueta.ej || "";
+        inE.addEventListener("input", () => {
+          fila.etiqueta = inE.value;
+          sincronizar();
+        });
+        envE.appendChild(inE);
+        celdas.appendChild(envE);
+      }
+
+      filaEl.appendChild(celdas);
+
+      if (p.marca) {
+        const lb = document.createElement("label");
+        lb.className = "cr-rep-marca " + (p.marca.tipo === "radio" ? "radio" : "checks");
+        const inM = document.createElement("input");
+        inM.type = p.marca.tipo === "radio" ? "radio" : "checkbox";
+        inM.name = "rep-" + p.k + "-" + b.uid;
+        inM.checked = !!fila.marca;
+        inM.addEventListener("change", () => {
+          if (p.marca.tipo === "radio") filas.forEach((f) => { f.marca = false; });
+          fila.marca = inM.checked;
+          filas.forEach((f, j) => {
+            const chk = cont.querySelector('.cr-rep-fila[data-rep-idx="' + j + '"] .cr-rep-marca input');
+            if (chk) chk.checked = !!f.marca;
+          });
+          env.classList.remove("cr-rep-error");
+          sincronizar();
+        });
+        lb.appendChild(inM);
+        lb.appendChild(document.createTextNode(p.marca.et || "Correcta"));
+        filaEl.appendChild(lb);
+      }
+
+      cont.appendChild(filaEl);
+    });
+  };
+
+  const ponerN = (n) => {
+    const nuevo = Math.min(MAX, Math.max(MIN, Math.round(Number(n) || 0)));
+    if (nuevo === filas.length) return;   // v6: sin cambio → NO reconstruir (evita soltar nodos bajo el cursor)
+    while (filas.length < nuevo) {
+      filas.push({
+        celdas: (p.columnas || []).map(() => ""),
+        etiqueta: "",
+        marca: false,
+      });
+    }
+    if (filas.length > nuevo) filas.length = nuevo;
+    pintarFilas();
+    sincronizar();
+  };
+
+  btnMas.addEventListener("click", () => ponerN(filas.length + 1));
+  btnMenos.addEventListener("click", () => ponerN(filas.length - 1));
+  inN.addEventListener("change", () => ponerN(inN.value));
+
+  pintarFilas();
+  return env;
+}
+
 /* ---------------- formulario de un bloque ---------------- */
 
 // Catálogo de figuras de svg.js (import perezoso: si svg.js no carga,
@@ -2996,6 +3649,10 @@ function formularioEl(b, r, medida) {
   form.className = "cr-form";
 
   (r.params || []).forEach((p) => {
+    if (p.tipo === "repetidor") {   // v6: «¿Cuántas?» + filas idénticas numeradas
+      form.appendChild(campoRepetidor(b, p));
+      return;
+    }
     const envoltura = document.createElement("div");
 
     const etiqueta = document.createElement("label");
@@ -3068,6 +3725,9 @@ function formularioEl(b, r, medida) {
       campo.placeholder = p.ej || "";
     }
 
+    const conFormato = (p.tipo === "texto" || p.tipo === "area") && p.formato;   // v6: barra + «Así se ve»
+    if (conFormato) envoltura.appendChild(barraFormato(campo, p.formato));
+
     campo.dataset.k = p.k;
     campo.addEventListener("input", () => {
       b.valores[p.k] = campo.value;
@@ -3076,6 +3736,7 @@ function formularioEl(b, r, medida) {
     });
 
     envoltura.appendChild(campo);
+    if (conFormato) envoltura.appendChild(previstaFormato(campo, p.formato));
     form.appendChild(envoltura);
   });
 
@@ -3096,8 +3757,22 @@ function formularioEl(b, r, medida) {
 async function guardarBloque(b, form) {
   const r = recursoDe(b.recurso);
   const malos = [];
+  const notasRep = [];
   (r.params || []).forEach((p) => {
     if (!p.req) return;
+    if (p.tipo === "repetidor") {   // v6: valida filas y la marca correcta
+      const filas = repFilas(b, p);
+      const incompletas = [];
+      filas.forEach((f, i) => { if (repFilaIncompleta(p, f)) incompletas.push(i + 1); });
+      const sinMarca = p.marca && !filas.some((f) => f.marca);
+      if (!filas.length || incompletas.length || sinMarca) {
+        malos.push(p.k);
+        if (!filas.length) notasRep.push("«" + p.et + "»: agrega al menos una fila.");
+        else if (incompletas.length) notasRep.push("«" + p.et + "»: completa la fila " + incompletas.join(", ") + ".");
+        else notasRep.push("«" + p.et + "»: marca " + (p.marca.tipo === "radio" ? "la respuesta correcta" : "al menos una correcta") + ".");
+      }
+      return;
+    }
     const v = b.valores[p.k];
     let ok = true;
     if (p.tipo === "num") ok = num(v) !== undefined;
@@ -3109,11 +3784,24 @@ async function guardarBloque(b, form) {
   if (malos.length) {
     if (form) {
       malos.forEach((k) => {
-        const c = form.querySelector('[data-k="' + k + '"]');
-        if (c) c.classList.add("error");
+        const pRep = (r.params || []).find((x) => x.k === k && x.tipo === "repetidor");
+        if (!pRep) {
+          const c = form.querySelector('[data-k="' + k + '"]');
+          if (c) c.classList.add("error");
+          return;
+        }
+        const rep = form.querySelector('[data-rep="' + k + '"]');
+        if (!rep) return;
+        rep.classList.add("cr-rep-error");
+        repFilas(b, pRep).forEach((f, i) => {
+          if (repFilaIncompleta(pRep, f)) {
+            const el = rep.querySelector('.cr-rep-fila[data-rep-idx="' + i + '"]');
+            if (el) el.classList.add("error");
+          }
+        });
       });
     }
-    notify("Faltan campos obligatorios (●) en «" + r.nombre + "».", "warning");
+    notify(notasRep.length ? notasRep.join(" ") : "Faltan campos obligatorios (●) en «" + r.nombre + "».", "warning");
     return;
   }
 
@@ -3368,6 +4056,17 @@ function reintentarRecurso(r) {
   });
 }
 
+// ¿Hay un formulario de BORRADOR en edición? (v6: los repintados de
+// fondo NO roban el foco mientras el docente escribe)
+function editandoBorrador() {
+  const a = document.activeElement;
+  if (!a) return false;
+  const tag = (a.tagName || "").toLowerCase();
+  if (tag !== "input" && tag !== "textarea" && tag !== "select") return false;
+  const bloque = a.closest(".cr-bloque");
+  return !!(bloque && bloque.classList.contains("borrador"));
+}
+
 async function renderizarPreview() {
   if (!refUI || !document.contains(refUI.cvLienzo)) return;
   const miGen = ++generacionPreview;
@@ -3454,7 +4153,7 @@ async function renderizarPreview() {
       );
       if (!pendientes.length) break;
     }
-    if (cambio) {
+    if (cambio && !editandoBorrador()) {
       sincronizarTarjetas();
       dibujarPagina();
     }

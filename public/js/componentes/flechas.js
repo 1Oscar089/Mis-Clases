@@ -51,16 +51,32 @@
 //   .deshabilitar(bool)          deshabilita TODO (p. ej. durante una
 //                                transición o una actividad)
 //
-// USO:
+// ⚠️ ATENCIÓN con el ejemplo de abajo: «actual» y «irA» NO vienen de
+// fábrica — son variables TUYAS (tu estado de navegación y tu función
+// para cambiar de lámina/página). Si tu código no las define, el
+// navegador dice «actual is not defined» / «irA is not defined».
+// En las SECCIONES ni siquiera necesitas este archivo: section.js
+// dibuja sus flechas SOLAS (con 2 o más láminas) y el documento que
+// devuelve ya trae .siguiente() / .anterior() / .ir(i) / .actual.
+//
+// USO (autocontenido, funciona tal cual):
 //   import { crearFlechas } from "../../../js/componentes/flechas.js";
+//
+//   let actual = 0;                       // ← TU estado (defínelo tú)
+//   const TOTAL = 5;
+//   const irA = (i) => {                  // ← TU función (defínela tú)
+//     actual = Math.max(0, Math.min(TOTAL - 1, i));
+//     nav.setContador(actual + 1, TOTAL);
+//     nav.setPuedeAnterior(actual > 0);
+//     nav.setPuedeSiguiente(actual < TOTAL - 1);
+//   };
 //   const nav = crearFlechas({
 //     contenedor: zona,
 //     alAnterior: () => irA(actual - 1),
 //     alSiguiente: () => irA(actual + 1),
 //   });
-//   nav.setContador(2, 5);
-//   nav.setPuedeAnterior(actual > 0);
-//   nav.mostrarSiguiente(false);   // la esconde hasta que toque
+//   irA(0);
+//   // nav.mostrarSiguiente(false);   // la esconde hasta que toque
 // ============================================================
 
 import { inyectarEstilos, aplicarAncho, aplicarTamano } from "./base.js";

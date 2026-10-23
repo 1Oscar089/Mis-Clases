@@ -748,6 +748,9 @@ function cardHtml(c) {
       <p>${sub}</p>
       ${esDocente ? `
       <div class="clase-acciones">
+        <button class="clase-accion" data-acc="editar" title="Editar el título">
+          <sl-icon name="pencil"></sl-icon> Editar
+        </button>
         <button class="clase-accion${oculta ? "" : " activa"}" data-acc="ojo" title="${oculta ? "Hacerla visible para los estudiantes" : "Hacerla invisible: no existirá para los estudiantes"}">
           <sl-icon name="${oculta ? "eye-slash" : "eye"}"></sl-icon> ${oculta ? "Invisible" : "Visible"}
         </button>
@@ -857,6 +860,7 @@ function pintarListado() {
       if (acc) {
         e.stopPropagation();
         if (acc.dataset.acc === "ojo") alternarVisible(clase);
+        else if (acc.dataset.acc === "editar") abrirEditarTitulo(clase);
         else if (acc.dataset.acc === "resultados") abrirResultados(clase);
         return;
       }
@@ -979,6 +983,67 @@ async function alternarVisible(c) {
   }
 }
 
+/* ---------------- EDITAR TÍTULO (docente) ----------------
+   Clases, tareas y exámenes: solo se les edita el TÍTULO (día,
+   unidad y lección se quedan como están; el contenido .js no se
+   toca). El título vive en el campo "clase" del doc de Firestore. */
+
+function abrirEditarTitulo(c) {
+  const info = tipoDe(tipoActual);
+  const d = crearDialogo("", "Editar título", `
+    <p class="clases-crear-info">
+      ${escapeHtml(info.etiqueta.charAt(0).toUpperCase() + info.etiqueta.slice(1))}:
+      <strong>${escapeHtml(c.clase || c.id)}</strong> ·
+      Grado: <strong>${escapeHtml(nombreGrado(c.grado))}</strong> ·
+      Materia: <strong>${escapeHtml(c.materia || materiaDe(c.materiaId).nombre)}</strong>
+    </p>
+    <div class="clases-form">
+      <sl-input id="e-titulo" label="Nuevo título" value="${escapeHtml(c.clase || "")}"
+                placeholder="Ej. Sumas con llevando" clearable></sl-input>
+    </div>
+    <sl-button slot="footer" variant="primary" pill id="e-guardar">Guardar cambios</sl-button>`);
+
+  const guardarCambios = async () => {
+    const guardar = d.querySelector("#e-guardar");
+    const titulo = String(d.querySelector("#e-titulo").value || "").trim();
+    if (!titulo) {
+      notify("Escribe el nuevo título.", "warning");
+      return;
+    }
+    if (titulo === String(c.clase || "")) {
+      d.hide(); // no cambió nada: cerrar sin tocar Firebase
+      return;
+    }
+    guardar.loading = true;
+    try {
+      await db.clases.actualizar(c.grado, c.materiaId, c.id, { clase: titulo });
+      c.clase = titulo; // fila enriquecida del listado actual
+      const cruda = piezasCache.find(
+        (x) => x.grado === c.grado && x.materiaId === c.materiaId && x.id === c.id
+      );
+      if (cruda) cruda.clase = titulo; // también en la caché cruda
+      try {
+        localStorage.setItem(
+          claveCacheDocente(c.grado, c.materiaId, tipoActual),
+          JSON.stringify(piezasCache)
+        );
+      } catch (e) { /* ignorar */ }
+      d.hide();
+      pintarListado();
+      notify("Título actualizado a «" + titulo + "».", "success");
+    } catch (e) {
+      notify("No se pudo actualizar el título: " + (e?.code || e?.message || "error"), "danger");
+    } finally {
+      guardar.loading = false;
+    }
+  };
+
+  d.querySelector("#e-guardar").addEventListener("click", guardarCambios);
+  d.querySelector("#e-titulo").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") guardarCambios();
+  });
+}
+
 /* ---------------- Abrir contenido de una pieza ---------------- */
 
 async function abrirPieza(clase) {
@@ -1070,7 +1135,9 @@ function abrirModalCrear() {
   // D{día}·U{unidad}·L{lección}); para examen/tarea/recurso quedan
   // opcionales (agrupan y ordenan).
   const esClase = tipoActual === "clase";
-  const op = esClase ? "" : ` <span style="color:#9ca3af;font-weight:400">(opcional)</span>`;
+  // ⚠ El «(opcional)» va como TEXTO PLANO dentro del atributo label:
+  // meter HTML en un atributo rompe el texto (se veía «<span style=»).
+  const op = esClase ? "" : " (opcional)";
 
   const d = crearDialogo("", info.crear, `
     <p class="clases-crear-info">
@@ -1181,7 +1248,13 @@ function abrirResultados(clase) {
     <div class="pz-res-tabla" id="pr-tabla" hidden></div>`
   );
 
-  (async () => {
+  // La carga va en una función aparte: el botón «Reintentar» del error
+  // vuelve a llamarla sin cerrar el modal.
+  const cargar = async () => {
+    const cargandoEl = d.querySelector("#pr-cargando");
+    const zonaTabla = d.querySelector("#pr-tabla");
+    cargandoEl.hidden = false;
+    zonaTabla.hidden = true;
     try {
       // 1) Estudiantes del grado (users/{uid} con ese grado)
       const estudiantes = (await db.usuarios.porGrado(gradoSel))
@@ -1242,8 +1315,11 @@ function abrirResultados(clase) {
           No se pudieron leer los resultados (${escapeHtml(String(e?.code || e?.message || "error"))}).<br/>
           Revisa las reglas de Firestore: el docente necesita leer
           <b>users</b> y <b>notas/{uid}/clases</b> de su grado.
+          <br/><button class="clases-btn-crear" id="pr-reintentar" style="margin-top:.7rem">Reintentar</button>
         </div>`;
+      tabla.querySelector("#pr-reintentar").addEventListener("click", cargar);
     }
-  })();
-}
+  };
 
+  cargar();
+}
