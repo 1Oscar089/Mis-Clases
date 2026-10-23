@@ -1,5 +1,5 @@
 // ============================================================
-// db.js — ÚNICA capa de acceso a datos (js/data/db.js) · v3
+// db.js — ÚNICA capa de acceso a datos (js/data/db.js) · v4
 //
 // REGLA DEL PROYECTO: NINGÚN otro archivo toca Firestore o Sheets.
 //   · Firebase AUTH (login Google) queda en components/auth.js:
@@ -32,6 +32,26 @@
 //         recurso a otro grado/materia (crea la copia en el nuevo
 //         lugar y elimina el doc viejo).
 //
+// NUEVO EN v4 (eliminación + cierre en vivo · nota de clase):
+//   · db.clases.vigilar(grado, materiaId, alCerrar)
+//       → VIGÍA EN TIEMPO REAL (onSnapshot) de las piezas de una
+//         materia. Cuando una pieza VISIBLE se borra ("eliminada")
+//         o pasa a invisible ("invisible"), llama alCerrar(id,
+//         motivo). Con esto, el estudiante que esté DENTRO de una
+//         pieza eliminada/ocultada vuelve solo a inicio.js y, si era
+//         clase, su nota se consolida.
+//   · db.notas.guardarNotaMateria(uid, materiaId, dia, puntos)
+//       → NOTA DE CLASE POR MATERIA en Firebase:
+//         users/{uid}/notas/{materiaId} = { dia1: 10, dia2: 8.5, … }
+//         (un documento por materia; un campo "diaN" por día).
+//   · db.notas.consolidarCierre(perfil, pieza)
+//       → CIERRA la nota de UNA clase: lee el total en
+//         notas/{uid}/clases/{id}, lo EScribe en
+//         users/{uid}/notas/{materiaId}.diaN y lo re-reporta a
+//         Sheets (columna D{día}·U·L + Σ/Media). Mejor esfuerzo:
+//         nunca lanza. SOLO para tipo "clase" (tarea/examen ya
+//         reportan al Enviar).
+//
 // ESTRUCTURA DE LAS PIEZAS (clases, tareas, exámenes y recursos):
 //   TODAS viven en Firestore como clases:
 //     clases/{grado}/{materiaId}/{id}
@@ -44,8 +64,8 @@
 //
 // ESTADO ACTUAL:
 //   · db.usuarios (users/{uid})                     ✅ + porGrado
-//   · db.clases   (clases/{grado}/{materia}/{id})   ✅ + actualizar
-//   · db.notas    (notas/{uid}/clases/{claseId})    ✅ + espejo en user
+//   · db.clases   (clases/{grado}/{materia}/{id})   ✅ + actualizar + vigilar
+//   · db.notas    (notas/{uid}/clases/{claseId})    ✅ + espejo user + notas/{materia}
 //   · db.sheets   (puente con Google Sheets)        ✅
 //
 // CONVENCIÓN: los métodos de Firestore SÍ pueden lanzar error (es la
@@ -64,6 +84,7 @@ import {
   getDocs,
   query,
   where,
+  onSnapshot,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {
@@ -154,12 +175,51 @@ const clases = {
     );
   },
 
-  /** NUEVO v3 — Elimina UNA pieza. La usa el editor de recursos al
-   *  MOVER un recurso a otro grado/materia: primero se crea la copia
-   *  en el nuevo lugar (mismo id) y después se borra este doc.
+  /** NUEVO v3 — Elimina UNA pieza. La usa el botón ELIMINAR de las
+   *  tarjetas (clases, tareas, exámenes y recursos) y el editor de
+   *  recursos al MOVER un recurso a otro grado/materia.
    *  Puede lanzar (Firestore = fuente de verdad). */
   async eliminar(grado, materiaId, id) {
     await deleteDoc(doc(firestore, "clases", String(grado), materiaId, id));
+  },
+
+  /** NUEVO v4 — VIGÍA EN TIEMPO REAL de UNA materia de un grado.
+   *  Escucha clases/{grado}/{materiaId} con onSnapshot y llama
+   *  alCerrar(id, motivo) cuando una pieza que ESTABA VISIBLE:
+   *    · se borra            → motivo "eliminada"
+   *    · pasa a invisible    → motivo "invisible"
+   *  Las piezas invisibles o nuevas no disparan nada (el estudiante
+   *  nunca pudo entrar a ellas). Devuelve la función quitar() del
+   *  listener (la llama la vista al salir de la página). */
+  vigilar(grado, materiaId, alCerrar) {
+    const ref = collection(firestore, "clases", String(grado), materiaId);
+    const visibles = new Map(); // id → estaba visible (true|false)
+    const quitar = onSnapshot(
+      ref,
+      (snap) => {
+        const actuales = new Set();
+        snap.forEach((d) => {
+          actuales.add(d.id);
+          const visible = d.data().visible !== false;
+          const antes = visibles.get(d.id);
+          if (antes === true && !visible) {
+            try { alCerrar?.(d.id, "invisible"); } catch (e) { /* aviso propio */ }
+          }
+          visibles.set(d.id, visible);
+        });
+        // Borradas: estaban registradas y ya no existen en la colección
+        for (const [id, estabaVisible] of visibles) {
+          if (!actuales.has(id)) {
+            visibles.delete(id);
+            if (estabaVisible) {
+              try { alCerrar?.(id, "eliminada"); } catch (e) { /* aviso propio */ }
+            }
+          }
+        }
+      },
+      (e) => console.warn("[db] vigía clases:", e?.code || e?.message || e)
+    );
+    return quitar;
   },
 };
 
@@ -289,15 +349,93 @@ const notas = {
     return salidas;
   },
 
+  /** NUEVO v4 — NOTA DE CLASE POR MATERIA (Firebase):
+   *  users/{uid}/notas/{materiaId} = { diaN: puntos, actualizadoEn }
+   *  Un documento por materia; un campo "diaN" por día trabajado
+   *  (dia 3 → campo "dia3": 10). Puede lanzar. */
+  async guardarNotaMateria(uid, materiaId, dia, puntos) {
+    const diaLimpio = Number(dia);
+    if (!uid || !materiaId || !Number.isInteger(diaLimpio) || diaLimpio <= 0) {
+      throw new Error("nota-materia-datos");
+    }
+    await setDoc(
+      doc(firestore, "users", String(uid), "notas", String(materiaId)),
+      {
+        ["dia" + diaLimpio]: Math.round((Number(puntos) || 0) * 10) / 10,
+        actualizadoEn: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  },
+
+  /** NUEVO v4 — Lee el documento de notas por materia del estudiante
+   *  (users/{uid}/notas/{materiaId}) → { dia1: 10, … } o null. */
+  async notaMateria(uid, materiaId) {
+    const snap = await getDoc(
+      doc(firestore, "users", String(uid), "notas", String(materiaId))
+    );
+    return snap.exists() ? snap.data() : null;
+  },
+
+  /** NUEVO v4 — CONSOLIDAR LA NOTA AL CERRARSE UNA CLASE.
+   *  La llama la vista del ESTUDIANTE cuando su docente elimina la
+   *  pieza o la deja invisible y él estaba dentro:
+   *    1) lee el TOTAL en notas/{uid}/clases/{pieza.id},
+   *    2) lo escribe en users/{uid}/notas/{materiaId}.diaN (Firebase),
+   *    3) re-reporta a Sheets la columna D{día}·U·L con ese total
+   *       (notas por actividad y nota final: Σ/Media se actualizan).
+   *  SOLO tipo "clase": la nota de tarea/examen ya se reporta al
+   *  Enviar. Mejor esfuerzo: NUNCA lanza. */
+  async consolidarCierre(perfil, pieza) {
+    const salida = { ok: true, puntos: 0, firebase: false, sheets: null };
+    try {
+      if (!perfil?.uid || !pieza?.id) return { ok: false, razon: "datos" };
+      const tipo = String(pieza.tipo || "clase").toLowerCase();
+      if (tipo !== "clase") return { ...salida, omitido: tipo };
+
+      // 1) Total actual de la clase (si no hay nota, cuenta como 0)
+      let nota = null;
+      try { nota = await this.leer(perfil.uid, pieza.id); } catch (e) { /* sin nota */ }
+      const puntos = Math.round((Number(nota?.puntos) || 0) * 10) / 10;
+      salida.puntos = puntos;
+
+      // 2) Firebase: users/{uid}/notas/{materiaId} → diaN: puntos
+      const dia = Number(pieza.dia);
+      if (Number.isInteger(dia) && dia > 0 && pieza.materiaId) {
+        try {
+          await this.guardarNotaMateria(perfil.uid, pieza.materiaId, dia, puntos);
+          salida.firebase = true;
+        } catch (e) {
+          salida.errorFirebase = e?.code || e?.message || "error";
+        }
+      }
+
+      // 3) Sheets: columna D{día}·U·L del estudiante con el total
+      salida.sheets = await this.reportarActividad({
+        perfil: { nie: perfil.nie, nombre: perfil.nombre },
+        clase: { id: pieza.id, dia: pieza.dia, unidad: pieza.unidad, leccion: pieza.leccion },
+        materia: pieza.materia || pieza.materiaId,
+        grado: pieza.grado,
+        tipo: "clase",
+        puntos,
+        titulo: pieza.clase || pieza.titulo || "",
+      });
+      return salida;
+    } catch (e) {
+      return { ok: false, razon: "peticion", detalle: String((e && e.message) || e) };
+    }
+  },
+
   /** ESPEJO en Sheets de la nota de UNA actividad (mejor esfuerzo).
       datos: { perfil:{nie,nombre}, clase:{dia,unidad,leccion} | {id},
                materia, grado, actividadId?, tipo:"clase"|"examen"|"tarea",
                puntos, titulo? }
       · tipo "clase": columna D{dia}·U{unidad}·L{leccion} con el TOTAL
         de la clase para ese NIE (se re-reporta y siempre queda al día).
-      · tipo "tarea"/"examen": fila actividadId × columna NIE con el
-        TOTAL de la tarea/examen (el examen se reporta UNA sola vez,
-        desde finalizarExamen() de js/utils/opcionMultiple.js). */
+      · tipo "tarea"/"examen": fila del ESTUDIANTE (NIE) × columna de
+        la actividad (T/E D{día}·U·L título) con el TOTAL (el examen
+        se reporta UNA sola vez, desde finalizarExamen() de
+        js/utils/opcionMultiple.js). */
   async reportarActividad(datos) {
     try {
       return await actividad(datos || {});
@@ -323,18 +461,17 @@ const sheets = {
   /** Lee una hoja completa → { ok, valores: [ [celda…] ] } (lectura). */
   leer,
   /** Crea/actualiza hojas y sincroniza alumnado, clases, exámenes y tareas.
-      datos: { grado?, materia?, estudiantes:[{uid,nombre,nie}],
-               clases:[{dia,unidad,leccion,…}], examenes:[{id,titulo}],
-               tareas:[{id,titulo}] } */
+      datos: { estudiantes:[{uid,nombre,nie,grado}],
+               hojas:[{grado, materia, clases, examenes, tareas}] } */
   configurar,
   /** Espejo en Sheets de UNA nota de actividad (mejor esfuerzo).
       datos: { perfil:{nie,nombre}, clase:{dia,unidad,leccion},
                materia, grado, actividadId, tipo:"clase"|"examen"|"tarea",
                puntos, titulo } */
   actividad,
-  /** Registra la asistencia de UN día completo.
-      datos: { grado, fecha:"2026-10-20",
-               estudiantes:[{uid,nombre,nie,estado:"A"|"T"|"F"}] } */
+  /** Registra la asistencia de UN día completo (hoja única, todos los
+      grados). datos: { fecha:"2026-10-20",
+               estudiantes:[{uid,nombre,nie,grado,estado:"+"|"-"|"P"}] } */
   asistencia,
 };
 

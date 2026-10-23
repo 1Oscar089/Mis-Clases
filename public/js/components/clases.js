@@ -1,6 +1,6 @@
 // ============================================================
 // clases.js — VISTA de piezas: Clases · Exámenes · Tareas ·
-//             Recursos (js/components/clases.js) · v5
+//             Recursos (js/components/clases.js) · v6
 //
 // UNA SOLA implementación para las cuatro páginas del inicio:
 //   renderPiezas(perfil, contenedor, tipo)  con  tipo =
@@ -24,6 +24,19 @@
 //     Es UN boolean en Firebase (clase.visible). Una pieza invisible
 //     NO se muestra al estudiante — para él no existe.
 //
+// ACCIONES DEL DOCENTE (dentro de la tarjeta, SOLO ICONOS):
+//   · lápiz = editar título · ojo = visible/invisible ·
+//     gráfica = resultados (clase/tarea/examen) ·
+//     papelera = ELIMINAR (con confirmación). Al eliminar, los
+//     estudiantes que estén DENTRO vuelven solos al inicio.
+//
+// VIGÍA EN TIEMPO REAL (estudiante):
+//   · Mientras el estudiante está en esta vista (o DENTRO de una
+//     pieza), db.clases.vigilar escucha sus materias. Si la pieza
+//     abierta se elimina o pasa a invisible, el estudiante vuelve
+//     solo a inicio.js y, si era CLASE, la nota se consolida
+//     (Sheets + users/{uid}/notas/{materiaId}.diaN vía db.js).
+//
 // ESTUDIANTE:
 //   · Elige SU materia (chip) y ve las piezas VISIBLES de ese tipo,
 //     SEPARADAS POR UNIDAD (Unidad 1, Unidad 2… y «General» al final
@@ -35,13 +48,8 @@
 //     MODAL DE RESULTADOS por pieza: cada estudiante del grado con
 //     su nota POR ACTIVIDAD y la NOTA FINAL (viene de notas/{uid}/
 //     clases/{claseId}; la misma nota queda espejada en el user del
-//     estudiante: users/{uid}.notas.{claseId} = nota del día/clase).
+//     estudiante como nota del día).
 //
-// NAVEGACIÓN: la flecha «Volver» vuelve al INICIO en todas las vistas.
-//
-// Convención: CSS implícito · 100% responsivo · bajo la userbar.
-// ============================================================
-
 // REGLA DEL PROYECTO: nada toca Firestore directo → todo pasa por db.js
 import { db } from "../data/db.js";
 import { GRADOS } from "./auth.js";
@@ -115,6 +123,8 @@ let piezasCache = [];     // listado en memoria (ya ordenado)
 let textoBusqueda = "";
 let cargando = false;
 let estilosListos = false;
+let vigia = null;         // vigía del grado (estudiante): { quitar() }
+let piezaAbierta = null;  // pieza abierta por el estudiante: { clase, raiz }
 
 const CLAVE_SEL_DOCENTE = "mco_clases_docente";       // última selección del docente
 const CLAVE_SEL_ESTUDIANTE = "mco_clases_estudiante"; // última materia del estudiante
@@ -412,28 +422,32 @@ function inyectarEstilos() {
       color: #9ca3af;
     }
 
-    /* Acciones del docente EN la tarjeta (ojo · resultados) */
+    /* Acciones del docente EN la tarjeta (solo iconos):
+       lápiz · ojo · resultados · papelera */
     .clase-acciones {
       display: flex;
-      gap: .4rem;
+      flex-wrap: wrap;
+      gap: .35rem;
       margin-top: .7rem;
     }
     .clase-accion {
       display: inline-flex;
       align-items: center;
-      gap: .3rem;
+      justify-content: center;
+      width: 34px;
+      height: 30px;
       border: 1px solid #e5e7eb;
       background: #f9fafb;
       color: #6b7280;
       border-radius: .55rem;
-      padding: .3rem .6rem;
-      font-size: .76rem;
-      font-weight: 700;
       cursor: pointer;
+      padding: 0;
       transition: border-color .15s ease, color .15s ease, background .15s ease;
     }
+    .clase-accion sl-icon { font-size: 1rem; }
     .clase-accion:hover { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
     .clase-accion.activa { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
+    .clase-accion.eliminar:hover { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
 
     .clases-vacio {
       border: 2px dashed #e5e7eb;
@@ -613,7 +627,9 @@ export function renderPiezas(perfil, contenedor, tipo = "clase") {
   esDocente = perfil.rol === "docente";
   piezasCache = [];
   textoBusqueda = "";
+  piezaAbierta = null;
   inyectarEstilos();
+  iniciarVigia();   // estudiante: escucha eliminadas/invisibles en vivo
 
   gradoSel = null;
   materiaSel = null;
@@ -695,8 +711,10 @@ function renderInterno() {
       <div id="zona-listado"></div>
     </div>`;
 
-  // Volver al inicio (restaura el título de la userbar)
+  // Volver al inicio (restaura el título de la userbar y apaga el vigía)
   contenedorActual.querySelector("#btn-volver").addEventListener("click", () => {
+    quitarVigia();
+    piezaAbierta = null;
     renderUserbar(perfilActual);
     renderInicio(perfilActual, contenedorActual);
   });
@@ -733,6 +751,7 @@ function cargarListado() {
 function cardHtml(c) {
   const color = colorDeMateria(c.materiaId);
   const oculta = esDocente && c.visible === false;
+  const info = tipoDe(c.tipo || tipoActual);
   const sub = (c.unidad != null && c.unidad !== "") || (c.leccion != null && c.leccion !== "")
     ? `Unidad ${escapeHtml(String(c.unidad ?? "—"))} · Lección ${escapeHtml(String(c.leccion ?? "—"))}`
     : "Material de apoyo";
@@ -748,16 +767,19 @@ function cardHtml(c) {
       <p>${sub}</p>
       ${esDocente ? `
       <div class="clase-acciones">
-        <button class="clase-accion" data-acc="editar" title="Editar el título">
-          <sl-icon name="pencil"></sl-icon> Editar
+        <button class="clase-accion" data-acc="editar" title="Editar el título" aria-label="Editar el título">
+          <sl-icon name="pencil"></sl-icon>
         </button>
-        <button class="clase-accion${oculta ? "" : " activa"}" data-acc="ojo" title="${oculta ? "Hacerla visible para los estudiantes" : "Hacerla invisible: no existirá para los estudiantes"}">
-          <sl-icon name="${oculta ? "eye-slash" : "eye"}"></sl-icon> ${oculta ? "Invisible" : "Visible"}
+        <button class="clase-accion${oculta ? "" : " activa"}" data-acc="ojo" title="${oculta ? "Hacerla visible para los estudiantes" : "Hacerla invisible: no existirá para los estudiantes"}" aria-label="Cambiar visibilidad">
+          <sl-icon name="${oculta ? "eye-slash" : "eye"}"></sl-icon>
         </button>
         ${c.tipo !== "recurso" ? `
-        <button class="clase-accion" data-acc="resultados" title="Resultados del estudiante por actividad y nota final">
-          <sl-icon name="clipboard-data"></sl-icon> Resultados
+        <button class="clase-accion" data-acc="resultados" title="Resultados del estudiante por actividad y nota final" aria-label="Ver resultados">
+          <sl-icon name="clipboard-data"></sl-icon>
         </button>` : ""}
+        <button class="clase-accion eliminar" data-acc="eliminar" title="Eliminar ${escapeHtml(info.etiqueta)}" aria-label="Eliminar ${escapeHtml(info.etiqueta)}">
+          <sl-icon name="trash3"></sl-icon>
+        </button>
       </div>` : ""}
     </article>`;
 }
@@ -862,6 +884,7 @@ function pintarListado() {
         if (acc.dataset.acc === "ojo") alternarVisible(clase);
         else if (acc.dataset.acc === "editar") abrirEditarTitulo(clase);
         else if (acc.dataset.acc === "resultados") abrirResultados(clase);
+        else if (acc.dataset.acc === "eliminar") abrirConfirmarEliminar(clase);
         return;
       }
       abrirPieza(clase);
@@ -983,6 +1006,109 @@ async function alternarVisible(c) {
   }
 }
 
+/* ---------------- ELIMINAR pieza (docente, con confirmación) ----------------
+   La papelera de la tarjeta. Borra el doc en Firestore; si un
+   estudiante está DENTRO, el vigía lo regresa al inicio (y si era
+   clase, su nota se consolida). */
+
+function abrirConfirmarEliminar(c) {
+  const info = tipoDe(c.tipo || tipoActual);
+  const d = crearDialogo("", "Eliminar " + info.etiqueta, `
+    <p class="clases-crear-info">
+      ¿Eliminar <strong>${escapeHtml(c.clase || c.id)}</strong> de
+      <strong>${escapeHtml(nombreGrado(c.grado))}</strong> ·
+      <strong>${escapeHtml(c.materia || materiaDe(c.materiaId).nombre)}</strong>?
+      Los estudiantes que estén dentro volverán al inicio automáticamente.
+      Esta acción no se puede deshacer.
+    </p>
+    <sl-button slot="footer" id="el-no">Cancelar</sl-button>
+    <sl-button slot="footer" variant="danger" pill id="el-si">Eliminar</sl-button>`);
+
+  d.querySelector("#el-no").addEventListener("click", () => d.hide());
+  d.querySelector("#el-si").addEventListener("click", async () => {
+    const si = d.querySelector("#el-si");
+    si.loading = true;
+    try {
+      await db.clases.eliminar(c.grado, c.materiaId, c.id);
+      piezasCache = piezasCache.filter(
+        (x) => !(x.id === c.id && x.materiaId === c.materiaId && x.grado === c.grado)
+      );
+      try {
+        localStorage.setItem(
+          claveCacheDocente(c.grado, c.materiaId, tipoActual),
+          JSON.stringify(piezasCache)
+        );
+      } catch (e) { /* ignorar */ }
+      d.hide();
+      pintarListado();
+      notify(
+        info.etiqueta.charAt(0).toUpperCase() + info.etiqueta.slice(1) +
+        " «" + (c.clase || c.id) + "» eliminada.",
+        "success"
+      );
+    } catch (e) {
+      notify("No se pudo eliminar: " + (e?.code || e?.message || "error"), "danger");
+    } finally {
+      si.loading = false;
+    }
+  });
+}
+
+/* ---------------- VIGÍA (estudiante): cierre/eliminación en vivo ----------------
+   Mientras el estudiante está en esta vista — o DENTRO de una pieza —
+   escucha sus materias con db.clases.vigilar. Si la pieza abierta se
+   elimina o pasa a invisible:
+     · vuelve solo a inicio.js (renderUserbar + renderInicio),
+     · si era CLASE, la nota se consolida: Sheets (columna D·U·L +
+       Σ/Media) y Firebase (users/{uid}/notas/{materiaId}.diaN).
+   «Dentro» = la raíz de la pieza sigue conectada al DOM: al pulsar
+   «Volver» la raíz se desconecta y el vigía deja de actuar. */
+
+function iniciarVigia() {
+  quitarVigia();
+  if (esDocente) return;
+  const grado = (perfilActual.grados || [])[0];
+  if (grado == null) return;
+  const quites = MATERIAS.map((m) =>
+    db.clases.vigilar(grado, m.id, (id, motivo) => piezaCerradaRemota(m.id, id, motivo))
+  );
+  vigia = {
+    quitar: () => quites.forEach((q) => { try { q(); } catch (e) { /* nada */ } }),
+  };
+}
+
+function quitarVigia() {
+  try { vigia?.quitar(); } catch (e) { /* nada */ }
+  vigia = null;
+}
+
+function piezaCerradaRemota(materiaId, id, motivo) {
+  const p = piezaAbierta;
+  // ¿Sigue DENTRO? (la raíz de la pieza sigue conectada al DOM)
+  if (!p || !p.raiz || !p.raiz.isConnected) return;
+  if (p.clase.materiaId !== materiaId || p.clase.id !== id) return;
+  cerrarPorDocente(p.clase, motivo);
+}
+
+async function cerrarPorDocente(clase, motivo) {
+  piezaAbierta = null;
+  const titulo = String(clase.clase || clase.id || "");
+  // Nota del día a Sheets y Firebase (solo clases): mejor esfuerzo
+  if ((clase.tipo || "clase") === "clase") {
+    try { await db.notas.consolidarCierre(perfilActual, clase); } catch (e) { /* nada */ }
+  }
+  quitarVigia();
+  renderUserbar(perfilActual);
+  renderInicio(perfilActual, contenedorActual);
+  notify(
+    motivo === "eliminada"
+      ? "«" + titulo + "» fue eliminada por tu docente. Volviste al inicio."
+      : "«" + titulo + "» fue cerrada por tu docente. Tu nota quedó guardada.",
+    "warning",
+    6500
+  );
+}
+
 /* ---------------- EDITAR TÍTULO (docente) ----------------
    Clases, tareas y exámenes: solo se les edita el TÍTULO (día,
    unidad y lección se quedan como están; el contenido .js no se
@@ -1055,6 +1181,10 @@ async function abrirPieza(clase) {
     const mod = await import(ruta);
     if (typeof mod.render === "function") {
       mod.render(perfilActual, contenedorActual, clase);
+      // Recuerda la pieza abierta y su raíz en el DOM: mientras esa raíz
+      // siga conectada, el estudiante sigue DENTRO (si la pieza se
+      // elimina u oculta en vivo, el vigía lo regresa al inicio).
+      piezaAbierta = { clase, raiz: contenedorActual.firstElementChild || null };
     } else {
       notify("El contenido de esta " + tipoDe(tipoActual).etiqueta + " todavía no está disponible.");
     }

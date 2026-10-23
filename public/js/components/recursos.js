@@ -1,5 +1,15 @@
 // ============================================================
-// recursos.js — Página «Recursos» (js/components/recursos.js) · v2
+// recursos.js — Página «Recursos» (js/components/recursos.js) · v4
+//
+// NUEVO EN v4 (los 3 pedidos):
+//   1. PDF CON CACHÉ LOCAL: el PDF se baja UNA sola vez y queda
+//      guardado en el navegador (Cache API). Las siguientes
+//      aperturas son INSTANTÁNEAS: nada de volver a recargar.
+//   2. PÁGINA EXACTA: el visor propio (pdf.js, también cacheado)
+//      detecta SOLO la página donde vas mientras lees y la guarda.
+//      Al cerrar y reabrir llegas EXACTAMENTE a ella (ej. la 100).
+//   3. TARJETAS PREDEFINIDAS: el título ya NO se recorta a 2
+//      líneas — «Libro de texto 7mo grado» se lee COMPLETO.
 //
 // REHECHA «tipo docsdrive.js, pero gestionado desde Firebase».
 // Todo vive en ESTE archivo: la vista, el creador y el visor.
@@ -18,8 +28,15 @@
 //     (A→Z) y dentro de cada materia ordenado POR TÍTULO (A→Z).
 //   · Botón «Crear recurso»: pide TÍTULO, ENLACE, GRADO y MATERIA.
 //     Detecta el tipo del enlace EN VIVO mientras se escribe.
-//   · OJO visible/invisible en cada tarjeta (un recurso invisible
-//     NO existe para el estudiante).
+//   · OJO visible/invisible y PAPELERA eliminar en cada tarjeta
+//     (solo iconos, dentro de la tarjeta). Un recurso invisible NO
+//     existe para el estudiante; al eliminarlo, los estudiantes que
+//     lo tengan abierto vuelven solos al inicio (VIGÍA).
+//
+// VIGÍA EN TIEMPO REAL (estudiante):
+//   · db.clases.vigilar escucha los recursos del grado del estudiante.
+//     Si el recurso ABIERTO (modal) se elimina o pasa a invisible,
+//     el modal se cierra y el estudiante vuelve solo a inicio.js.
 //
 // VISTA DEL ESTUDIANTE — UNA SOLA VISTA:
 //   · Sin chips ni selecciones: entran y ven TODOS sus recursos del
@@ -31,7 +48,8 @@
 //   · YouTube / Vimeo → reproductor embebido.
 //   · Imagen (.png .jpg .gif .webp .svg …) → se muestra.
 //   · Audio (.mp3 .wav .ogg …) y video (.mp4 .webm …) → reproductor.
-//   · PDF → visor del navegador.
+//   · PDF → visor rápido propio: queda en el dispositivo (caché) y
+//     la página se detecta/guarda sola (con plan B: visor del navegador).
 //   · Cualquier otra URL http(s) → iframe (página web).
 //   · URL DEL PROYECTO también vale: «recursos/img/foto.png» o
 //     «/recursos/js/visuales/reloj.js» — rutas relativas incluidas.
@@ -46,7 +64,9 @@
 //
 // PROGRESO en localStorage (clave "mco_recursos_progreso_v1"):
 //   · Documentos con páginas (PDF/Drive): pill «Página − n +» que se
-//     guarda sola (y #page=N al reabrir los PDF).
+//     guarda sola. En los PDF PROPIOS (tipo "pdf") la página se
+//     detecta SOLA mientras lees (visor pdf.js) y al reabrir llegas
+//     exacto a donde ibas; los de Drive siguen con #page=N manual.
 //   · Audio y video: se recuerda el MINUTO donde iba y se retoma.
 //   · Cada tarjeta visitada guarda última vez + veces: al volver a
 //     entrar, el aviso «Continúa donde ibas» abre el último recurso.
@@ -175,6 +195,13 @@ const SVG_LAPIZ =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
   'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>';
+
+const SVG_PAPELERA =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+  '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
+  '<path d="M10 11v6M14 11v6"/></svg>';
 
 let estilosListos = false;
 let vigiaCierreListo = false; // listeners globales de guardado (una sola vez)
@@ -327,7 +354,7 @@ function textoTipo(rec) {
     video: "Video: reproductor con posición guardada",
     youtube: "Video de YouTube",
     vimeo: "Video de Vimeo",
-    pdf: "PDF: visor del navegador con páginas guardadas",
+    pdf: "PDF: queda guardado en tu dispositivo; la página se marca sola",
     garchivo: "Archivo de Google Drive (PDF u otro)",
     gdoc: "Documento de Google",
     ghoja: "Hoja de cálculo de Google",
@@ -502,8 +529,11 @@ function inyectarEstilos() {
       font-weight: 800; font-size: .6rem; letter-spacing: .02em; }
     .rec-ficha[data-tipo="gcarpeta"], .rec-ficha[data-tipo="descarga"] { font-size: .48rem; }
     .rec-cuerpo { min-width: 0; flex: 1; }
-    .rec-nombre { font-size: .92rem; font-weight: 650; color: #1e293b; line-height: 1.25;
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* TARJETA PREDEFINIDA: el título NO se recorta — se lee COMPLETO
+       (p. ej. «Libro de texto 7mo grado»); min-height fija 2 líneas
+       para que todas las tarjetas se vean uniformes. */
+    .rec-nombre { font-size: .92rem; font-weight: 650; color: #1e293b; line-height: 1.3;
+      min-height: 2.6em; overflow-wrap: anywhere; }
     .rec-datos { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
     .rec-dato { font-size: .68rem; font-weight: 600; color: #475569;
       background: #f1f5f9; padding: 1px 7px; border-radius: 999px; }
@@ -520,6 +550,7 @@ function inyectarEstilos() {
       transition: border-color .15s, color .15s, background .15s; }
     .rec-ojo:hover { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
     .rec-ojo.visible { border-color: #a7f3d0; background: #ecfdf5; color: #059669; }
+    .rec-ojo.eliminar:hover { border-color: #fca5a5; background: #fef2f2; color: #b91c1c; }
     .rec-ojo svg { width: 17px; height: 17px; }
 
     /* ── Estados vacíos / cargando ── */
@@ -579,6 +610,26 @@ function inyectarEstilos() {
     .rec-iframe { width: 100%; height: 100%; border: 0; display: block; }
     .rec-nota-web { font-size: .72rem; color: #64748b; background: #f1f5f9;
       padding: 3px 12px; border-bottom: 1px solid #e2e8f0; }
+
+    /* ── Visor PDF PROPIO (caché local + página detectada sola) ── */
+    .rec-pdf { position: absolute; inset: 0; overflow: auto;
+      overscroll-behavior: contain; background: #525659;
+      -webkit-overflow-scrolling: touch; }
+    .rec-pdf-estado { position: absolute; inset: 0; display: flex; flex-direction: column;
+      gap: .45rem; align-items: center; justify-content: center; color: #e5e7eb;
+      font-size: .92rem; text-align: center; padding: 1rem; }
+    .rec-pdf-estado sl-icon { font-size: 1.6rem; animation: rec-gira 1.1s linear infinite; }
+    .rec-pdf-estado .rec-pdf-pct { font-weight: 800; }
+    .rec-pdf-estado .rec-pdf-nota { font-size: .72rem; color: #cbd5e1; max-width: 330px; }
+    @keyframes rec-gira { to { transform: rotate(360deg); } }
+    .rec-pdf-flujo { display: flex; flex-direction: column; align-items: center;
+      gap: 10px; padding: 14px 0 22px; }
+    .rec-pdf-pag { position: relative; background: #fff; border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .45); overflow: hidden; max-width: 100%; }
+    .rec-pdf-pag canvas { display: block; max-width: 100%; height: auto !important; }
+    .rec-pdf-num { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #94a3b8; font-size: .95rem; font-weight: 700; }
+    .rec-pdf-pag.lista .rec-pdf-num { display: none; }
 
     /* Cuerpos según tipo (tamaños desde CONFIG) */
     .rec-centro { width: 100%; height: 100%; display: flex; flex-direction: column;
@@ -641,6 +692,7 @@ let gradoSel = null;        // docente: número de grado | "todos" | null (sin e
 let recursosCache = [];     // [{ grado, materiaId, id, clase, enlace, visible, … }]
 let textoBusqueda = "";
 let cargando = false;
+let vigiaRec = null;        // vigía del grado (estudiante): { quitar() }
 
 /* ---------------- Render ---------------- */
 
@@ -671,6 +723,7 @@ export function render(perfil, contenedor) {
   inyectarEstilos();
   vigilarCierre();
   renderUserbar(perfil, "Recursos");
+  iniciarVigia();   // estudiante: cierra el modal si el recurso desaparece
   renderInterno();
   cargarListado();
 }
@@ -716,6 +769,7 @@ function renderInterno() {
     </div>`;
 
   contenedorActual.querySelector("#rec-btn-volver").addEventListener("click", () => {
+    quitarVigia();
     renderUserbar(perfilActual);
     renderInicio(perfilActual, contenedorActual);
   });
@@ -953,6 +1007,7 @@ function pintarListado() {
         e.stopPropagation();
         if (acc.dataset.acc === "ojo") alternarVisible(fila);
         else if (acc.dataset.acc === "editar") abrirEditar(fila);
+        else if (acc.dataset.acc === "eliminar") abrirConfirmarEliminar(fila);
         return;
       }
       abrirRecurso(fila);
@@ -992,7 +1047,9 @@ function tarjetaHtml(r) {
       <button class="rec-ojo${oculta ? "" : " visible"}" data-acc="ojo" title="${oculta
         ? "Hacerlo visible para los estudiantes"
         : "Hacerlo invisible: no existirá para los estudiantes"}"
-        aria-label="Cambiar visibilidad">${SVG_OJO}</button>` : ""}
+        aria-label="Cambiar visibilidad">${SVG_OJO}</button>
+      <button class="rec-ojo eliminar" data-acc="eliminar" title="Eliminar recurso"
+        aria-label="Eliminar recurso">${SVG_PAPELERA}</button>` : ""}
     </article>`;
 }
 
@@ -1042,6 +1099,460 @@ async function alternarVisible(r) {
   } catch (e) {
     notify("No se pudo cambiar la visibilidad: " + (e?.code || e?.message || "error"), "danger");
   }
+}
+
+/* ---------------- ELIMINAR recurso (docente, con confirmación) ---------------- */
+
+function abrirConfirmarEliminar(r) {
+  const d = document.createElement("sl-dialog");
+  d.className = "rec-dialogo";
+  d.setAttribute("label", "Eliminar recurso");
+  d.innerHTML = `
+    <p class="rec-crea-info">
+      ¿Eliminar <strong>${escapeHtml(r._titulo || r.id)}</strong> de
+      <strong>${escapeHtml(nombreGrado(r.grado))}</strong> ·
+      <strong>${escapeHtml(materiaDe(r.materiaId).nombre)}</strong>?
+      Los estudiantes que lo tengan abierto volverán al inicio automáticamente.
+      Esta acción no se puede deshacer.
+    </p>
+    <sl-button slot="footer" id="rd-no">Cancelar</sl-button>
+    <sl-button slot="footer" variant="danger" pill id="rd-si">Eliminar</sl-button>`;
+
+  document.body.append(d);
+  customElements.whenDefined("sl-dialog").then(() => d.show());
+  d.addEventListener("sl-after-hide", (e) => {
+    if (e.target !== d) return;
+    d.remove();
+  });
+
+  d.querySelector("#rd-no").addEventListener("click", () => d.hide());
+  d.querySelector("#rd-si").addEventListener("click", async () => {
+    const si = d.querySelector("#rd-si");
+    si.loading = true;
+    try {
+      await db.clases.eliminar(r.grado, r.materiaId, r.id);
+      recursosCache = recursosCache.filter(
+        (x) => !(x.id === r.id && x.materiaId === r.materiaId && x.grado === r.grado)
+      );
+      guardarCache();
+      d.hide();
+      cerrarModal(); // por si estaba abierto en segundo plano
+      pintarListado();
+      notify("Recurso «" + (r._titulo || r.id) + "» eliminado.", "success");
+    } catch (e) {
+      notify("No se pudo eliminar: " + (e?.code || e?.message || "error"), "danger");
+    } finally {
+      si.loading = false;
+    }
+  });
+}
+
+/* ---------------- VIGÍA (estudiante): recurso cerrado/eliminado en vivo ----------------
+   Mientras el estudiante navega Recursos, db.clases.vigilar escucha
+   sus materias. Si el recurso ABIERTO (modal) se elimina o pasa a
+   invisible, el modal se cierra y vuelve solo a inicio.js. */
+
+function iniciarVigia() {
+  quitarVigia();
+  if (esDocente) return;
+  const grado = (perfilActual.grados || [])[0];
+  if (grado == null) return;
+  const quites = MATERIAS.map((m) =>
+    db.clases.vigilar(grado, m.id, (id, motivo) => {
+      // Solo interesa si ESTE recurso está abierto en el modal
+      if (!modal || !filaActual) return;
+      if (filaActual.materiaId !== m.id || filaActual.id !== id) return;
+      const titulo = String(filaActual._titulo || filaActual.id || "");
+      cerrarModal();
+      renderUserbar(perfilActual);
+      renderInicio(perfilActual, contenedorActual);
+      notify(
+        motivo === "eliminada"
+          ? "«" + titulo + "» fue eliminado por tu docente. Volviste al inicio."
+          : "«" + titulo + "» fue cerrado por tu docente.",
+        "warning",
+        6500
+      );
+    })
+  );
+  vigiaRec = {
+    quitar: () => quites.forEach((q) => { try { q(); } catch (e) { /* nada */ } }),
+  };
+}
+
+function quitarVigia() {
+  try { vigiaRec?.quitar(); } catch (e) { /* nada */ }
+  vigiaRec = null;
+}
+
+/* ============================================================
+   PDF PROPIO (tipo «pdf»): CACHÉ LOCAL + VISOR pdf.js
+   ============================================================
+   1) CACHÉ LOCAL — la primera vez el PDF se descarga (con % de
+      avance) y queda guardado en el navegador (Cache API,
+      «mco-pdf-v1»); a partir de ahí abre AL INSTANTE desde el
+      dispositivo, sin volver a bajarlo (ahorra tiempo y datos).
+      Cada 7 días se refresca solo en segundo plano.
+   2) PÁGINA EXACTA — el visor pdf.js detecta SOLO la página donde
+      vas (scroll) y la guarda; al cerrar y reabrir llegas
+      EXACTAMENTE a esa página (ej. la 100).
+   3) PLAN B — si algo falla (sin red la primera vez, sitio sin
+      CORS, pdf.js inalcanzable) se usa el visor del navegador
+      como siempre: iframe + #page=N (o la caja «Abrir recurso»
+      si el sitio prohíbe iframes).
+   pdf.js se baja UNA vez del CDN y también queda en caché local.
+   ============================================================ */
+
+const CACHE_PDF = "mco-pdf-v1";       // bytes de los PDF
+const CACHE_PDFJS = "mco-pdfjs-v1";   // librería pdf.js (script + worker)
+const PDFJS_BASE = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+const PDF_REFRESCO_MS = 7 * 24 * 60 * 60 * 1000; // revalida copia local: 7 días
+const PDF_RENDER_MAX = 3;   // páginas renderizándose a la vez
+const PDF_KEEPS = 16;       // lienzos en memoria antes de soltar lejanos
+
+let pdfjsPromesa = null;    // carga única (y cacheada) de pdf.js
+let visorPdf = null;        // control del visor activo: { irA, destruir }
+let visorPdfUrl = null;     // blob: URL del plan B (visor nativo)
+
+async function cacheAbierta(nombre) {
+  try {
+    if (!("caches" in window)) return null;
+    return await caches.open(nombre);
+  } catch { return null; }
+}
+
+async function pdfEnCache(url) {
+  const c = await cacheAbierta(CACHE_PDF);
+  if (!c) return null;
+  try {
+    const r = await c.match(url);
+    if (!r) return null;
+    const blob = new Blob([await r.blob()], { type: "application/pdf" });
+    return { blob, fecha: Number(r.headers.get("x-mco-fecha")) || 0 };
+  } catch { return null; }
+}
+
+async function guardarPdfEnCache(url, blob) {
+  const c = await cacheAbierta(CACHE_PDF);
+  if (!c) return;
+  try {
+    await c.put(url, new Response(blob, {
+      headers: { "Content-Type": "application/pdf", "x-mco-fecha": String(Date.now()) },
+    }));
+  } catch { /* cuota llena: sin caché, se baja cada vez */ }
+}
+
+// Copia local vieja → refresca en segundo plano (para la PRÓXIMA vez)
+async function refrescarPdfEnFondo(url, fechaGuardada) {
+  if (!fechaGuardada || Date.now() - fechaGuardada < PDF_REFRESCO_MS) return;
+  try {
+    const fresco = await descargarPdf(url, null);
+    await guardarPdfEnCache(url, fresco);
+  } catch { /* sin red: la copia local sigue sirviendo */ }
+}
+
+// Descarga (con % si el servidor da el tamaño) → Blob PDF
+async function descargarPdf(url, alProgreso) {
+  const resp = await fetch(url, { mode: "cors", credentials: "omit" });
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  const total = Number(resp.headers.get("content-length")) || 0;
+  if (!resp.body || !total) return new Blob([await resp.blob()], { type: "application/pdf" });
+  const lector = resp.body.getReader();
+  const trozos = [];
+  let recibidos = 0;
+  let ultimoAviso = 0;
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    trozos.push(value);
+    recibidos += value.length;
+    if (alProgreso && Date.now() - ultimoAviso > 250) {
+      ultimoAviso = Date.now();
+      alProgreso(Math.min(1, recibidos / total), recibidos, total);
+    }
+  }
+  return new Blob(trozos, { type: "application/pdf" });
+}
+
+/* ---- pdf.js: se baja UNA vez y queda cacheado en el navegador ---- */
+
+async function textoDeCache(url) {
+  const c = await cacheAbierta(CACHE_PDFJS);
+  if (!c) return null;
+  try {
+    const r = await c.match(url);
+    return r ? await r.text() : null;
+  } catch { return null; }
+}
+
+async function guardarTextoEnCache(url, texto) {
+  const c = await cacheAbierta(CACHE_PDFJS);
+  if (!c) return;
+  try {
+    await c.put(url, new Response(texto, { headers: { "Content-Type": "text/javascript" } }));
+  } catch { /* sin caché: se baja del CDN */ }
+}
+
+function inyectarScriptTexto(texto) {
+  return new Promise((hecho, fallo) => {
+    try {
+      const url = URL.createObjectURL(new Blob([texto], { type: "text/javascript" }));
+      const s = document.createElement("script");
+      s.onload = () => { URL.revokeObjectURL(url); hecho(); };
+      s.onerror = () => fallo(new Error("No se pudo ejecutar pdf.js"));
+      s.src = url;
+      document.head.append(s);
+    } catch (e) { fallo(e); }
+  });
+}
+
+function cargarScriptDirecto(url) {
+  return new Promise((hecho, fallo) => {
+    const s = document.createElement("script");
+    s.onload = () => hecho();
+    s.onerror = () => fallo(new Error("No se pudo bajar pdf.js"));
+    s.src = url;
+    document.head.append(s);
+  });
+}
+
+async function cargarPdfjsReal() {
+  const urlLib = PDFJS_BASE + "pdf.min.js";
+  const urlWorker = PDFJS_BASE + "pdf.worker.min.js";
+  if (!window.pdfjsLib) {
+    let texto = await textoDeCache(urlLib);
+    if (texto) {
+      await inyectarScriptTexto(texto);
+    } else {
+      try {
+        const resp = await fetch(urlLib); // cdnjs permite CORS
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        texto = await resp.text();
+        await guardarTextoEnCache(urlLib, texto);
+        await inyectarScriptTexto(texto);
+      } catch (e) {
+        await cargarScriptDirecto(urlLib); // última chance: sin caché
+      }
+    }
+  }
+  const lib = window.pdfjsLib;
+  if (!lib) throw new Error("pdf.js no disponible");
+  if (!lib.GlobalWorkerOptions.workerSrc) {
+    let textoW = null;
+    try { textoW = await textoDeCache(urlWorker); } catch (e) { /* nada */ }
+    if (!textoW) {
+      try {
+        const rw = await fetch(urlWorker);
+        if (rw.ok) { textoW = await rw.text(); await guardarTextoEnCache(urlWorker, textoW); }
+      } catch (e) { /* nada */ }
+    }
+    lib.GlobalWorkerOptions.workerSrc = textoW
+      ? URL.createObjectURL(new Blob([textoW], { type: "text/javascript" }))
+      : urlWorker; // cross-origin: pdf.js cae a «fake worker» y sigue
+  }
+  return lib;
+}
+
+function cargarPdfjs() {
+  if (!pdfjsPromesa) {
+    pdfjsPromesa = cargarPdfjsReal()
+      .catch(() => null)
+      .then((lib) => { if (!lib) pdfjsPromesa = null; return lib; });
+  }
+  return pdfjsPromesa;
+}
+
+/* ---- El visor: páginas perezosas + página SOLA detectada y guardada ----
+   Depende SOLO de lo que recibe (probable fuera del modal):
+   zona          → div .rec-pdf (el que hace scroll)
+   clave         → clave de progreso "{grado}/{materia}/{id}"
+   blob          → bytes del PDF ya en memoria (de la caché o de la red)
+   paginaInicial → página a la que llegar al abrir
+   guardar(n)    → guarda la página actual
+   vivo()        → false cuando el modal ya se cerró */
+
+async function montarVisorPdfEn(zona, clave, blob, paginaInicial, guardar, vivo = () => true) {
+  const lib = window.pdfjsLib;
+  const datos = new Uint8Array(await blob.arrayBuffer());
+  const doc = await lib.getDocument({ data: datos }).promise;
+  if (!vivo()) { try { doc.destroy(); } catch (e) { /* nada */ } return null; }
+
+  const total = doc.numPages;
+  const primera = await doc.getPage(1);
+  const vp1 = primera.getViewport({ scale: 1 });
+  if (!vivo()) { try { doc.destroy(); } catch (e) { /* nada */ } return null; }
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+
+  // Ancho disponible → escala «ajustar al ancho» (con límites sanos)
+  const ancho = Math.max(200, (zona.clientWidth || 640) - 28);
+  const escala = Math.min(2.5, Math.max(0.35, ancho / vp1.width));
+  const altoBase = Math.round(vp1.height * escala);
+  const anchoBase = Math.round(vp1.width * escala);
+
+  zona.innerHTML = `<div class="rec-pdf-flujo"></div>`;
+  const flujo = zona.querySelector(".rec-pdf-flujo");
+
+  const paginas = [];
+  for (let n = 1; n <= total; n++) {
+    const div = document.createElement("div");
+    div.className = "rec-pdf-pag";
+    div.dataset.pagina = n;
+    div.style.width = anchoBase + "px";
+    div.style.height = altoBase + "px";
+    div.innerHTML = `<span class="rec-pdf-num">${n}</span>`;
+    flujo.append(div);
+    paginas.push({ n, div, lienzo: null, tarea: null, lista: false });
+  }
+  const mapa = new Map(paginas.map((p) => [p.n, p]));
+
+  let paginaActual = Math.min(total, Math.max(1, paginaInicial || 1));
+
+  async function pintar(p) {
+    if (!p || p.lista || p.tarea || !vivo()) return;
+    p.tarea = "montando";
+    try {
+      const page = await doc.getPage(p.n);
+      if (!vivo()) return;
+      const vp = page.getViewport({ scale: escala });
+      const lienzo = document.createElement("canvas");
+      lienzo.width = Math.floor(vp.width * dpr);
+      lienzo.height = Math.floor(vp.height * dpr);
+      lienzo.style.width = Math.floor(vp.width) + "px";
+      lienzo.style.height = Math.floor(vp.height) + "px";
+      const ctx = lienzo.getContext("2d");
+      const tarea = page.render({
+        canvasContext: ctx,
+        viewport: vp,
+        transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null,
+      });
+      p.tarea = tarea;
+      await tarea.promise;
+      if (!vivo()) return;
+      p.div.style.height = Math.floor(vp.height) + "px";
+      p.div.append(lienzo);
+      p.div.classList.add("lista");
+      p.lienzo = lienzo;
+      p.lista = true;
+    } catch (e) {
+      /* cancelado o fallido: la página queda pendiente y se reintenta */
+    } finally {
+      p.tarea = null;
+    }
+  }
+
+  // Cola de render: máximo PDF_RENDER_MAX páginas a la vez
+  const cola = [];
+  let activos = 0;
+  function encolar(n) {
+    const p = mapa.get(n);
+    if (!p || p.lista || p.tarea || cola.includes(n)) return;
+    cola.push(n);
+    bombear();
+  }
+  function bombear() {
+    while (activos < PDF_RENDER_MAX && cola.length) {
+      const p = mapa.get(cola.shift());
+      if (!p || p.lista || p.tarea) continue;
+      activos++;
+      pintar(p).finally(() => { activos--; bombear(); });
+    }
+  }
+
+  // Las que se acercan al viewport (±900px) se renderizan solas
+  const io = new IntersectionObserver(
+    (entradas) => {
+      for (const en of entradas) { // eslint-disable-line
+        if (en.isIntersecting) encolar(Number(en.target.dataset.pagina));
+      }
+    },
+    { root: zona, rootMargin: "900px 0px", threshold: 0 }
+  );
+  paginas.forEach((p) => io.observe(p.div));
+
+  function sincronizarPill(n) {
+    const entrada = zona.closest(".rec-modal")?.querySelector(".rec-pill input");
+    if (entrada && Number(entrada.value) !== n) entrada.value = n;
+  }
+
+  let temporizadorGuardado = null;
+  function programarGuardado(n) {
+    clearTimeout(temporizadorGuardado);
+    temporizadorGuardado = setTimeout(() => {
+      try { guardar(n); } catch (e) { /* ignorar */ }
+    }, 700);
+  }
+
+  // Lienzos lejanos fuera de memoria (los grandes no deben tumbarse)
+  function soltarLejanas() {
+    const listas = paginas.filter((p) => p.lista);
+    if (listas.length <= PDF_KEEPS) return;
+    for (const p of listas) {
+      if (Math.abs(p.n - paginaActual) > 8) {
+        p.lienzo?.remove();
+        p.lienzo = null;
+        p.lista = false;
+        p.div.classList.remove("lista");
+      }
+    }
+  }
+
+  let temporizadorScroll = null;
+  function alScroll() {
+    if (temporizadorScroll) return;
+    temporizadorScroll = setTimeout(() => {
+      temporizadorScroll = null;
+      if (!vivo()) return;
+      const caja = zona.getBoundingClientRect();
+      const linea = caja.top + caja.height * 0.3;
+      let i = paginaActual - 1;
+      if (!paginas[i]) return;
+      while (i + 1 < paginas.length && paginas[i + 1].div.getBoundingClientRect().top <= linea) i++;
+      while (i > 0 && paginas[i].div.getBoundingClientRect().top > linea) i--;
+      if (paginas[i].n !== paginaActual) {
+        paginaActual = paginas[i].n;
+        sincronizarPill(paginaActual);
+        programarGuardado(paginaActual);
+      }
+      encolar(paginaActual); encolar(paginaActual - 1); encolar(paginaActual + 1);
+      soltarLejanas();
+    }, 160);
+  }
+  zona.addEventListener("scroll", alScroll, { passive: true });
+
+  // Saltar a una página (pill − / + / número o restauración al abrir)
+  let temporizadorIrA = null;
+  function irA(n) {
+    const destino = Math.min(total, Math.max(1, Math.round(Number(n) || 1)));
+    clearTimeout(temporizadorIrA);
+    temporizadorIrA = setTimeout(() => {
+      const p = mapa.get(destino);
+      if (!p || !vivo()) return;
+      paginaActual = destino;
+      p.div.scrollIntoView({ block: "start", behavior: "auto" });
+      sincronizarPill(destino);
+      programarGuardado(destino);
+      encolar(destino); encolar(destino + 1); encolar(destino + 2);
+    }, 220);
+  }
+
+  // Restauración inicial: llegar EXACTO a la página donde iba
+  if (paginaActual > 1) irA(paginaActual);
+
+  let destruido = false;
+  function destruir() {
+    if (destruido) return;
+    destruido = true;
+    clearTimeout(temporizadorScroll);
+    clearTimeout(temporizadorIrA);
+    clearTimeout(temporizadorGuardado);
+    try { io.disconnect(); } catch (e) { /* nada */ }
+    for (const p of paginas) {
+      try { if (p.tarea && p.tarea.cancel) p.tarea.cancel(); } catch (e) { /* nada */ }
+    }
+    try { doc.destroy(); } catch (e) { /* nada */ }
+  }
+
+  return { irA, destruir, totalPaginas: total, paginaActual: () => paginaActual };
 }
 
 /* ---------------- MODAL del recurso ----------------
@@ -1134,15 +1645,20 @@ function abrirRecurso(fila) {
   modal.querySelector(".rec-x").addEventListener("click", cerrarModal);
   if (conPaginas) {
     const entrada = modal.querySelector(".rec-pill input");
+    // En PDF propio la pill SALTA de página (visor propio) y también
+    // se actualiza SOLA cuando el scroll detecta la página actual.
+    const saltar = () => { if (fila._res.tipo === "pdf") visorPdf?.irA(Number(entrada.value) || 1); };
     modal.querySelector(".rec-menos").addEventListener("click", () => {
       entrada.value = Math.max(1, (Number(entrada.value) || 1) - 1);
       programarPagina();
+      saltar();
     });
     modal.querySelector(".rec-mas").addEventListener("click", () => {
       entrada.value = (Number(entrada.value) || 1) + 1;
       programarPagina();
+      saltar();
     });
-    entrada.addEventListener("input", programarPagina);
+    entrada.addEventListener("input", () => { programarPagina(); saltar(); });
   }
 
   // Atrapar el foco dentro del modal (Tab no se escapa)
@@ -1159,6 +1675,9 @@ function abrirRecurso(fila) {
   });
 
   modal.querySelector(".rec-x").focus();
+
+  // PDF propio: arranca el visor rápido (caché local + página exacta)
+  if (fila._res.tipo === "pdf") iniciarVisorPdf(fila, pagina);
 
   // Audio/video: recordar el MINUTO donde iba (se guarda solo)
   const media = modal.querySelector("audio, video");
@@ -1238,6 +1757,17 @@ function cuerpoModal(fila, src) {
     </div></div>`;
   }
 
+  if (tipo === "pdf") {
+    // Visor rápido PROPIO: caché local + página detectada sola.
+    // El arranque async lo hace iniciarVisorPdf tras montar el modal;
+    // si algo falla, volverAlNativo deja el visor del navegador aquí.
+    return `<div class="rec-modal-cuerpo"><div class="rec-pdf" id="rec-pdf-zona">
+      <div class="rec-pdf-estado">
+        <sl-icon name="arrow-clockwise"></sl-icon> Preparando documento…
+      </div>
+    </div></div>`;
+  }
+
   if (tipo === "descarga") {
     return `<div class="rec-modal-cuerpo"><div class="rec-centro">
       <div class="rec-descarga-caja">
@@ -1250,7 +1780,7 @@ function cuerpoModal(fila, src) {
     </div></div>`;
   }
 
-  // pdf · garchivo · gdoc · ghoja · gdiap · gform · gcarpeta · web → iframe
+  // garchivo · gdoc · ghoja · gdiap · gform · gcarpeta · web → iframe
   // Si el sitio PROHÍBE ser embebido (X-Frame-Options, ej. mined.gob.sv)
   // NO se intenta el iframe: se muestra la ficha con el botón «Abrir
   // recurso» — sin «Refused to display» ni modal en blanco.
@@ -1290,6 +1820,8 @@ function programarPagina() {
 function cerrarModal() {
   if (!modal) return;
   guardarEstadoActual();
+  if (visorPdf) { try { visorPdf.destruir(); } catch (e) { /* nada */ } visorPdf = null; }
+  if (visorPdfUrl) { try { URL.revokeObjectURL(visorPdfUrl); } catch (e) { /* nada */ } visorPdfUrl = null; }
   clearTimeout(temporizadorPagina);
   mediaAbierta = null;
   modal.remove();
@@ -1299,6 +1831,108 @@ function cerrarModal() {
   if (focoAntes && focoAntes.focus) focoAntes.focus();
   focoAntes = null;
   pintarListado(); // refresca chips «Retomar»
+}
+
+/* ---------------- Arranque del visor PDF propio ----------------
+   1) bytes: CACHÉ LOCAL primero (instantáneo) → red (con %);
+   2) visor pdf.js renderiza y detecta la página sola;
+   3) si algo falla → volverAlNativo (visor del navegador). */
+
+async function iniciarVisorPdf(fila, paginaInicial) {
+  const zona = modal?.querySelector("#rec-pdf-zona");
+  if (!zona) return;
+  const clave = fila._clave;
+  const url = String(fila.enlace || "").trim();
+  const ponEstado = (html) => {
+    const e = modal?.querySelector("#rec-pdf-zona .rec-pdf-estado");
+    if (e) e.innerHTML = html;
+  };
+
+  // 1) Bytes: caché local → red (con porcentaje la primera vez)
+  let guardado = await pdfEnCache(url);
+  if (!guardado) {
+    ponEstado(`<sl-icon name="cloud-download"></sl-icon>
+      Descargando documento… <span class="rec-pdf-pct"></span>
+      <span class="rec-pdf-nota">Se guarda en tu dispositivo: la próxima vez abre al instante</span>`);
+    try {
+      const blob = await descargarPdf(url, (fr) => {
+        const pct = modal?.querySelector("#rec-pdf-zona .rec-pdf-pct");
+        if (pct) pct.textContent = Math.round(fr * 100) + "%";
+      });
+      await guardarPdfEnCache(url, blob);
+      guardado = { blob, fecha: Date.now() };
+    } catch (e) {
+      volverAlNativo(fila, null,
+        "No se pudo descargar el PDF (sin conexión o el sitio lo bloquea). Se usa el visor del navegador.");
+      return;
+    }
+  } else {
+    refrescarPdfEnFondo(url, guardado.fecha); // copia vieja → refresca para la próxima
+  }
+  if (!modal || filaActual !== fila) return; // el modal se cerró mientras tanto
+
+  // 2) Visor rápido (pdf.js, cacheado también él)
+  ponEstado(`<sl-icon name="arrow-clockwise"></sl-icon> Preparando documento…`);
+  const lib = await cargarPdfjs();
+  if (!lib) { volverAlNativo(fila, guardado.blob); return; }
+  if (!modal || filaActual !== fila) return;
+
+  try {
+    const zona2 = modal.querySelector("#rec-pdf-zona");
+    if (!zona2) return;
+    visorPdf = await montarVisorPdfEn(
+      zona2,
+      clave,
+      guardado.blob,
+      paginaInicial,
+      (n) => guardarPagina(clave, n),
+      () => !!modal && filaActual === fila
+    );
+  } catch (e) {
+    visorPdf = null;
+    volverAlNativo(fila, guardado.blob,
+      "El visor rápido no pudo abrir este PDF; se usa el del navegador.");
+    return;
+  }
+  if (!visorPdf && modal && filaActual === fila) volverAlNativo(fila, guardado.blob);
+}
+
+// PLAN B: visor del navegador (desde la CACHÉ local si hay bytes)
+function volverAlNativo(fila, blob, aviso) {
+  if (!modal || filaActual !== fila) return;
+  const zona = modal.querySelector("#rec-pdf-zona");
+  if (!zona) return;
+  if (aviso) notify(aviso, "warning", 6500);
+
+  const reg = registroProgreso(fila._clave);
+  const pag = Math.max(1, Number(reg && reg.pagina) || 1);
+  const srcDirecto = urlInterna(fila);
+
+  // ¿El sitio prohíbe iframes? → caja «Abrir recurso» (como siempre)
+  if (!puedeIframe(srcDirecto)) {
+    zona.innerHTML = `<div class="rec-centro"><div class="rec-descarga-caja">
+      <sl-icon name="box-arrow-up-right"></sl-icon>
+      <h3>Este recurso no se puede mostrar aquí</h3>
+      <p>El sitio <b>${escapeHtml(hostDe(srcDirecto))}</b> no permite mostrarse
+      dentro de otras páginas. Ábrelo en una pestaña nueva:</p>
+      <a class="rec-btn-crear" style="text-decoration:none" href="${escapeHtml(urlExterna(fila))}"
+        target="_blank" rel="noopener noreferrer">Abrir recurso</a>
+    </div></div>`;
+    return;
+  }
+
+  let src = srcDirecto;
+  if (pag > 1) src += (src.includes("#") ? "&" : "#") + "page=" + pag;
+  if (blob) {
+    // Bytes locales → el visor del navegador abre AL INSTANTE, sin red
+    try {
+      if (visorPdfUrl) { URL.revokeObjectURL(visorPdfUrl); visorPdfUrl = null; }
+      visorPdfUrl = URL.createObjectURL(blob);
+      src = visorPdfUrl + (pag > 1 ? "#page=" + pag : "");
+    } catch (e) { /* se queda con el src original */ }
+  }
+  zona.innerHTML = `<iframe class="rec-iframe" src="${escapeHtml(src)}"
+    title="${escapeHtml(fila._titulo)}" allow="autoplay; fullscreen; encrypted-media"></iframe>`;
 }
 
 /* ---------------- Guardado al cerrar pestaña/navegador ---------------- */

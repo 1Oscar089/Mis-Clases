@@ -1,6 +1,21 @@
 // ============================================================
 // sheets.js — TODO lo que se dibuja en la hoja de cálculo
-//             (js/data/sheets.js)
+//             (js/data/sheets.js) · v2
+//
+// ESTRUCTURA DEL CUADERNO (v2):
+//   · HOJA 1 = «Índice» — un enlace a cada hoja (se reconstruye sola
+//     en cada configurar; de primero entre las hojas de la app).
+//   · «Asistencia» — UNA sola hoja con TODOS los estudiantes de TODOS
+//     los grados, en filas hacia abajo (ordenados por grado y por
+//     apellidos: nombre(2) nombre(3) nombre(0)); columnas NIE,
+//     Estudiante, Grado y una columna por FECHA donde el módulo de
+//     asistencia (más adelante) pondrá + asistió · − falta · P permiso.
+//   · «Notas-{materia}-{grado}» (una por grado-materia) — los
+//     estudiantes igual que en Asistencia (filas hacia abajo),
+//     SEPARADOS EN TRES TABLAS: CLASES → TAREAS → EXÁMENES. Cada
+//     actividad es una columna que indica de cuál es y de qué día:
+//     clases «D{día}·U{u}·L{l}» · tareas/exámenes «T/E D{día}·U·L título».
+//     CLASES lleva además Σ (nota final) y Media.
 //
 // FILOSOFÍA: code.gs es un MOTOR GENÉRICO que nunca se vuelve a
 // tocar. Cada hoja, columna, fórmula, color, ancho y validación
@@ -41,8 +56,8 @@ const CONFIG = {
 
   // Sube estas cifras cuando quieras REDIBUJAR una hoja desde
   // cero con la estructura nueva (borra los datos de ESA hoja):
-  versionNotas: 1,
-  versionAsistencia: 1,
+  versionNotas: 2,       // v2: estudiantes en filas · tablas CLASES→TAREAS→EXÁMENES
+  versionAsistencia: 2,  // v2: UNA hoja «Asistencia» con todos los grados
 
   // Formatos de número (sintaxis de hoja):
   formatoNota: "0.##",  // notas con decimales sin ceros de más
@@ -53,11 +68,11 @@ const CONFIG = {
   // Anchuras (px):
   anchoNIE: 90,
   anchoNombre: 220,
+  anchoGrado: 130,     // columna Grado en Asistencia
   anchoNota: 64,       // columnas de notas/días
   anchoFecha: 96,      // columnas de fecha en Asistencia
   anchoTotal: 56,      // columna Σ
   anchoMedia: 70,      // columnas Media
-  anchoExamen: 220,    // columna título de examen/tarea
 
   // ETIQUETAS (lo que se ve en los encabezados). Son también la
   // CLAVE con la que el motor busca cada columna: si las cambias,
@@ -65,13 +80,41 @@ const CONFIG = {
   etiquetaFecha: (iso) => String(iso || ""),
   etiquetaClase: (c) =>
     "D" + (c?.dia ?? "?") + "·U" + (c?.unidad ?? "?") + "·L" + (c?.leccion ?? "?"),
+  // Tarea o examen como COLUMNA: dice de cuál es y de qué día. El
+  // MISMO cálculo corre al configurar la hoja y al reportar una
+  // nota → la columna siempre se encuentra.
+  etiquetaActividad: (a, letra) => {
+    const p = [];
+    if (a?.dia != null && a.dia !== "") p.push("D" + a.dia);
+    if (a?.unidad != null && a.unidad !== "") p.push("U" + a.unidad);
+    if (a?.leccion != null && a.leccion !== "") p.push("L" + a.leccion);
+    const titulo = String(a?.titulo ?? a?.clase ?? "").trim().slice(0, 32);
+    return (letra ? letra + " " : "") + (p.length ? p.join("·") + " " : "") + titulo;
+  },
   tituloNotas: (materia, grado) => "NOTAS · " + materia + " · " + grado + "°",
-  tituloAsistencia: (grado) => "ASISTENCIA · " + grado + "°",
 
-  menu: { hoja: "Menú", titulo: "Mis Clases Online · Menú" },
+  // HOJA 1: índice con un enlace a cada hoja (el motor lo rellena
+  // y lo reconstruye solo en cada configurar).
+  menu: { hoja: "Índice", titulo: "Mis Clases Online · Índice" },
 
-  // Asistencia: valores permitidos y su semántica (A/T/F):
-  estados: ["A", "T", "F"],
+  // Asistencia: valores permitidos (+ asistió · − falta · P permiso)
+  estados: ["+", "-", "P"],
+
+  // Nombres de los grados (igual que auth.js; aquí son presentación)
+  grados: [
+    { id: -2, nombre: "Parvularia 4" },
+    { id: -1, nombre: "Parvularia 5" },
+    { id: 0, nombre: "Parvularia 6" },
+    { id: 1, nombre: "1er Grado" },
+    { id: 2, nombre: "2do Grado" },
+    { id: 3, nombre: "3er Grado" },
+    { id: 4, nombre: "4to Grado" },
+    { id: 5, nombre: "5to Grado" },
+    { id: 6, nombre: "6to Grado" },
+    { id: 7, nombre: "7mo Grado" },
+    { id: 8, nombre: "8vo Grado" },
+    { id: 9, nombre: "9no Grado" },
+  ],
 
   // Fórmulas de Σ y Media. TRUCO: usan COLUMN()-1 → el rango
   // termina SIEMPRE en la columna anterior a la de la propia
@@ -95,6 +138,7 @@ const ESTILOS = {
   cabFecha: { negrita: true, color: "#9a3412", fondo: "#ffedd5", centrado: "center", vertical: "middle", borde: "caja" },
   celdas: { borde: "todos", vertical: "middle" },
   enlace: { tamano: 11, color: "#374151" },
+  fin: { tamano: 8, color: "#c7cbe0", italica: true }, // marcador «FIN» (casi invisible)
 };
 
 const REGLAS_MEDIA = [
@@ -103,9 +147,9 @@ const REGLAS_MEDIA = [
 ];
 
 const REGLAS_ESTADO = [
-  { cuando: "texto", valor: "A", fondo: "#dcfce7", color: "#166534" }, // Asistió
-  { cuando: "texto", valor: "T", fondo: "#fef9c3", color: "#854d0e" }, // Tardanza
-  { cuando: "texto", valor: "F", fondo: "#fee2e2", color: "#991b1b" }, // Falta
+  { cuando: "texto", valor: "+", fondo: "#dcfce7", color: "#166534" }, // Asistió
+  { cuando: "texto", valor: "P", fondo: "#fef9c3", color: "#854d0e" }, // Permiso
+  { cuando: "texto", valor: "-", fondo: "#fee2e2", color: "#991b1b" }, // Falta
 ];
 
 /* ════════════════════ 2. AYUDANTES ════════════════════ */
@@ -130,13 +174,29 @@ function claveApellidos(nombre) {
     .filter((p) => !ARTICULOS.has(p.toLowerCase()));
   return ((partes[2] || "") + " " + (partes[3] || "") + " " + (partes[0] || "")).toLowerCase();
 }
+/** Orden de la app: por GRADO (asc) y dentro por apellidos —
+ *  nombre(2) nombre(3) nombre(0) — igual en Asistencia y en las
+ *  hojas de notas. Sin grado → al final. */
 function ordenEstudiantes(lista) {
   return (lista || [])
     .slice()
-    .sort((a, b) => claveApellidos(a.nombre).localeCompare(claveApellidos(b.nombre), "es"));
+    .sort((a, b) => {
+      const ga = a?.grado == null || a.grado === "" ? 9999 : Number(a.grado);
+      const gb = b?.grado == null || b.grado === "" ? 9999 : Number(b.grado);
+      if (ga !== gb) return ga - gb;
+      return claveApellidos(a.nombre).localeCompare(claveApellidos(b.nombre), "es");
+    });
 }
 
-const nombreAsistencia = (grado) => "Asistencia-" + String(grado);
+// Nombre del grado para la columna Grado de Asistencia
+function gradoTexto(id) {
+  const g = CONFIG.grados.find((x) => x.id === Number(id));
+  if (g) return g.nombre;
+  return id == null || id === "" ? "" : String(id) + "°";
+}
+
+// UNA sola hoja de asistencia para TODOS los grados (v2)
+const nombreAsistencia = () => "Asistencia";
 const nombreNotas = (materia, grado) => "Notas-" + String(materia) + "-" + String(grado);
 
 /* ════════════════════ 3. CONSTRUCTORES DE HOJAS ════════════════════
@@ -144,148 +204,177 @@ const nombreNotas = (materia, grado) => "Notas-" + String(materia) + "-" + Strin
    dinámicas van como MARCAS ({col,valor,desplazar,respaldo}) para que
    el motor las re-ubique solo aunque las tablas hayan crecido. */
 
-function specAsistencia(grado, estudiantes) {
-  const ne = estudiantes.length;
-  const maxFilas = Math.max(60, ne + 40);
+/* Hoja 1 «Índice»: el motor la crea primero y _menu la rellena con
+   un enlace por cada hoja visible (se reconstruye en cada llamada). */
+function specIndice() {
+  return {
+    nombre: CONFIG.menu.hoja,
+    version: 1,
+    maxFilas: 80,
+    maxColumnas: 4,
+    anchos: { A: 300 },
+  };
+}
+
+/* Hoja «Asistencia» — UNA sola para todos los grados.
+   A=NIE · B=Estudiante · C=Grado · [una columna por FECHA con
+   + asistió · − falta · P permiso (la pone el módulo de asistencia)].
+   Filas hacia abajo: TODOS los niños, ordenados por grado y por
+   apellidos (nombre(2) nombre(3) nombre(0)). */
+function specAsistencia(estudiantes) {
+  const filas = ordenEstudiantes(estudiantes);
+  const ne = filas.length;
+  const maxFilas = Math.max(80, ne + 40);
   const finDatos = Math.max(ne + 1, 2);
   return {
-    nombre: nombreAsistencia(grado),
+    nombre: nombreAsistencia(),
     version: CONFIG.versionAsistencia,
     maxFilas,
     maxColumnas: 60,
-    congelar: { fila: 1, col: 2 },
-    cabeceras: [{ fila: 1, valores: ["NIE", "Estudiante"] }],
+    congelar: { fila: 1, col: 3 },
+    cabeceras: [{ fila: 1, valores: ["NIE", "Estudiante", "Grado"] }],
     filasIniciales: [
-      { fila: 2, valores: estudiantes.map((e) => [String(e.nie), e.nombre]) },
+      {
+        fila: 2,
+        valores: filas.map((e) => [String(e.nie), e.nombre, gradoTexto(e.grado)]),
+      },
     ],
-    anchos: { A: CONFIG.anchoNIE, B: CONFIG.anchoNombre },
+    anchos: { A: CONFIG.anchoNIE, B: CONFIG.anchoNombre, C: CONFIG.anchoGrado },
     formatos: [
       { rango: { desde: { fila: 2, col: 1 }, hasta: { fila: maxFilas - 10, col: 1 } }, patron: CONFIG.formatoTexto },
     ],
     validaciones: [
-      { rango: { desde: { fila: 2, col: 3 }, hasta: { fila: maxFilas - 10, col: 50 } }, opciones: CONFIG.estados, estricta: false },
+      { rango: { desde: { fila: 2, col: 4 }, hasta: { fila: maxFilas - 10, col: 50 } }, opciones: CONFIG.estados, estricta: false },
     ],
     condicionales: [
-      { rango: { desde: { fila: 2, col: 3 }, hasta: { fila: maxFilas - 10, col: 50 } }, reglas: REGLAS_ESTADO },
+      { rango: { desde: { fila: 2, col: 4 }, hasta: { fila: maxFilas - 10, col: 50 } }, reglas: REGLAS_ESTADO },
     ],
     estilos: [
-      { rango: { fila: 1, col: 1, filas: 1, cols: 2 }, estilo: ESTILOS.cabAsistencia },
-      { rango: { desde: { fila: 1, col: 3 }, hasta: { fila: 1, col: 50 } }, estilo: ESTILOS.cabFecha },
+      { rango: { fila: 1, col: 1, filas: 1, cols: 3 }, estilo: ESTILOS.cabAsistencia },
+      { rango: { desde: { fila: 1, col: 4 }, hasta: { fila: 1, col: 50 } }, estilo: ESTILOS.cabFecha },
       { rango: { desde: { fila: 2, col: 1 }, hasta: { fila: finDatos, col: 50 } }, estilo: ESTILOS.celdas },
     ],
   };
 }
 
-/* Hoja Notas-{materia}-{grado}: tres tablas apiladas.
-   CLASES:   A=NIE · B=Estudiante · [una columna por clase] · Σ · Media
-   EXÁMENES: A=ID · B=Examen · [una columna por NIE] · Media
-   TAREAS:   A=ID · B=Tarea · [una columna por NIE] · Media */
+/* Hoja Notas-{materia}-{grado} (v2): los estudiantes IGUAL que en
+   Asistencia — filas hacia abajo (NIE · Estudiante) — y TRES tablas
+   apiladas donde cada actividad es una COLUMNA que dice de cuál es
+   y de qué día:
+     CLASES:   cab = NIE · Estudiante · [D{día}·U·L ×clases] · Σ · Media
+     TAREAS:   cab = NIE · Estudiante · [T D{día}·U·L título ×tareas] · Media
+     EXÁMENES: cab = NIE · Estudiante · [E D{día}·U·L título ×examenes] · Media
+   El marcador «FIN» cierra la última tabla por abajo (permite
+   insertar filas y reordenar con límites exactos). */
 function specNotas({ materia, grado, estudiantes, clases = [], examenes = [], tareas = [] }) {
-  const ne = estudiantes.length, nc = clases.length, nx = examenes.length, nt = tareas.length;
+  const alus = ordenEstudiantes(estudiantes);
+  const ne = alus.length, nc = clases.length, nx = examenes.length, nt = tareas.length;
 
   // ── Filas base (posición al CREAR; después el motor usa marcas) ──
-  const fSecCl = 3, fCabCl = 4, fAlu = 5;
-  const fFinAlu = fAlu + ne - 1;
-  const fSecEx = fFinAlu + 2, fCabEx = fSecEx + 1, fEx = fCabEx + 1;
-  const fFinEx = fCabEx + nx;
-  const fSecTa = fFinEx + 2, fCabTa = fSecTa + 1, fTa = fCabTa + 1;
-  const fFinTa = fCabTa + nt;
+  const fSecCl = 3, fCabCl = 4, fAluCl = 5;
+  const fFinCl = fAluCl + ne - 1;              // último alumno de CLASES
+  const fSecTa = fFinCl + 2, fCabTa = fSecTa + 1, fAluTa = fCabTa + 1;
+  const fFinTa = fAluTa + ne - 1;
+  const fSecEx = fFinTa + 2, fCabEx = fSecEx + 1, fAluEx = fCabEx + 1;
+  const fFinEx = fAluEx + ne - 1;
+  const fFin = fFinEx + 2;                     // marcador «FIN»
 
   // ── Marcas que se autoubican (respaldo = posición al crear) ──
-  const mSecEx = { col: 1, valor: "EXÁMENES", respaldo: fSecEx };
-  const mCabEx = { col: 1, valor: "EXÁMENES", desplazar: 1, respaldo: fCabEx };
-  const mSecTa = { col: 1, valor: "TAREAS", respaldo: fSecTa };
   const mCabTa = { col: 1, valor: "TAREAS", desplazar: 1, respaldo: fCabTa };
-  const mFinAlu = { col: 1, valor: "EXÁMENES", desplazar: -2, respaldo: fFinAlu };
-  const mFinEx = { col: 1, valor: "TAREAS", desplazar: -2, respaldo: fFinEx };
-  const mIniEx = { col: 1, valor: "EXÁMENES", desplazar: 2, respaldo: fEx };
-  const mIniTa = { col: 1, valor: "TAREAS", desplazar: 2, respaldo: fTa };
+  const mCabEx = { col: 1, valor: "EXÁMENES", desplazar: 1, respaldo: fCabEx };
+  const mIniTa = { col: 1, valor: "TAREAS", desplazar: 2, respaldo: fAluTa };
+  const mIniEx = { col: 1, valor: "EXÁMENES", desplazar: 2, respaldo: fAluEx };
+  const mFinTa = { col: 1, valor: "EXÁMENES", desplazar: -2, respaldo: fFinTa };
+  const mFinCl = { col: 1, valor: "TAREAS", desplazar: -2, respaldo: fFinCl };
+  const mFinBlq = { col: 1, valor: "FIN", desplazar: -1, respaldo: fFinEx };
 
   // ── Columnas clave (por marca: siempre correctas aunque crezcan) ──
-  const colSuma = 3 + nc, colMediaCl = 4 + nc, colMediaEx = 3 + ne;
+  const colSuma = 3 + nc, colMediaCl = 4 + nc, colMediaTa = 3 + nt, colMediaEx = 3 + nx;
   const mSuma = { fila: fCabCl, valor: "Σ", respaldo: colSuma };
   const mMediaCl = { fila: fCabCl, valor: "Media", respaldo: colMediaCl };
+  const mMediaTa = { fila: mCabTa, valor: "Media", respaldo: colMediaTa };
   const mMediaEx = { fila: mCabEx, valor: "Media", respaldo: colMediaEx };
-  const mMediaTa = { fila: mCabTa, valor: "Media", respaldo: colMediaEx };
-  const mUltCl = { fila: fCabCl, valor: "Σ", desplazar: -1, respaldo: colSuma - 1 };
-  const mUltEx = { fila: mCabEx, valor: "Media", desplazar: -1, respaldo: colMediaEx - 1 };
-  const mUltTa = { fila: mCabTa, valor: "Media", desplazar: -1, respaldo: colMediaEx - 1 };
 
   const anchos = { A: CONFIG.anchoNIE, B: CONFIG.anchoNombre };
-  const maxDatos = Math.max(2 + nc, 2 + ne);
+  const maxDatos = Math.max(2 + nc, 2 + nt, 2 + nx);
   for (let i = 3; i <= maxDatos; i++) anchos[colALetra(i)] = CONFIG.anchoNota;
   anchos[colALetra(colSuma)] = CONFIG.anchoTotal;
   anchos[colALetra(colMediaCl)] = CONFIG.anchoMedia;
-  anchos[colALetra(colMediaEx)] = CONFIG.anchoMedia;
+  anchos[colALetra(Math.max(colMediaTa, colMediaEx))] = CONFIG.anchoMedia;
 
   const plantillas = [];
   if (ne > 0) {
     plantillas.push(
-      { col: mSuma, filaInicio: fAlu, filaFin: mFinAlu, texto: CONFIG.formulaSuma },
-      { col: mMediaCl, filaInicio: fAlu, filaFin: mFinAlu, texto: CONFIG.formulaMedia },
+      { col: mSuma, filaInicio: fAluCl, filaFin: mFinCl, texto: CONFIG.formulaSuma },
+      { col: mMediaCl, filaInicio: fAluCl, filaFin: mFinCl, texto: CONFIG.formulaMedia },
+      { col: mMediaTa, filaInicio: mIniTa, filaFin: mFinTa, texto: CONFIG.formulaMedia },
+      { col: mMediaEx, filaInicio: mIniEx, filaFin: mFinBlq, texto: CONFIG.formulaMedia },
     );
   }
-  if (nx > 0) plantillas.push({ col: mMediaEx, filaInicio: mIniEx, filaFin: mFinEx, texto: CONFIG.formulaMedia });
-  if (nt > 0) plantillas.push({ col: mMediaTa, filaInicio: mIniTa, filaFin: fFinTa, texto: CONFIG.formulaMedia });
 
   return {
     nombre: nombreNotas(materia, grado),
     version: CONFIG.versionNotas,
-    maxFilas: fFinTa + 40,
-    maxColumnas: Math.max(colMediaCl, colMediaEx) + 8,
+    maxFilas: fFin + 40,
+    maxColumnas: Math.max(colMediaCl, colMediaTa, colMediaEx) + 8,
     congelar: { fila: 1, col: 2 },
     cabeceras: [
       { fila: 1, valores: [CONFIG.tituloNotas(materia, grado)] },
       { fila: fSecCl, valores: ["CLASES"] },
       { fila: fCabCl, valores: ["NIE", "Estudiante", ...clases.map((c) => CONFIG.etiquetaClase(c)), "Σ", "Media"], soloAlCrear: true },
-      { fila: mSecEx, valores: ["EXÁMENES"] },
-      { fila: mCabEx, valores: ["ID", "Examen", ...estudiantes.map((e) => String(e.nie)), "Media"], soloAlCrear: true },
-      { fila: mSecTa, valores: ["TAREAS"] },
-      { fila: mCabTa, valores: ["ID", "Tarea", ...estudiantes.map((e) => String(e.nie)), "Media"], soloAlCrear: true },
+      { fila: fSecTa, valores: ["TAREAS"] },
+      { fila: fCabTa, valores: ["NIE", "Estudiante", ...tareas.map((t) => CONFIG.etiquetaActividad(t, "T")), "Media"], soloAlCrear: true },
+      { fila: fSecEx, valores: ["EXÁMENES"] },
+      { fila: fCabEx, valores: ["NIE", "Estudiante", ...examenes.map((x) => CONFIG.etiquetaActividad(x, "E")), "Media"], soloAlCrear: true },
+      { fila: fFin, valores: ["FIN"] },
     ],
     filasIniciales: [
-      { fila: fAlu, valores: estudiantes.map((e) => [String(e.nie), e.nombre]) },
-      { fila: fEx, valores: examenes.map((x) => [String(x.id), x.titulo || ""]) },
-      { fila: fTa, valores: tareas.map((t) => [String(t.id), t.titulo || ""]) },
+      { fila: fAluCl, valores: alus.map((e) => [String(e.nie), e.nombre]) },
+      { fila: fAluTa, valores: alus.map((e) => [String(e.nie), e.nombre]) },
+      { fila: fAluEx, valores: alus.map((e) => [String(e.nie), e.nombre]) },
     ].filter((b) => b.valores.length),
     anchos,
     plantillas,
     formatos: [
-      { rango: { desde: { fila: fAlu, col: 1 }, hasta: { fila: mFinAlu, col: 1 } }, patron: CONFIG.formatoTexto },
-      { rango: { desde: { fila: mIniEx, col: 1 }, hasta: { fila: mFinEx, col: 1 } }, patron: CONFIG.formatoTexto },
-      { rango: { desde: { fila: mIniTa, col: 1 }, hasta: { fila: fFinTa, col: 1 } }, patron: CONFIG.formatoTexto },
-      { rango: { desde: { fila: mCabEx, col: 3 }, hasta: { fila: mCabEx, col: mUltEx } }, patron: CONFIG.formatoTexto },
-      { rango: { desde: { fila: mCabTa, col: 3 }, hasta: { fila: mCabTa, col: mUltTa } }, patron: CONFIG.formatoTexto },
-      { rango: { desde: { fila: fAlu, col: 3 }, hasta: { fila: mFinAlu, col: mUltCl } }, patron: CONFIG.formatoNota },
-      { rango: { desde: { fila: mIniEx, col: 3 }, hasta: { fila: mFinEx, col: mUltEx } }, patron: CONFIG.formatoNota },
-      { rango: { desde: { fila: mIniTa, col: 3 }, hasta: { fila: fFinTa, col: mUltTa } }, patron: CONFIG.formatoNota },
-      { rango: { desde: { fila: fAlu, col: mSuma }, hasta: { fila: mFinAlu, col: mMediaCl } }, patron: CONFIG.formatoNota },
-      { rango: { desde: { fila: mIniEx, col: mMediaEx }, hasta: { fila: mFinEx, col: mMediaEx } }, patron: CONFIG.formatoNota },
-      { rango: { desde: { fila: mIniTa, col: mMediaTa }, hasta: { fila: fFinTa, col: mMediaTa } }, patron: CONFIG.formatoNota },
+      { rango: { desde: { fila: fAluCl, col: 1 }, hasta: { fila: mFinCl, col: 1 } }, patron: CONFIG.formatoTexto },
+      { rango: { desde: { fila: mIniTa, col: 1 }, hasta: { fila: mFinTa, col: 1 } }, patron: CONFIG.formatoTexto },
+      { rango: { desde: { fila: mIniEx, col: 1 }, hasta: { fila: mFinBlq, col: 1 } }, patron: CONFIG.formatoTexto },
+      { rango: { desde: { fila: fAluCl, col: 3 }, hasta: { fila: mFinCl, col: mUltDe(mSuma) } }, patron: CONFIG.formatoNota },
+      { rango: { desde: { fila: mIniTa, col: 3 }, hasta: { fila: mFinTa, col: mUltDe(mMediaTa) } }, patron: CONFIG.formatoNota },
+      { rango: { desde: { fila: mIniEx, col: 3 }, hasta: { fila: mFinBlq, col: mUltDe(mMediaEx) } }, patron: CONFIG.formatoNota },
+      { rango: { desde: { fila: fAluCl, col: mSuma }, hasta: { fila: mFinCl, col: mMediaCl } }, patron: CONFIG.formatoNota },
+      { rango: { desde: { fila: mIniTa, col: mMediaTa }, hasta: { fila: mFinTa, col: mMediaTa } }, patron: CONFIG.formatoNota },
+      { rango: { desde: { fila: mIniEx, col: mMediaEx }, hasta: { fila: mFinBlq, col: mMediaEx } }, patron: CONFIG.formatoNota },
     ],
     validaciones: [
-      { rango: { desde: { fila: fAlu, col: 3 }, hasta: { fila: mFinAlu, col: mUltCl } }, tipo: "numero", min: CONFIG.minNota, max: CONFIG.maxNota, estricta: false },
-      { rango: { desde: { fila: mIniEx, col: 3 }, hasta: { fila: mFinEx, col: mUltEx } }, tipo: "numero", min: CONFIG.minNota, max: CONFIG.maxNota, estricta: false },
-      { rango: { desde: { fila: mIniTa, col: 3 }, hasta: { fila: fFinTa, col: mUltTa } }, tipo: "numero", min: CONFIG.minNota, max: CONFIG.maxNota, estricta: false },
+      { rango: { desde: { fila: fAluCl, col: 3 }, hasta: { fila: mFinCl, col: mUltDe(mSuma) } }, tipo: "numero", min: CONFIG.minNota, max: CONFIG.maxNota, estricta: false },
+      { rango: { desde: { fila: mIniTa, col: 3 }, hasta: { fila: mFinTa, col: mUltDe(mMediaTa) } }, tipo: "numero", min: CONFIG.minNota, max: CONFIG.maxNota, estricta: false },
+      { rango: { desde: { fila: mIniEx, col: 3 }, hasta: { fila: mFinBlq, col: mUltDe(mMediaEx) } }, tipo: "numero", min: CONFIG.minNota, max: CONFIG.maxNota, estricta: false },
     ],
     condicionales: [
-      { rango: { desde: { fila: fAlu, col: mMediaCl }, hasta: { fila: mFinAlu, col: mMediaCl } }, reglas: REGLAS_MEDIA },
-      { rango: { desde: { fila: mIniEx, col: mMediaEx }, hasta: { fila: mFinEx, col: mMediaEx } }, reglas: REGLAS_MEDIA },
-      { rango: { desde: { fila: mIniTa, col: mMediaTa }, hasta: { fila: fFinTa, col: mMediaTa } }, reglas: REGLAS_MEDIA },
+      { rango: { desde: { fila: fAluCl, col: mMediaCl }, hasta: { fila: mFinCl, col: mMediaCl } }, reglas: REGLAS_MEDIA },
+      { rango: { desde: { fila: mIniTa, col: mMediaTa }, hasta: { fila: mFinTa, col: mMediaTa } }, reglas: REGLAS_MEDIA },
+      { rango: { desde: { fila: mIniEx, col: mMediaEx }, hasta: { fila: mFinBlq, col: mMediaEx } }, reglas: REGLAS_MEDIA },
     ],
     estilos: [
       { rango: { fila: 1, col: 1, filas: 1, cols: 2 }, estilo: ESTILOS.titulo },
       { rango: { fila: fSecCl, col: 1, filas: 1, cols: 2 }, estilo: ESTILOS.seccion },
-      { rango: { fila: mSecEx, col: 1, filas: 1, cols: 2 }, estilo: ESTILOS.seccion },
-      { rango: { fila: mSecTa, col: 1, filas: 1, cols: 2 }, estilo: ESTILOS.seccion },
+      { rango: { fila: fSecTa, col: 1, filas: 1, cols: 2 }, estilo: ESTILOS.seccion },
+      { rango: { fila: fSecEx, col: 1, filas: 1, cols: 2 }, estilo: ESTILOS.seccion },
       { rango: { desde: { fila: fCabCl, col: 1 }, hasta: { fila: fCabCl, col: mMediaCl } }, estilo: ESTILOS.cab },
-      { rango: { desde: { fila: mCabEx, col: 1 }, hasta: { fila: mCabEx, col: mMediaEx } }, estilo: ESTILOS.cab },
-      { rango: { desde: { fila: mCabTa, col: 1 }, hasta: { fila: mCabTa, col: mMediaTa } }, estilo: ESTILOS.cab },
-      { rango: { desde: { fila: fAlu, col: 1 }, hasta: { fila: mFinAlu, col: mMediaCl } }, estilo: ESTILOS.celdas },
-      { rango: { desde: { fila: mIniEx, col: 1 }, hasta: { fila: mFinEx, col: mMediaEx } }, estilo: ESTILOS.celdas },
-      { rango: { desde: { fila: mIniTa, col: 1 }, hasta: { fila: fFinTa, col: mMediaTa } }, estilo: ESTILOS.celdas },
+      { rango: { desde: { fila: fCabTa, col: 1 }, hasta: { fila: fCabTa, col: mMediaTa } }, estilo: ESTILOS.cab },
+      { rango: { desde: { fila: fCabEx, col: 1 }, hasta: { fila: fCabEx, col: mMediaEx } }, estilo: ESTILOS.cab },
+      { rango: { desde: { fila: fAluCl, col: 1 }, hasta: { fila: mFinCl, col: mMediaCl } }, estilo: ESTILOS.celdas },
+      { rango: { desde: { fila: mIniTa, col: 1 }, hasta: { fila: mFinTa, col: mMediaTa } }, estilo: ESTILOS.celdas },
+      { rango: { desde: { fila: mIniEx, col: 1 }, hasta: { fila: mFinBlq, col: mMediaEx } }, estilo: ESTILOS.celdas },
+      { rango: { fila: fFin, col: 1, filas: 1, cols: 1 }, estilo: ESTILOS.fin },
     ],
   };
+}
+
+// Columna ANTERIOR a la de una marca de cabecera (última de notas)
+function mUltDe(marca) {
+  return { ...marca, desplazar: (marca.desplazar || 0) - 1 };
 }
 
 /* ════════════════════ 4. TRANSPORTE ════════════════════ */
@@ -366,26 +455,56 @@ export async function leer(hoja) {
   return r.resultados[0] || { ok: false, razon: "motor" };
 }
 
-/** Acciones para sincronizar estructuras + alumnado + clases/exámenes/tareas. */
+/** Acciones para crear/sincronizar TODO el cuaderno (v2).
+ *  datos: { estudiantes: [ { uid, nombre, nie, grado } ],   ← TODOS
+ *           hojas: [ { grado, materia,                      ← una por
+ *                     clases: [ { dia, unidad, leccion, clase } ],
+ *                     examenes: [ { id, titulo, dia, unidad, leccion } ],
+ *                     tareas:  [ { id, titulo, dia, unidad, leccion } ] } ] }
+ *  Crea/actualiza: «Índice» (hoja 1) · «Asistencia» (todos los
+ *  grados en una hoja) · «Notas-{materia}-{grado}» por cada entrada.
+ *  Compatibilidad: si en vez de `hojas` llega la forma vieja
+ *  { grado, materia, clases, examenes, tareas } con estudiantes de
+ *  UN grado, se adapta sola. */
 function accionesConfigurar(datos) {
   const d = datos || {};
-  const estudiantes = ordenEstudiantes(d.estudiantes || []);
-  const hayGrado = d.grado !== undefined && d.grado !== null && d.grado !== "";
-  const hojas = [];
-  if (hayGrado) hojas.push(specAsistencia(d.grado, estudiantes));
-  if (d.materia) {
-    hojas.push(
-      specNotas({
-        materia: d.materia, grado: d.grado, estudiantes,
-        clases: d.clases || [], examenes: d.examenes || [], tareas: d.tareas || [],
-      })
-    );
+
+  // ── Adaptar la forma vieja (una sola materia) si hiciera falta ──
+  let estudiantes = d.estudiantes || [];
+  let tablas = Array.isArray(d.hojas) ? d.hojas : null;
+  if (!tablas && d.materia) {
+    estudiantes = (estudiantes.length ? estudiantes : []).map((e) => ({
+      ...e, grado: e.grado ?? d.grado,
+    }));
+    tablas = [{
+      grado: d.grado, materia: d.materia,
+      clases: d.clases || [], examenes: d.examenes || [], tareas: d.tareas || [],
+    }];
   }
-  if (!hojas.length) throw new Error("nada-que-configurar");
+  if (!tablas || !tablas.length) throw new Error("nada-que-configurar");
+
+  const todos = ordenEstudiantes(estudiantes);   // grado asc + apellidos
+  const gradosVistos = [...new Set(
+    todos.map((e) => Number(e.grado)).filter((g) => Number.isFinite(g))
+  )];
+
+  // ── Hojas: Índice (1.ª) + Asistencia (todos) + Notas por grado-materia ──
+  const hojas = [specIndice()];
+  if (todos.length) hojas.push(specAsistencia(todos));
+  tablas.forEach((t) => {
+    if (!t.materia) return;
+    const delGrado = todos.filter((e) => Number(e.grado) === Number(t.grado));
+    hojas.push(specNotas({
+      materia: t.materia, grado: t.grado, estudiantes: delGrado,
+      clases: t.clases || [], examenes: t.examenes || [], tareas: t.tareas || [],
+    }));
+  });
 
   const acciones = [{
     a: "configurar",
     hojas,
+    // Limpieza del formato v1: menú viejo y asistencia por grado
+    eliminar: ["Menú", ...gradosVistos.map((g) => "Asistencia-" + g)],
     menu: {
       hoja: CONFIG.menu.hoja,
       titulo: CONFIG.menu.titulo,
@@ -394,83 +513,107 @@ function accionesConfigurar(datos) {
     },
   }];
 
-  if (d.materia) {
-    const notas = nombreNotas(d.materia, d.grado);
-    const orden = estudiantes.map((e) => String(e.nie));
+  // ── Por CADA hoja de notas: alumnado + actividades + orden + fórmulas ──
+  tablas.forEach((t) => {
+    if (!t.materia) return;
+    const hoja = nombreNotas(t.materia, t.grado);
+    const alus = ordenEstudiantes(todos.filter((e) => Number(e.grado) === Number(t.grado)));
+    if (!alus.length) return;
+    const orden = alus.map((e) => String(e.nie));
 
-    // Alumnado como filas de CLASES (Σ/Media se re-estampan al final):
-    estudiantes.forEach((e) => acciones.push({
-      a: "fila", hoja: notas, clave: String(e.nie),
-      valores: [String(e.nie), e.nombre],
-      insertar: { col: 1, valor: "EXÁMENES", desplazar: -1 },
+    // Alumnado en LAS TRES tablas (fila = idempotente: si ya está, no
+    // toca). `desde` acota la búsqueda a SU bloque; se inserta ANTES
+    // de la última fila del bloque (sección-2: conserva el hueco de
+    // separación y deja los límites de reordenar siempre correctos).
+    alus.forEach((e) => acciones.push({
+      a: "fila", hoja, clave: String(e.nie), valores: [String(e.nie), e.nombre],
+      desde: 5,
+      insertar: { col: 1, valor: "TAREAS", desplazar: -2 },
+      plantillas: [
+        { col: { fila: 4, valor: "Σ" }, texto: CONFIG.formulaSuma },
+        { col: { fila: 4, valor: "Media" }, texto: CONFIG.formulaMedia },
+      ],
     }));
-    // Clases como columnas de CLASES:
-    (d.clases || []).forEach((c) => acciones.push({
-      a: "columna", hoja: notas, filaClave: 4, clave: CONFIG.etiquetaClase(c),
+    alus.forEach((e) => acciones.push({
+      a: "fila", hoja, clave: String(e.nie), valores: [String(e.nie), e.nombre],
+      desde: { col: 1, valor: "TAREAS", desplazar: 2 },
+      insertar: { col: 1, valor: "EXÁMENES", desplazar: -2 },
+      plantillas: [{ col: mMediaCab("TAREAS"), texto: CONFIG.formulaMedia }],
+    }));
+    alus.forEach((e) => acciones.push({
+      a: "fila", hoja, clave: String(e.nie), valores: [String(e.nie), e.nombre],
+      desde: { col: 1, valor: "EXÁMENES", desplazar: 2 },
+      insertar: { col: 1, valor: "FIN", desplazar: -2 },
+      plantillas: [{ col: mMediaCab("EXÁMENES"), texto: CONFIG.formulaMedia }],
+    }));
+
+    // Clases como columnas de CLASES (antes de Σ)
+    (t.clases || []).forEach((c) => acciones.push({
+      a: "columna", hoja, filaClave: 4, clave: CONFIG.etiquetaClase(c),
       insertar: { fila: 4, valor: "Σ", desplazar: 0 },
       ancho: CONFIG.anchoNota, estilo: ESTILOS.cab,
     }));
-    // Alumnado como columnas de EXÁMENES y TAREAS:
-    estudiantes.forEach((e) => acciones.push(
-      {
-        a: "columna", hoja: notas,
-        filaClave: { col: 1, valor: "EXÁMENES", desplazar: 1 }, clave: String(e.nie),
-        insertar: { fila: { col: 1, valor: "EXÁMENES", desplazar: 1 }, valor: "Media", desplazar: 0 },
-        ancho: CONFIG.anchoNota, estilo: ESTILOS.cab,
-      },
-      {
-        a: "columna", hoja: notas,
-        filaClave: { col: 1, valor: "TAREAS", desplazar: 1 }, clave: String(e.nie),
-        insertar: { fila: { col: 1, valor: "TAREAS", desplazar: 1 }, valor: "Media", desplazar: 0 },
-        ancho: CONFIG.anchoNota, estilo: ESTILOS.cab,
-      }
-    ));
-    // Exámenes y tareas como filas (con su fórmula Media):
-    (d.examenes || []).forEach((x) => acciones.push({
-      a: "fila", hoja: notas, clave: String(x.id), valores: [String(x.id), x.titulo || ""],
-      insertar: { col: 1, valor: "TAREAS", desplazar: -1 },
-      plantillas: [{ col: mMediaCab("EXÁMENES"), texto: CONFIG.formulaMedia }],
+    // Tareas y exámenes como columnas de SU tabla (antes de Media)
+    (t.tareas || []).forEach((ta) => acciones.push({
+      a: "columna", hoja, filaClave: mCabSeccion("TAREAS"),
+      clave: CONFIG.etiquetaActividad(ta, "T"),
+      insertar: { fila: mCabSeccion("TAREAS"), valor: "Media", desplazar: 0 },
+      ancho: CONFIG.anchoNota, estilo: ESTILOS.cab,
     }));
-    (d.tareas || []).forEach((t) => acciones.push({
-      a: "fila", hoja: notas, clave: String(t.id), valores: [String(t.id), t.titulo || ""],
-      insertar: -1,
-      plantillas: [{ col: mMediaCab("TAREAS"), texto: CONFIG.formulaMedia }],
+    (t.examenes || []).forEach((x) => acciones.push({
+      a: "columna", hoja, filaClave: mCabSeccion("EXÁMENES"),
+      clave: CONFIG.etiquetaActividad(x, "E"),
+      insertar: { fila: mCabSeccion("EXÁMENES"), valor: "Media", desplazar: 0 },
+      ancho: CONFIG.anchoNota, estilo: ESTILOS.cab,
     }));
-    // Ordenar alumnado por apellidos y re-estampar Σ/Media (reordenar
-    // reescribe valores y mata fórmulas):
-    if (estudiantes.length) {
-      acciones.push(
-        { a: "reordenar", hoja: notas, desde: 5, hasta: 4 + estudiantes.length, colClave: 1, orden },
-        {
-          a: "plantillas", hoja: notas,
-          plantillas: [
-            { col: { fila: 4, valor: "Σ" }, filaInicio: 5, filaFin: { col: 1, valor: "EXÁMENES", desplazar: -2 }, texto: CONFIG.formulaSuma },
-            { col: { fila: 4, valor: "Media" }, filaInicio: 5, filaFin: { col: 1, valor: "EXÁMENES", desplazar: -2 }, texto: CONFIG.formulaMedia },
-          ],
-        }
-      );
-    }
-  }
 
-  if (hayGrado && estudiantes.length) {
-    const asis = nombreAsistencia(d.grado);
-    const orden = estudiantes.map((e) => String(e.nie));
-    estudiantes.forEach((e) => acciones.push({
+    // Ordenar alumnado (por apellidos) en las TRES tablas y re-estampar
+    // Σ/Media (reordenar reescribe valores y mata las fórmulas):
+    acciones.push(
+      { a: "reordenar", hoja, desde: 5, hasta: { col: 1, valor: "TAREAS", desplazar: -2 }, colClave: 1, orden },
+      { a: "reordenar", hoja, desde: { col: 1, valor: "TAREAS", desplazar: 2 }, hasta: { col: 1, valor: "EXÁMENES", desplazar: -2 }, colClave: 1, orden },
+      { a: "reordenar", hoja, desde: { col: 1, valor: "EXÁMENES", desplazar: 2 }, hasta: { col: 1, valor: "FIN", desplazar: -1 }, colClave: 1, orden },
+      {
+        a: "plantillas", hoja,
+        plantillas: [
+          { col: { fila: 4, valor: "Σ" }, filaInicio: 5, filaFin: { col: 1, valor: "TAREAS", desplazar: -2 }, texto: CONFIG.formulaSuma },
+          { col: { fila: 4, valor: "Media" }, filaInicio: 5, filaFin: { col: 1, valor: "TAREAS", desplazar: -2 }, texto: CONFIG.formulaMedia },
+          { col: mMediaCab("TAREAS"), filaInicio: { col: 1, valor: "TAREAS", desplazar: 2 }, filaFin: { col: 1, valor: "EXÁMENES", desplazar: -2 }, texto: CONFIG.formulaMedia },
+          { col: mMediaCab("EXÁMENES"), filaInicio: { col: 1, valor: "EXÁMENES", desplazar: 2 }, filaFin: { col: 1, valor: "FIN", desplazar: -1 }, texto: CONFIG.formulaMedia },
+        ],
+      }
+    );
+  });
+
+  // ── Asistencia: TODOS los estudiantes en UNA hoja ──
+  if (todos.length) {
+    const asis = nombreAsistencia();
+    const orden = todos.map((e) => String(e.nie));
+    todos.forEach((e) => acciones.push({
       a: "fila", hoja: asis, clave: String(e.nie),
-      valores: [String(e.nie), e.nombre], insertar: -1,
+      valores: [String(e.nie), e.nombre, gradoTexto(e.grado)], insertar: -1,
     }));
-    acciones.push({ a: "reordenar", hoja: asis, desde: 2, hasta: 1 + estudiantes.length, colClave: 1, orden });
+    acciones.push({ a: "reordenar", hoja: asis, desde: 2, hasta: 1 + todos.length, colClave: 1, orden });
   }
 
   return acciones;
 }
 
-/** Marca de la columna "Media" de la cabecera de una sección. */
-function mMediaCab(seccion) {
-  return { fila: { col: 1, valor: seccion, desplazar: 1 }, valor: "Media" };
+/** Fila de cabecera de UNA tabla (TAREAS/EXÁMENES) por marca. */
+function mCabSeccion(seccion) {
+  return { col: 1, valor: seccion, desplazar: 1 };
 }
 
-/** Acciones para registrar UNA nota de actividad (mejor esfuerzo). */
+/** Marca de la columna "Media" de la cabecera de una sección. */
+function mMediaCab(seccion) {
+  return { fila: mCabSeccion(seccion), valor: "Media" };
+}
+
+/** Acciones para registrar UNA nota de actividad (mejor esfuerzo).
+ *  · tipo "clase": columna D{día}·U·L de la tabla CLASES con el TOTAL
+ *    del estudiante (fila por NIE).
+ *  · tipo "tarea"/"examen": fila del ESTUDIANTE (NIE en su tabla) ×
+ *    columna de la actividad (T/E D{día}·U·L título) con el TOTAL. */
 function accionesActividad(datos) {
   const { perfil, clase, materia, grado, actividadId, tipo = "clase", puntos = "", titulo = "" } = datos || {};
   if (!perfil || perfil.nie === undefined || perfil.nie === null || !perfil.nombre) {
@@ -486,7 +629,7 @@ function accionesActividad(datos) {
   if (tipo === "clase") {
     if (!clase) throw new Error("sin-clase");
     acciones.push(
-      { a: "fila", hoja, clave: nie, valores: [nie, perfil.nombre], insertar: { col: 1, valor: "EXÁMENES", desplazar: -1 } },
+      { a: "fila", hoja, clave: nie, valores: [nie, perfil.nombre], desde: 5, insertar: { col: 1, valor: "TAREAS", desplazar: -2 } },
       {
         a: "columna", hoja, filaClave: 4, clave: CONFIG.etiquetaClase(clase),
         insertar: { fila: 4, valor: "Σ", desplazar: 0 },
@@ -494,31 +637,37 @@ function accionesActividad(datos) {
       },
       {
         a: "formato", hoja,
-        rango: { desde: { fila: 5, col: "$1.col" }, hasta: { fila: { col: 1, valor: "EXÁMENES", desplazar: -2 }, col: "$1.col" } },
+        rango: { desde: { fila: 5, col: "$1.col" }, hasta: { fila: { col: 1, valor: "TAREAS", desplazar: -2 }, col: "$1.col" } },
         patron: CONFIG.formatoNota,
       },
       { a: "celda", hoja, fila: "$0.fila", col: "$1.col", valor: puntos ?? "" },
       {
         a: "plantillas", hoja,
         plantillas: [
-          { col: { fila: 4, valor: "Σ" }, filaInicio: 5, filaFin: { col: 1, valor: "EXÁMENES", desplazar: -2 }, texto: CONFIG.formulaSuma },
-          { col: { fila: 4, valor: "Media" }, filaInicio: 5, filaFin: { col: 1, valor: "EXÁMENES", desplazar: -2 }, texto: CONFIG.formulaMedia },
+          { col: { fila: 4, valor: "Σ" }, filaInicio: 5, filaFin: { col: 1, valor: "TAREAS", desplazar: -2 }, texto: CONFIG.formulaSuma },
+          { col: { fila: 4, valor: "Media" }, filaInicio: 5, filaFin: { col: 1, valor: "TAREAS", desplazar: -2 }, texto: CONFIG.formulaMedia },
         ],
       }
     );
   } else if (tipo === "examen" || tipo === "tarea") {
     if (!actividadId) throw new Error("sin-id");
     const seccion = tipo === "examen" ? "EXÁMENES" : "TAREAS";
+    const letra = tipo === "examen" ? "E" : "T";
+    // Fila del ESTUDIANTE dentro de SU tabla (búsqueda acotada con
+    // `desde`; inserta antes de la última fila del bloque), con su
+    // fórmula Media
     acciones.push(
       {
-        a: "fila", hoja, clave: String(actividadId), valores: [String(actividadId), titulo || ""],
-        insertar: tipo === "tarea" ? -1 : { col: 1, valor: "TAREAS", desplazar: -1 },
+        a: "fila", hoja, clave: nie, valores: [nie, perfil.nombre],
+        desde: { col: 1, valor: seccion, desplazar: 2 },
+        insertar: { col: 1, valor: seccion === "TAREAS" ? "EXÁMENES" : "FIN", desplazar: -2 },
         plantillas: [{ col: mMediaCab(seccion), texto: CONFIG.formulaMedia }],
       },
       {
         a: "columna", hoja,
-        filaClave: { col: 1, valor: seccion, desplazar: 1 }, clave: nie,
-        insertar: { fila: { col: 1, valor: seccion, desplazar: 1 }, valor: "Media", desplazar: 0 },
+        filaClave: mCabSeccion(seccion),
+        clave: CONFIG.etiquetaActividad({ dia: clase?.dia, unidad: clase?.unidad, leccion: clase?.leccion, titulo, clase }, letra),
+        insertar: { fila: mCabSeccion(seccion), valor: "Media", desplazar: 0 },
         ancho: CONFIG.anchoNota, estilo: ESTILOS.cab,
       },
       {
@@ -534,24 +683,25 @@ function accionesActividad(datos) {
   return acciones;
 }
 
-/** Acciones para registrar la asistencia de UN día completo. */
+/** Acciones para registrar la asistencia de UN día (hoja única con
+ *  todos los grados). estudiantes: [{ uid, nombre, nie, grado, estado }] */
 function accionesAsistencia(datos) {
-  const { grado, fecha, estudiantes } = datos || {};
-  if (grado === undefined || grado === null || grado === "") throw new Error("sin-grado");
+  const { fecha, estudiantes } = datos || {};
   if (!fecha) throw new Error("sin-fecha");
   if (!Array.isArray(estudiantes) || !estudiantes.length) throw new Error("sin-estudiantes");
 
-  const hoja = nombreAsistencia(grado);
+  const hoja = nombreAsistencia();
   const ordenados = ordenEstudiantes(estudiantes);
   const fechaClave = CONFIG.etiquetaFecha(fecha);
   const acciones = [
-    { a: "configurar", hojas: [specAsistencia(grado, ordenados)], menu: null },
+    { a: "configurar", hojas: [specAsistencia(ordenados)], menu: null },
     { a: "columna", hoja, filaClave: 1, clave: fechaClave, insertar: -1, ancho: CONFIG.anchoFecha, estilo: ESTILOS.cabFecha },
   ];
 
   const base = acciones.length; // índice del resultado del 1.er "fila"
   ordenados.forEach((e) => acciones.push({
-    a: "fila", hoja, clave: String(e.nie), valores: [String(e.nie), e.nombre], insertar: -1,
+    a: "fila", hoja, clave: String(e.nie),
+    valores: [String(e.nie), e.nombre, gradoTexto(e.grado)], insertar: -1,
   }));
   ordenados.forEach((e, i) => acciones.push({
     a: "celda", hoja, fila: "$" + (base + i) + ".fila", col: "$1.col", valor: e.estado,
@@ -601,12 +751,12 @@ export async function asistencia(datos) {
 
 /* ════════════════════ 6. PRUEBAS ════════════════════
    Interno: permite probar los constructores con Node sin navegador
-   (ver scripts/test-sheets.mjs). NO usar en la app. */
+   (ver scripts/test-sheets-v2.mjs). NO usar en la app. */
 
 export const _debug = {
   CONFIG, ESTILOS,
-  colALetra, claveApellidos, ordenEstudiantes,
+  colALetra, claveApellidos, ordenEstudiantes, gradoTexto,
   nombreAsistencia, nombreNotas,
-  specAsistencia, specNotas,
+  specIndice, specAsistencia, specNotas,
   accionesConfigurar, accionesActividad, accionesAsistencia,
 };
