@@ -1,6 +1,19 @@
 // ============================================================
 // clases.js — VISTA de piezas: Clases · Exámenes · Tareas ·
-//             Recursos (js/components/clases.js) · v6
+//             Recursos (js/components/clases.js) · v7
+//
+// NUEVO EN v7 (materias por ciclo + materias visibles por grado):
+//   · CICLOS + cicloDeGrado() + materiasDeGrado(): el estudiante SOLO
+//     ve las materias de SU ciclo — de 4º a 6º SEGUNDO ciclo, de 7º a
+//     9º TERCER ciclo (Parvularia 4–6 y 1º a 3º: PRIMER ciclo). Las
+//     vistas nuevas a futuro deben listar materias con materiasDeGrado().
+//   · MATERIAS VISIBLES POR GRADO: el docente elige qué materias ven
+//     los estudiantes (abrirMateriasVisibles, botón «Materias
+//     visibles»); se guarda en clases/{grado}/config/materias vía
+//     db.materias (db.js v5). Se aplica a los 4 tipos de pieza.
+//   · VIGÍA de visibilidad: si el docente oculta LA MATERIA en vivo,
+//     el estudiante dentro de ella vuelve solo al inicio (y si su
+//     materia elegida queda oculta, se suelta la selección).
 //
 // UNA SOLA implementación para las cuatro páginas del inicio:
 //   renderPiezas(perfil, contenedor, tipo)  con  tipo =
@@ -48,8 +61,13 @@
 //     MODAL DE RESULTADOS por pieza: cada estudiante del grado con
 //     su nota POR ACTIVIDAD y la NOTA FINAL (viene de notas/{uid}/
 //     clases/{claseId}; la misma nota queda espejada en el user del
-//     estudiante como nota del día).
+//     estudiante: users/{uid}.notas.{claseId} = nota del día/clase).
 //
+// NAVEGACIÓN: la flecha «Volver» vuelve al INICIO en todas las vistas.
+//
+// Convención: CSS implícito · 100% responsivo · bajo la userbar.
+// ============================================================
+
 // REGLA DEL PROYECTO: nada toca Firestore directo → todo pasa por db.js
 import { db } from "../data/db.js";
 import { GRADOS } from "./auth.js";
@@ -73,6 +91,56 @@ export const MATERIAS = [
   { id: "educacion-fisica", nombre: "Educación Física" },
   { id: "artes", nombre: "Artes" },
 ];
+
+/* ---------------- Ciclos (currículo) ----------------
+   El estudiante SOLO ve las materias de SU ciclo:
+     · 4º a 6º  → SEGUNDO ciclo
+     · 7º a 9º  → TERCER ciclo
+     · Parvularia 4–6 y 1º a 3º → PRIMER ciclo
+   Las vistas de ESTUDIANTE (clases, tareas, exámenes, recursos y las
+   nuevas a futuro) deben listar materias con materiasDeGrado().
+   El docente sigue viendo TODAS (gestiona también contenido viejo). */
+
+const CICLOS = {
+  primer: [
+    "comunicacion", "ingles", "numeros-y-formas", "ciencia-y-tecnologia",
+    "ciudadania-y-valores", "desarrollo-corporal", "artes",
+  ],
+  segundo: [
+    "comunicacion-y-literatura", "ingles", "aritmetica-y-finanzas",
+    "ciencia-y-tecnologia", "ciudadania-y-valores", "educacion-fisica", "artes",
+  ],
+  tercer: [
+    "lengua-y-literatura", "ingles", "matematica-y-datos",
+    "ciencia-y-tecnologia", "ciudadania-y-valores", "educacion-fisica", "artes",
+  ],
+};
+
+const NOMBRES_CICLO = {
+  primer: "Primer ciclo",
+  segundo: "Segundo ciclo",
+  tercer: "Tercer ciclo",
+};
+
+/** Ciclo de un grado → "primer" | "segundo" | "tercer". */
+export function cicloDeGrado(grado) {
+  const g = Number(grado);
+  if (g >= 4 && g <= 6) return "segundo";
+  if (g >= 7 && g <= 9) return "tercer";
+  return "primer";
+}
+
+/** Materias del CICLO del grado (orden del currículo). Es la lista
+ *  del ESTUDIANTE; recuérdala filtrada además con la visibilidad que
+ *  ponga el docente (db.materias.deGrado → clases.js/recursos.js). */
+export function materiasDeGrado(grado) {
+  const ids = CICLOS[cicloDeGrado(grado)] || [];
+  return ids.map((id) => MATERIAS.find((m) => m.id === id)).filter(Boolean);
+}
+
+function cicloNombre(grado) {
+  return NOMBRES_CICLO[cicloDeGrado(grado)] || "";
+}
 
 /* ---------------- Tipos de pieza ---------------- */
 
@@ -125,6 +193,7 @@ let cargando = false;
 let estilosListos = false;
 let vigia = null;         // vigía del grado (estudiante): { quitar() }
 let piezaAbierta = null;  // pieza abierta por el estudiante: { clase, raiz }
+let visibilidadMaterias = {}; // mapa del grado (estudiante): { materiaId: false… }
 
 const CLAVE_SEL_DOCENTE = "mco_clases_docente";       // última selección del docente
 const CLAVE_SEL_ESTUDIANTE = "mco_clases_estudiante"; // última materia del estudiante
@@ -409,6 +478,22 @@ function inyectarEstilos() {
       color: #b91c1c;
     }
     .clase-card.esta-oculta { opacity: .78; border-style: dashed; }
+    /* Distintivo BLOQUEADA (lo ven docente y estudiantes): la tarjeta
+       se ve, pero NO es clickeable para el estudiante. */
+    .clase-bloqueada {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .18rem .55rem;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 800;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #b45309;
+    }
+    .clase-card.esta-bloqueada { cursor: not-allowed; }
+    .clase-card.esta-bloqueada .clase-accion { cursor: pointer; }
 
     .clase-card h3 {
       margin: 0 0 .2rem;
@@ -502,6 +587,11 @@ function inyectarEstilos() {
       color: #ffffff;
     }
 
+    /* ── Materias visibles por grado (docente) ── */
+    .clases-opcion .mv-estado { font-size: .68rem; font-weight: 700; color: #15803d; }
+    .clases-opcion.mv-oculta { border-style: dashed; opacity: .85; }
+    .clases-opcion.mv-oculta .mv-estado { color: #b91c1c; }
+
     .clases-crear-info {
       margin: 0 0 .9rem;
       font-size: .88rem;
@@ -511,6 +601,23 @@ function inyectarEstilos() {
 
     .clases-form { display: grid; gap: .75rem; }
     .clases-form sl-input { width: 100%; }
+    /* Unidad + Lección lado a lado; el NOMBRE de la unidad y lección
+       va justo debajo (input + buscador a la vez). */
+    .clases-doble { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    /* Buscador de nombres: sugerencias en vivo bajo el input. El
+       docente escribe y, si YA hay piezas de esta materia guardadas,
+       elige una coincidencia para reutilizar sus datos exactos. */
+    .clases-busca { position: relative; }
+    .clases-sugerencias { position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+      margin-top: .25rem; max-height: 220px; overflow: auto;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, .14); }
+    .clases-sugerencias button { display: block; width: 100%; text-align: left;
+      border: 0; background: transparent; padding: .5rem .7rem; cursor: pointer;
+      font: inherit; color: #1f2937; }
+    .clases-sugerencias button:hover { background: #f5f3ff; }
+    .clases-sugerencias button small { display: block; color: #7c3aed; font-weight: 800;
+      font-size: .68rem; margin-bottom: .1rem; }
 
     /* ── Modal de RESULTADOS (docente) ── */
     .pz-dialogo-resultados { --width: min(860px, 94vw); }
@@ -629,8 +736,9 @@ export function renderPiezas(perfil, contenedor, tipo = "clase") {
   textoBusqueda = "";
   piezaAbierta = null;
   inyectarEstilos();
-  iniciarVigia();   // estudiante: escucha eliminadas/invisibles en vivo
+  iniciarVigia();   // estudiante: escucha eliminadas/invisibles/materias en vivo
 
+  visibilidadMaterias = {};
   gradoSel = null;
   materiaSel = null;
   try {
@@ -642,15 +750,33 @@ export function renderPiezas(perfil, contenedor, tipo = "clase") {
         materiaSel = sel.materia;
       }
     } else {
-      // Recordar la última materia elegida por el estudiante
+      // Recordar la última materia del estudiante (SOLO si sigue siendo
+      // una materia de SU ciclo; antes se recordaba de las 12)
       const sel = JSON.parse(localStorage.getItem(CLAVE_SEL_ESTUDIANTE) || "null");
-      if (sel && MATERIAS.some((m) => m.id === sel.materia)) materiaSel = sel.materia;
+      const grado = (perfil.grados || [])[0];
+      if (sel && grado != null && materiasDeGrado(grado).some((m) => m.id === sel.materia)) {
+        materiaSel = sel.materia;
+      }
     }
   } catch (e) { /* localStorage no disponible: ignorar */ }
 
   renderUserbar(perfil, tipoDe(tipoActual).plural);
   renderInterno();
   cargarListado();
+
+  // Estudiante: mapa de MATERIAS VISIBLES del grado (db.js v5).
+  // Repinta cuando llegue y el vigía (iniciarVigia) lo mantiene al día.
+  if (!esDocente) {
+    const grado = (perfil.grados || [])[0];
+    if (grado != null) {
+      db.materias.deGrado(grado).then((mapa) => {
+        if (perfilActual !== perfil || esDocente) return; // ya cambió de vista
+        visibilidadMaterias = mapa || {};
+        ajustarMateriaSegunVisibilidad();
+        pintarListado();
+      });
+    }
+  }
 }
 
 function guardarSel() {
@@ -666,7 +792,7 @@ function guardarSel() {
 function renderInterno() {
   const info = tipoDe(tipoActual);
 
-  // Docente: chips de grado y materia · Estudiante: solo chip de materia
+  // Docente: chips de grado y materia (+ materias visibles) · Estudiante: chip de materia
   const chips = esDocente ? `
       <button class="clases-chip" id="chip-grado">
         <sl-icon name="mortarboard"></sl-icon>
@@ -677,7 +803,12 @@ function renderInterno() {
         <sl-icon name="journal-bookmark"></sl-icon>
         Materia: <b>${materiaSel ? escapeHtml(materiaDe(materiaSel).nombre) : "elegir"}</b>
         <sl-icon name="chevron-down"></sl-icon>
-      </button>` : `
+      </button>
+      ${gradoSel != null ? `
+      <button class="clases-chip" id="chip-visibilidad"
+        title="Elegir qué materias ven los estudiantes de ${escapeHtml(nombreGrado(gradoSel))}">
+        <sl-icon name="eye"></sl-icon> Materias visibles
+      </button>` : ""}` : `
       <button class="clases-chip" id="chip-materia">
         <sl-icon name="journal-bookmark"></sl-icon>
         Materia: <b>${materiaSel ? escapeHtml(materiaDe(materiaSel).nombre) : "elegir"}</b>
@@ -722,6 +853,8 @@ function renderInterno() {
   if (esDocente) {
     contenedorActual.querySelector("#chip-grado").addEventListener("click", abrirModalGrado);
     contenedorActual.querySelector("#btn-crear").addEventListener("click", abrirModalCrear);
+    const chipVis = contenedorActual.querySelector("#chip-visibilidad");
+    if (chipVis) chipVis.addEventListener("click", () => abrirMateriasVisibles(gradoSel));
   }
   contenedorActual.querySelector("#chip-materia").addEventListener("click", abrirModalMateria);
 
@@ -751,20 +884,29 @@ function cargarListado() {
 function cardHtml(c) {
   const color = colorDeMateria(c.materiaId);
   const oculta = esDocente && c.visible === false;
+  const bloqueada = c.bloqueada === true;
   const info = tipoDe(c.tipo || tipoActual);
+  const textoBloq = info.etiqueta === "examen" ? "Bloqueado" : "Bloqueada";
   const sub = (c.unidad != null && c.unidad !== "") || (c.leccion != null && c.leccion !== "")
     ? `Unidad ${escapeHtml(String(c.unidad ?? "—"))} · Lección ${escapeHtml(String(c.leccion ?? "—"))}`
     : "Material de apoyo";
 
   return `
-    <article class="clase-card${oculta ? " esta-oculta" : ""}" data-id="${escapeHtml(c.id)}"
+    <article class="clase-card${oculta ? " esta-oculta" : ""}${bloqueada && !esDocente ? " esta-bloqueada" : ""}" data-id="${escapeHtml(c.id)}"
              style="--acento:${color};--acento-fondo:${rgba(color, 0.12)}">
       <div class="clase-cab">
         ${c.dia != null && c.dia !== "" ? `<span class="clase-dia">Día ${escapeHtml(String(c.dia))}</span>` : ""}
         ${oculta ? `<span class="clase-oculta"><sl-icon name="eye-slash"></sl-icon> Invisible</span>` : ""}
+        ${bloqueada ? `<span class="clase-bloqueada"><sl-icon name="lock"></sl-icon> ${textoBloq}</span>` : ""}
       </div>
       <h3>${escapeHtml(c.clase || c.id)}</h3>
       <p>${sub}</p>
+      ${!esDocente && c.tipo !== "recurso" ? `
+      <div class="clase-acciones">
+        <button class="clase-accion" data-acc="puntaje" title="Ver mi puntaje y mi nota final" aria-label="Ver mi puntaje">
+          <sl-icon name="clipboard-data"></sl-icon>
+        </button>
+      </div>` : ""}
       ${esDocente ? `
       <div class="clase-acciones">
         <button class="clase-accion" data-acc="editar" title="Editar el título" aria-label="Editar el título">
@@ -772,6 +914,11 @@ function cardHtml(c) {
         </button>
         <button class="clase-accion${oculta ? "" : " activa"}" data-acc="ojo" title="${oculta ? "Hacerla visible para los estudiantes" : "Hacerla invisible: no existirá para los estudiantes"}" aria-label="Cambiar visibilidad">
           <sl-icon name="${oculta ? "eye-slash" : "eye"}"></sl-icon>
+        </button>
+        <button class="clase-accion${bloqueada ? "" : " activa"}" data-acc="candado" title="${bloqueada
+          ? "Quitar el bloqueo: los estudiantes podrán entrar"
+          : "Bloquear: la verán pero no podrán entrar"}" aria-label="Bloquear o desbloquear">
+          <sl-icon name="${bloqueada ? "lock-fill" : "unlock"}"></sl-icon>
         </button>
         ${c.tipo !== "recurso" ? `
         <button class="clase-accion" data-acc="resultados" title="Resultados del estudiante por actividad y nota final" aria-label="Ver resultados">
@@ -836,11 +983,18 @@ function pintarListado() {
 
   const texto = normalizar(textoBusqueda);
   const visibles = piezasCache.filter((c) => {
-    // Estudiante: SOLO su materia, SOLO este tipo y SOLO las VISIBLES
-    // (una pieza invisible no existe para el estudiante)
+    // SOLO piezas de ESTE tipo: cada vista muestra únicamente lo suyo
+    // (clase, tarea, examen o recurso). Antes el estudiante veía las
+    // tres vistas mezcladas + los recursos, porque la carga fresca de
+    // Firestore trae TODOS los tipos de la materia y aquí no se
+    // filtraba el tipo.
+    if ((c.tipo || "clase") !== tipoActual) return false;
+    // Estudiante: SOLO su materia, SOLO las VISIBLES
+    // (ni piezas invisibles ni MATERIAS ocultas por el docente)
     if (!esDocente) {
       if (c.materiaId !== materiaSel) return false;
       if (c.visible === false) return false;
+      if (visibilidadMaterias[c.materiaId] === false) return false;
     }
     if (!texto) return true;
     const campo = normalizar([c.dia, c.unidad, c.leccion, c.clase, c.id].join(" "));
@@ -882,9 +1036,20 @@ function pintarListado() {
       if (acc) {
         e.stopPropagation();
         if (acc.dataset.acc === "ojo") alternarVisible(clase);
+        else if (acc.dataset.acc === "candado") alternarBloqueo(clase);
+        else if (acc.dataset.acc === "puntaje") abrirMiPuntaje(clase);
         else if (acc.dataset.acc === "editar") abrirEditarTitulo(clase);
         else if (acc.dataset.acc === "resultados") abrirResultados(clase);
         else if (acc.dataset.acc === "eliminar") abrirConfirmarEliminar(clase);
+        return;
+      }
+      if (!esDocente && clase.bloqueada === true) {
+        notify(
+          "«" + (clase.clase || clase.id) + "» está " +
+          (tipoDe(clase.tipo || tipoActual).etiqueta === "examen" ? "bloqueado" : "bloqueada") +
+          " por tu docente.",
+          "warning"
+        );
         return;
       }
       abrirPieza(clase);
@@ -955,12 +1120,12 @@ async function cargarEstudiante() {
   piezasCache = Array.isArray(cache) ? deTipo(cache) : [];
   pintarListado();
 
-  // 2) Frescura: Firestore (todas las materias del grado, en paralelo)
+  // 2) Frescura: Firestore (SOLO las materias del ciclo del grado, en paralelo)
   cargando = true;
   if (piezasCache.length === 0) pintarListado();
   try {
     const grupos = await Promise.all(
-      MATERIAS.map(async (m) => {
+      materiasDeGrado(grado).map(async (m) => {
         const lista = await db.clases.listar(grado, m.id);
         return lista.map((c) => ({ grado, materiaId: m.id, materia: m.nombre, ...c }));
       })
@@ -1003,6 +1168,34 @@ async function alternarVisible(c) {
     );
   } catch (e) {
     notify("No se pudo cambiar la visibilidad: " + (e?.code || e?.message || "error"), "danger");
+  }
+}
+
+/* ---------------- Bloquear ⇄ desbloquear (boolean en Firebase) ----------------
+   BLOQUEADA = el estudiante LA VE en el listado pero NO puede
+   entrar (tarjeta con candado y sin clic). Es independiente del
+   ojo: invisible = no existe; bloqueada = existe pero cerrada. */
+
+async function alternarBloqueo(c) {
+  const nuevo = !(c.bloqueada === true);
+  try {
+    await db.clases.actualizar(c.grado, c.materiaId, c.id, { bloqueada: nuevo });
+    c.bloqueada = nuevo;
+    try {
+      localStorage.setItem(
+        claveCacheDocente(c.grado, c.materiaId, tipoActual),
+        JSON.stringify(piezasCache)
+      );
+    } catch (e) { /* ignorar */ }
+    pintarListado();
+    notify(
+      nuevo
+        ? "«" + (c.clase || c.id) + "» quedó BLOQUEADA: la verán pero no podrán entrar."
+        : "«" + (c.clase || c.id) + "» se DESBLOQUEÓ: los estudiantes ya pueden entrar.",
+      "success"
+    );
+  } catch (e) {
+    notify("No se pudo cambiar el bloqueo: " + (e?.code || e?.message || "error"), "danger");
   }
 }
 
@@ -1069,8 +1262,20 @@ function iniciarVigia() {
   if (esDocente) return;
   const grado = (perfilActual.grados || [])[0];
   if (grado == null) return;
-  const quites = MATERIAS.map((m) =>
+  // Piezas de las materias del CICLO del estudiante (las de fuera del
+  // ciclo ya no le llegan ni las puede abrir)
+  const quites = materiasDeGrado(grado).map((m) =>
     db.clases.vigilar(grado, m.id, (id, motivo) => piezaCerradaRemota(m.id, id, motivo))
+  );
+  // VIGÍA DE MATERIAS VISIBLES: si el docente oculta LA MATERIA en
+  // vivo (clases/{grado}/config/materias), el estudiante que esté
+  // DENTRO de una pieza de esa materia vuelve solo al inicio; si su
+  // materia elegida se ocultó, se suelta la selección y se repinta.
+  quites.push(
+    db.materias.vigilar(grado, (mapa) => {
+      visibilidadMaterias = mapa || {};
+      materiaVisibilidadCambio();
+    })
   );
   vigia = {
     quitar: () => quites.forEach((q) => { try { q(); } catch (e) { /* nada */ } }),
@@ -1082,7 +1287,44 @@ function quitarVigia() {
   vigia = null;
 }
 
+// Reacción en vivo a un cambio de materias visibles del grado
+function materiaVisibilidadCambio() {
+  const p = piezaAbierta;
+  // ¿Está DENTRO de una pieza de una materia recién oculta?
+  if (p && p.raiz && p.raiz.isConnected &&
+      visibilidadMaterias[p.clase.materiaId] === false) {
+    cerrarPorDocente(p.clase, "materia-oculta");
+    return;
+  }
+  ajustarMateriaSegunVisibilidad();
+  pintarListado();
+}
+
+// Si la materia ELEGIDA del estudiante quedó oculta (o no es de su
+// ciclo), se suelta la selección para que elija otra disponible.
+function ajustarMateriaSegunVisibilidad() {
+  if (esDocente || !materiaSel) return;
+  const grado = (perfilActual.grados || [])[0];
+  const ok =
+    visibilidadMaterias[materiaSel] !== false &&
+    (grado == null || materiasDeGrado(grado).some((m) => m.id === materiaSel));
+  if (!ok) {
+    materiaSel = null;
+    guardarSel();
+    renderInterno(); // repinta chips y listado («Elige una materia»)
+  }
+}
+
 function piezaCerradaRemota(materiaId, id, motivo) {
+  // BLOQUEO en vivo: refresca la copia local y repinta el listado
+  // (tarjeta con candado y sin clic) mientras el estudiante NO está
+  // dentro; si está dentro, más abajo vuelve al inicio.
+  if (motivo === "bloqueada") {
+    const fila = piezasCache.find((x) => x.materiaId === materiaId && x.id === id);
+    if (fila) fila.bloqueada = true;
+    const fuera = !piezaAbierta || !piezaAbierta.raiz || !piezaAbierta.raiz.isConnected;
+    if (fuera) pintarListado();
+  }
   const p = piezaAbierta;
   // ¿Sigue DENTRO? (la raíz de la pieza sigue conectada al DOM)
   if (!p || !p.raiz || !p.raiz.isConnected) return;
@@ -1103,7 +1345,11 @@ async function cerrarPorDocente(clase, motivo) {
   notify(
     motivo === "eliminada"
       ? "«" + titulo + "» fue eliminada por tu docente. Volviste al inicio."
-      : "«" + titulo + "» fue cerrada por tu docente. Tu nota quedó guardada.",
+      : motivo === "bloqueada"
+        ? "«" + titulo + "» fue bloqueada por tu docente. Volviste al inicio."
+        : motivo === "materia-oculta"
+          ? "Tu docente ocultó la materia «" + materiaDe(clase.materiaId).nombre + "». Volviste al inicio."
+          : "«" + titulo + "» fue cerrada por tu docente. Tu nota quedó guardada.",
     "warning",
     6500
   );
@@ -1231,10 +1477,110 @@ function abrirModalGrado() {
   });
 }
 
+/* ---------------- MATERIAS VISIBLES PARA EL ESTUDIANTE (docente) ----------------
+   El docente elige, POR GRADO, qué materias ven los estudiantes
+   (Clases, Tareas, Exámenes, Recursos y vistas nuevas a futuro).
+   Se guarda un boolean por materia en clases/{grado}/config/materias
+   (db.materias, db.js v5): lo que no es false ⇒ VISIBLE. La misma
+   la usa recursos.js (botón «Materias visibles» con un grado elegido). */
+
+export function abrirMateriasVisibles(grado, alCambiar = null) {
+  if (grado == null || grado === "todos") {
+    notify("Elige primero el grado.", "warning");
+    return;
+  }
+  inyectarEstilos(); // por si se abre desde otra vista (recursos.js)
+
+  const materiasGrado = materiasDeGrado(grado);
+  const d = crearDialogo(
+    "",
+    "Materias visibles — " + nombreGrado(grado),
+    `
+    <p class="clases-crear-info">
+      ${escapeHtml(cicloNombre(grado))} · ${escapeHtml(nombreGrado(grado))}.
+      Una materia <strong>INVISIBLE</strong> no existe para los estudiantes
+      de este grado (se aplica a Clases, Tareas, Exámenes y Recursos).
+      Haz clic en una materia para alternarla.
+    </p>
+    <div class="clases-opciones" id="mv-lista">
+      ${materiasGrado.map((m) => `
+        <button class="clases-opcion" data-materia="${m.id}">
+          ${escapeHtml(m.nombre)}<br><small class="mv-estado">Visible</small>
+        </button>`).join("")}
+    </div>`
+  );
+
+  // Estados REALES desde Firestore (por si ya había materias ocultas).
+  // mapaActual = estado COMPLETO en vivo: aplicarEstados(delta) solo lo
+  // actualiza con lo que llega y repinta TODOS los botones desde el mapa
+  // completo (antes repintaba todo con el mapa parcial de una sola
+  // materia y las demás se reseteaban solo visualmente).
+  let mapaActual = {};
+  const tocadas = new Set(); // materias ya alternadas en esta sesión del modal
+  const aplicarEstados = (delta) => {
+    mapaActual = { ...mapaActual, ...(delta || {}) };
+    d.querySelectorAll("#mv-lista .clases-opcion").forEach((btn) => {
+      const oculta = mapaActual[btn.dataset.materia] === false;
+      btn.classList.toggle("mv-oculta", oculta);
+      const est = btn.querySelector(".mv-estado");
+      if (est) est.textContent = oculta ? "Invisible" : "Visible";
+    });
+  };
+  db.materias.deGrado(grado).then((mapa) => {
+    if (!d.isConnected) return;
+    const fresco = { ...(mapa || {}) };
+    tocadas.forEach((id) => delete fresco[id]); // no pisar lo alternado en vivo
+    aplicarEstados(fresco);
+  });
+
+  // Clic = alternar visible ⇄ invisible (guarda en Firestore al toque)
+  d.querySelector("#mv-lista").addEventListener("click", async (e) => {
+    const btn = e.target.closest(".clases-opcion");
+    if (!btn) return;
+    const materiaId = btn.dataset.materia;
+    const ocultar = !btn.classList.contains("mv-oculta");
+    btn.style.opacity = ".55";
+    try {
+      await db.materias.setVisible(grado, materiaId, !ocultar);
+      tocadas.add(materiaId); // evita que la carga de Firestore pise este cambio
+      aplicarEstados({ [materiaId]: !ocultar });
+      notify(
+        "«" + materiaDe(materiaId).nombre + "» quedó " +
+        (ocultar ? "INVISIBLE" : "VISIBLE") +
+        " para los estudiantes de " + nombreGrado(grado) + ".",
+        "success"
+      );
+      alCambiar?.(materiaId, !ocultar);
+    } catch (err) {
+      notify("No se pudo cambiar la visibilidad: " + (err?.code || err?.message || "error"), "danger");
+    } finally {
+      btn.style.opacity = "";
+    }
+  });
+}
+
 function abrirModalMateria() {
+  // Estudiante: SOLO las materias de SU ciclo que el docente dejó
+  // visibles. Docente: todas (gestiona también contenido viejo).
+  const lista = esDocente
+    ? MATERIAS
+    : materiasDeGrado((perfilActual.grados || [])[0]).filter(
+        (m) => visibilidadMaterias[m.id] !== false
+      );
+
+  if (!lista.length) {
+    notify(
+      esDocente
+        ? "No hay materias para mostrar."
+        : "Tu docente no tiene materias visibles para tu grado.",
+      "warning"
+    );
+    return;
+  }
+
   const d = crearDialogo("", "Elige la materia", `
     <div class="clases-opciones">
-      ${MATERIAS.map((m) => `
+      ${lista.map((m) => `
         <button class="clases-opcion ${m.id === materiaSel ? "activa" : ""}" data-materia="${m.id}">
           ${escapeHtml(m.nombre)}
         </button>`).join("")}
@@ -1261,9 +1607,12 @@ function abrirModalCrear() {
     return;
   }
 
-  // Para CLASE día/unidad/lección son obligatorios (van a la hoja
-  // D{día}·U{unidad}·L{lección}); para examen/tarea/recurso quedan
-  // opcionales (agrupan y ordenan).
+  // CLASE: día + unidad + lección + NOMBRE de la unidad + NOMBRE de
+  // la lección + título — TODO obligatorio. Los dos nombres van POR
+  // SEPARADO (cada uno su input y su buscador) y se guardan en
+  // Firestore como nombreUnidad y nombreLeccion. TAREA/EXAMEN:
+  // unidad y lección quedan opcionales, pero cada nombre se pide sí
+  // o sí SOLO si se colocó su número (el de su respectivo).
   const esClase = tipoActual === "clase";
   // ⚠ El «(opcional)» va como TEXTO PLANO dentro del atributo label:
   // meter HTML en un atributo rompe el texto (se veía «<span style=»).
@@ -1277,52 +1626,226 @@ function abrirModalCrear() {
     <div class="clases-form">
       <sl-input id="c-dia" type="number" min="1" label="Día${op}" placeholder="Ej. 1"
                 help-text="${esClase ? "Número de día de la clase (1, 2, 3...)" : "Número de día (opcional)"}"></sl-input>
-      <sl-input id="c-unidad" label="Unidad${op}" placeholder="Ej. 1"></sl-input>
-      <sl-input id="c-leccion" label="Lección${op}" placeholder="Ej. 1"></sl-input>
+      <div class="clases-doble">
+        <sl-input id="c-unidad" type="number" min="1" label="Unidad${op}" placeholder="Ej. 1"></sl-input>
+        <sl-input id="c-leccion" type="number" min="1" label="Lección${op}" placeholder="Ej. 1"></sl-input>
+      </div>
+      <div class="clases-doble">
+        <div class="clases-busca" ${esClase ? "" : 'id="c-caja-unidad" hidden'}>
+          <sl-input id="c-nombre-unidad" label="Nombre de la unidad" placeholder="Ej. Los animales"
+                    help-text="Si ya existe, elige una sugerencia"></sl-input>
+          <div class="clases-sugerencias" id="c-sug-unidad" hidden></div>
+        </div>
+        <div class="clases-busca" ${esClase ? "" : 'id="c-caja-leccion" hidden'}>
+          <sl-input id="c-nombre-leccion" label="Nombre de la lección" placeholder="Ej. Las plantas"
+                    help-text="Si ya existe, elige una sugerencia"></sl-input>
+          <div class="clases-sugerencias" id="c-sug-leccion" hidden></div>
+        </div>
+      </div>
       <sl-input id="c-clase" label="${escapeHtml(info.etiqueta.charAt(0).toUpperCase() + info.etiqueta.slice(1))} (título)" placeholder="Ej. Sumas con llevando"></sl-input>
     </div>
     <sl-button slot="footer" variant="primary" pill id="c-guardar">${escapeHtml(info.crear)}</sl-button>`);
+
+  // ── NOMBRES POR SEPARADO: cada uno es input + BUSCADOR a la vez ──
+  // Cada buscador solo ve piezas de ESTA clase (grado) y ESTA
+  // materia (clases, tareas y exámenes) — nunca de otras materias.
+  // No sensibles a mayúsculas/minúsculas ni acentos: al escribir se
+  // puede elegir una sugerencia y llena SU número + SU nombre con
+  // los datos exactos. Sin datos guardados quedan como inputs
+  // corrientes.
+  const inputU = d.querySelector("#c-unidad");
+  const inputL = d.querySelector("#c-leccion");
+  const inputNU = d.querySelector("#c-nombre-unidad");
+  const inputNL = d.querySelector("#c-nombre-leccion");
+  const cajaSugU = d.querySelector("#c-sug-unidad");
+  const cajaSugL = d.querySelector("#c-sug-leccion");
+  const sinTildes = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let unidades = [];     // {u, n} nombres de UNIDAD ya guardados aquí
+  let lecciones = [];    // {l, n} nombres de LECCIÓN ya guardados aquí
+  let listaActU = [];    // sugerencias de unidad mostradas ahora
+  let listaActL = [];    // sugerencias de lección mostradas ahora
+
+  // TAREA/EXAMEN: cada nombre solo se pide si se colocó su número
+  const cajaNU = d.querySelector("#c-caja-unidad");
+  const cajaNL = d.querySelector("#c-caja-leccion");
+  const refrescarCajas = () => {
+    if (!cajaNU) return; // en CLASE siempre visibles
+    const hayU = String(inputU.value || "").trim() !== "";
+    const hayL = String(inputL.value || "").trim() !== "";
+    cajaNU.hidden = !hayU;
+    cajaNL.hidden = !hayL;
+    if (!hayU) { inputNU.value = ""; cajaSugU.hidden = true; cajaSugU.innerHTML = ""; }
+    if (!hayL) { inputNL.value = ""; cajaSugL.hidden = true; cajaSugL.innerHTML = ""; }
+  };
+
+  const sugerirU = () => {
+    const q = sinTildes(inputNU.value).trim();
+    const u = String(inputU.value || "").trim();
+    let lista;
+    if (q) {
+      // escribió texto → busca por nombre de unidad
+      lista = unidades.filter((c) => sinTildes(c.n).includes(q));
+    } else if (u) {
+      // solo número → muestra los nombres ya usados en esa unidad
+      lista = unidades.filter((c) => c.u === u);
+    } else {
+      cajaSugU.hidden = true; cajaSugU.innerHTML = ""; return;
+    }
+    lista = lista.slice(0, 8);
+    if (!lista.length) { cajaSugU.hidden = true; cajaSugU.innerHTML = ""; return; }
+    listaActU = lista;
+    cajaSugU.innerHTML = lista.map((c, i) =>
+      `<button type="button" data-i="${i}"><small>U${escapeHtml(c.u)}</small>${escapeHtml(c.n)}</button>`
+    ).join("");
+    cajaSugU.hidden = false;
+  };
+
+  const sugerirL = () => {
+    const q = sinTildes(inputNL.value).trim();
+    const l = String(inputL.value || "").trim();
+    let lista;
+    if (q) {
+      // escribió texto → busca por nombre de lección
+      lista = lecciones.filter((c) => sinTildes(c.n).includes(q));
+    } else if (l) {
+      // solo número → muestra los nombres ya usados en esa lección
+      lista = lecciones.filter((c) => c.l === l);
+    } else {
+      cajaSugL.hidden = true; cajaSugL.innerHTML = ""; return;
+    }
+    lista = lista.slice(0, 8);
+    if (!lista.length) { cajaSugL.hidden = true; cajaSugL.innerHTML = ""; return; }
+    listaActL = lista;
+    cajaSugL.innerHTML = lista.map((c, i) =>
+      `<button type="button" data-i="${i}"><small>L${escapeHtml(c.l)}</small>${escapeHtml(c.n)}</button>`
+    ).join("");
+    cajaSugL.hidden = false;
+  };
+
+  // Nombres ya guardados en ESTA clase (grado) y materia — una sola
+  // lectura de TODAS las piezas (cualquier tipo). Si falla, quedan
+  // como inputs corrientes.
+  (async () => {
+    try {
+      const todas = await db.clases.listar(gradoSel, materiaSel);
+      const vU = new Set();
+      const vL = new Set();
+      todas.forEach((p) => {
+        const u = String(p.unidad ?? "").trim();
+        const nU = String(p.nombreUnidad || "").trim();
+        const l = String(p.leccion ?? "").trim();
+        const nL = String(p.nombreLeccion || "").trim();
+        if (u && nU) {
+          const k = sinTildes(nU) + "|" + u;
+          if (!vU.has(k)) { vU.add(k); unidades.push({ u, n: nU }); }
+        }
+        if (l && nL) {
+          const k = sinTildes(nL) + "|" + l;
+          if (!vL.has(k)) { vL.add(k); lecciones.push({ l, n: nL }); }
+        }
+      });
+      unidades.sort((a, b) => (Number(a.u) || 0) - (Number(b.u) || 0));
+      lecciones.sort((a, b) => (Number(a.l) || 0) - (Number(b.l) || 0));
+      sugerirU(); // si ya había algo escrito, refresca
+      sugerirL();
+    } catch { unidades = []; lecciones = []; }
+  })();
+
+  inputU.addEventListener("sl-input", () => { refrescarCajas(); if (!inputNU.value.trim()) sugerirU(); });
+  inputL.addEventListener("sl-input", () => { refrescarCajas(); if (!inputNL.value.trim()) sugerirL(); });
+  inputNU.addEventListener("sl-input", sugerirU);
+  inputNL.addEventListener("sl-input", sugerirL);
+
+  cajaSugU.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-i]");
+    if (!btn) return;
+    const c = listaActU[Number(btn.dataset.i)];
+    if (!c) return;
+    inputU.value = c.u;
+    inputNU.value = c.n;
+    cajaSugU.hidden = true;
+    cajaSugU.innerHTML = "";
+  });
+
+  cajaSugL.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-i]");
+    if (!btn) return;
+    const c = listaActL[Number(btn.dataset.i)];
+    if (!c) return;
+    inputL.value = c.l;
+    inputNL.value = c.n;
+    cajaSugL.hidden = true;
+    cajaSugL.innerHTML = "";
+  });
 
   d.querySelector("#c-guardar").addEventListener("click", async () => {
     const guardar = d.querySelector("#c-guardar");
     const diaRaw = String(d.querySelector("#c-dia").value || "").trim();
     const dia = diaRaw === "" ? null : Number(diaRaw);
-    const unidad = String(d.querySelector("#c-unidad").value || "").trim();
-    const leccion = String(d.querySelector("#c-leccion").value || "").trim();
+    const uRaw = String(inputU.value || "").trim();
+    const unidad = uRaw === "" ? null : Number(uRaw);
+    const lRaw = String(inputL.value || "").trim();
+    const leccion = lRaw === "" ? null : Number(lRaw);
+    const nombreU = String(inputNU.value || "").trim();
+    const nombreL = String(inputNL.value || "").trim();
     const titulo = String(d.querySelector("#c-clase").value || "").trim();
 
     if (dia !== null && (!Number.isInteger(dia) || dia < 1)) {
       notify("El día debe ser un número entero mayor a 0.", "warning");
       return;
     }
-    if (esClase && (dia === null || !unidad || !leccion || !titulo)) {
-      notify("Completa día, unidad, lección y título de la clase.", "warning");
+    if ((unidad !== null && (!Number.isInteger(unidad) || unidad < 1)) ||
+        (leccion !== null && (!Number.isInteger(leccion) || leccion < 1))) {
+      notify("Unidad y lección deben ser números enteros mayores a 0.", "warning");
       return;
     }
-    if (!titulo) {
-      notify("Escribe el título de la " + info.etiqueta + ".", "warning");
-      return;
+    if (esClase) {
+      if (dia === null || unidad === null || leccion === null || !nombreU || !nombreL || !titulo) {
+        notify("Completa día, unidad, lección, nombre de la unidad, nombre de la lección y título de la clase.", "warning");
+        return;
+      }
+    } else {
+      if (!titulo) {
+        notify("Escribe el título de la " + info.etiqueta + ".", "warning");
+        return;
+      }
+      if (unidad !== null && !nombreU) {
+        notify("Pusiste unidad: falta el nombre de la unidad.", "warning");
+        return;
+      }
+      if (leccion !== null && !nombreL) {
+        notify("Pusiste lección: falta el nombre de la lección.", "warning");
+        return;
+      }
     }
 
     guardar.loading = true;
     try {
-      // id tipo-clase:  d1-u1-l1-sumas  ·  examen: examen-d2-u3-l1-… (o sin D·U·L)
+      // id = NÚMEROS (como siempre: d1-u1-l1) + TÍTULO — la MISMA ruta
+      // de Firebase, solo cambia el nombre del recurso:
+      //   · clase  → d1-u1-l1-angulos-y-sus-medidas
+      //   · tarea  → tarea-u2-l3-repaso (o solo tarea-repaso)
+      //   · examen → examen-u1-l2-repaso (o solo examen-repaso)
       const partes = [];
       if (dia != null) partes.push("d" + dia);
-      if (unidad) partes.push("u" + slug(unidad));
-      if (leccion) partes.push("l" + slug(leccion));
-      const idBase = (esClase ? "" : tipoActual + "-") + partes.join("-") + "-" + slug(titulo);
-      const id = idBase.replace(/^-+/, "");
+      if (unidad != null) partes.push("u" + unidad);
+      if (leccion != null) partes.push("l" + leccion);
+      const numeros = partes.join("-");
+      const idBase = (esClase ? "" : tipoActual + "-") +
+        (numeros ? numeros + "-" : "") + slug(titulo);
+      const id = idBase.replace(/-+/g, "-").replace(/^-+|-+$/g, "");
       if (await db.clases.existe(gradoSel, materiaSel, id)) {
-        notify("Ya existe una " + info.etiqueta + " con esos datos en esta materia.", "danger");
+        notify("Ya existe una " + info.etiqueta + " con esos números y ese título en esta materia.", "danger");
         return;
       }
       await db.clases.crear(gradoSel, materiaSel, id, {
         tipo: tipoActual,
         visible: true,          // el docente la puede apagar con el ojo
         dia: dia != null ? dia : "",
-        unidad,
-        leccion,
+        unidad: unidad != null ? unidad : "",
+        leccion: leccion != null ? leccion : "",
+        nombreUnidad: nombreU,  // nombre de la UNIDAD (por separado)
+        nombreLeccion: nombreL, // nombre de la LECCIÓN (por separado)
         clase: titulo,
         creadoPor: perfilActual?.uid || "",
       }); // db.js añade creadoEn
@@ -1386,10 +1909,20 @@ function abrirResultados(clase) {
     cargandoEl.hidden = false;
     zonaTabla.hidden = true;
     try {
-      // 1) Estudiantes del grado (users/{uid} con ese grado)
+      // 1) Estudiantes del grado (users/{uid} con ese grado).
+      //    Orden POR ÍNDICE de palabra: [2] apellido 1 → [3] apellido 2
+      //    → [0] nombre 1 → [1] nombre 2 (la columna muestra el nombre
+      //    completo normal).
       const estudiantes = (await db.usuarios.porGrado(gradoSel))
         .filter((x) => x.rol !== "docente")
-        .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
+        .sort((a, b) => {
+          const palabras = (n) => String(n || "").trim().split(/\s+/).filter(Boolean);
+          const clave = (p) =>
+            [p[2] || "", p[3] || "", p[0] || "", p[1] || ""]
+              .join(" ").toLowerCase()
+              .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return clave(palabras(a.nombre)).localeCompare(clave(palabras(b.nombre)), "es");
+        });
 
       // 2) Nota de CADA estudiante en ESTA pieza (mejor esfuerzo)
       const filas = await db.notas.deEstudiantes(estudiantes, clase.id);
@@ -1452,4 +1985,70 @@ function abrirResultados(clase) {
   };
 
   cargar();
+}
+
+/* ---------------- MI PUNTAJE (estudiante) ----------------
+   Botón en cada tarjeta (clase/tarea/examen) del ESTUDIANTE: modal
+   con el puntaje de CADA actividad respondida y la NOTA FINAL.
+   Lee notas/{uid}/clases/{claseId} — lo mismo que ve el docente en
+   Resultados. Funciona aunque la pieza esté BLOQUEADA (solo no
+   puede entrar a ella); si está INVISIBLE la tarjeta ni aparece. */
+
+async function abrirMiPuntaje(clase) {
+  const d = crearDialogo(
+    "pz-dialogo-resultados",
+    "Mi puntaje — " + (clase.clase || clase.id),
+    `
+    <p class="pz-res-info">
+      <strong>${escapeHtml(clase.clase || clase.id)}</strong> ·
+      ${escapeHtml(clase.materia || materiaDe(clase.materiaId).nombre)} ·
+      ${escapeHtml(nombreGrado(clase.grado))}
+    </p>
+    <div class="pz-res-cargando" id="mp-cargando">
+      <sl-spinner></sl-spinner> Cargando tu puntaje…
+    </div>
+    <div class="pz-res-tabla" id="mp-tabla" hidden></div>`
+  );
+
+  try {
+    const nota = await db.notas.leer(perfilActual.uid, clase.id);
+    const ps = nota && nota.preguntas ? nota.preguntas : {};
+    const qids = Object.keys(ps);
+    const est = estadoNota(nota);
+    const zona = d.querySelector("#mp-tabla");
+    d.querySelector("#mp-cargando").hidden = true;
+    zona.hidden = false;
+    zona.innerHTML = qids.length ? `
+      <table>
+        <thead>
+          <tr>
+            <th>Actividad</th>
+            <th>Puntos</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${qids.map((q, i) => `
+            <tr>
+              <td>Actividad ${i + 1}<small>${escapeHtml(q)}</small></td>
+              <td class="num">${ps[q] != null ? escapeHtml(String(ps[q])) : "—"}</td>
+            </tr>`).join("")}
+          <tr>
+            <td class="pz-res-total">Nota final</td>
+            <td class="pz-res-total">${escapeHtml(String(nota?.puntos ?? 0))}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="pz-res-info" style="margin-top:.6rem">
+        Estado: <span class="pz-res-estado ${est.cls}">${est.txt}</span>
+      </p>`
+      : `<div class="pz-res-vacio">Todavía no tienes actividades respondidas aquí.</div>`;
+  } catch (e) {
+    d.querySelector("#mp-cargando").hidden = true;
+    const zona = d.querySelector("#mp-tabla");
+    zona.hidden = false;
+    zona.innerHTML = `
+      <div class="pz-res-vacio">
+        No se pudo leer tu puntaje (${escapeHtml(String(e?.code || e?.message || "error"))}).
+      </div>`;
+  }
 }

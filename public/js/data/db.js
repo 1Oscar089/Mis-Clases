@@ -1,5 +1,5 @@
 // ============================================================
-// db.js — ÚNICA capa de acceso a datos (js/data/db.js) · v4
+// db.js — ÚNICA capa de acceso a datos (js/data/db.js) · v5
 //
 // REGLA DEL PROYECTO: NINGÚN otro archivo toca Firestore o Sheets.
 //   · Firebase AUTH (login Google) queda en components/auth.js:
@@ -31,6 +31,26 @@
 //       → borra UNA pieza. La usa el EDITOR de recursos al MOVER un
 //         recurso a otro grado/materia (crea la copia en el nuevo
 //         lugar y elimina el doc viejo).
+//
+// NUEVO EN v5 (materias visibles por grado):
+//   · db.materias.deGrado(grado)
+//       → MAPA de visibilidad de materias de UN grado:
+//         { comunicacion: false, artes: true, … } (lo que no aparece
+//         o no es false ⇒ VISIBLE). Es lo que usan las vistas del
+//         ESTUDIANTE (clases, tareas, exámenes, recursos y las
+//         nuevas a futuro) para OCULTAR materias enteras.
+//   · db.materias.setVisible(grado, materiaId, visible)
+//       → el DOCENTE elige qué materias se ven para ese grado.
+//         Guarda un boolean por materia en el documento
+//         clases/{grado}/config/materias (queda dentro del mismo
+//         árbol de clases: las reglas de 4 segmentos lo cubren).
+//   · db.materias.vigilar(grado, alCambiar)
+//       → onSnapshot del documento: si el docente oculta una materia
+//         EN VIVO, las vistas reciben el mapa nuevo al instante (el
+//         estudiante dentro de esa materia vuelve solo al inicio).
+//         deGrado/vigilar son de MEJOR ESFUERZO (fallo ⇒ materias
+//         visibles, la app nunca se rompe); setVisible SÍ lanza
+//         (la UI avisa con su toast).
 //
 // NUEVO EN v4 (eliminación + cierre en vivo · nota de clase):
 //   · db.clases.vigilar(grado, materiaId, alCerrar)
@@ -65,6 +85,7 @@
 // ESTADO ACTUAL:
 //   · db.usuarios (users/{uid})                     ✅ + porGrado
 //   · db.clases   (clases/{grado}/{materia}/{id})   ✅ + actualizar + vigilar
+//   · db.materias (clases/{grado}/config/materias)  ✅ visible/invisible por grado
 //   · db.notas    (notas/{uid}/clases/{claseId})    ✅ + espejo user + notas/{materia}
 //   · db.sheets   (puente con Google Sheets)        ✅
 //
@@ -191,9 +212,11 @@ const clases = {
    *  Las piezas invisibles o nuevas no disparan nada (el estudiante
    *  nunca pudo entrar a ellas). Devuelve la función quitar() del
    *  listener (la llama la vista al salir de la página). */
+  
   vigilar(grado, materiaId, alCerrar) {
     const ref = collection(firestore, "clases", String(grado), materiaId);
-    const visibles = new Map(); // id → estaba visible (true|false)
+    const visibles = new Map();   // id → estaba visible (true|false)
+    const bloqueadas = new Map(); // id → estaba bloqueada (true|false)
     const quitar = onSnapshot(
       ref,
       (snap) => {
@@ -201,16 +224,26 @@ const clases = {
         snap.forEach((d) => {
           actuales.add(d.id);
           const visible = d.data().visible !== false;
+          const bloqueada = d.data().bloqueada === true;
           const antes = visibles.get(d.id);
+          const antesBloqueada = bloqueadas.get(d.id);
           if (antes === true && !visible) {
             try { alCerrar?.(d.id, "invisible"); } catch (e) { /* aviso propio */ }
           }
+          // NUEVO v6 — BLOQUEO: estaba abierta (visible y sin candado)
+          // y el docente la BLOQUEA → el estudiante que esté DENTRO
+          // vuelve al inicio (mismo trato que invisible/eliminada).
+          if (antes === true && antesBloqueada === false && bloqueada) {
+            try { alCerrar?.(d.id, "bloqueada"); } catch (e) { /* aviso propio */ }
+          }
           visibles.set(d.id, visible);
+          bloqueadas.set(d.id, bloqueada);
         });
         // Borradas: estaban registradas y ya no existen en la colección
         for (const [id, estabaVisible] of visibles) {
           if (!actuales.has(id)) {
             visibles.delete(id);
+            bloqueadas.delete(id);
             if (estabaVisible) {
               try { alCerrar?.(id, "eliminada"); } catch (e) { /* aviso propio */ }
             }
@@ -220,6 +253,59 @@ const clases = {
       (e) => console.warn("[db] vigía clases:", e?.code || e?.message || e)
     );
     return quitar;
+  },
+
+};
+
+/* ------- MATERIAS VISIBLES POR GRADO — clases/{grado}/config/materias -------
+   Un SOLO documento por grado con un boolean por materia:
+     clases/{grado}/config/materias = { comunicacion: true, artes: false, … }
+   Lo que falta (o true) ⇒ VISIBLE; solo false ⇒ INVISIBLE para el
+   estudiante de ESE grado. Es independiente del ojo de cada pieza:
+   el ojo oculta UNA clase/tarea/examen/recurso; esto oculta LA
+   MATERIA ENTERA (sus 4 tipos) para los estudiantes del grado. */
+
+const materias = {
+  /** Mapa de visibilidad del grado → { materiaId: boolean }.
+   *  MEJOR ESFUERZO: si falla la lectura devuelve {} (todo visible)
+   *  para que la vista del estudiante nunca se rompa. */
+  async deGrado(grado) {
+    try {
+      const snap = await getDoc(
+        doc(firestore, "clases", String(grado), "config", "materias")
+      );
+      return snap.exists() ? snap.data() || {} : {};
+    } catch (e) {
+      console.warn("[db] materias.deGrado:", e?.code || e?.message || e);
+      return {};
+    }
+  },
+
+  /** El docente hace VISIBLE/INVISIBLE una materia para el grado.
+   *  Puede lanzar (Firestore = fuente de verdad; la UI avisa). */
+  async setVisible(grado, materiaId, visible) {
+    await setDoc(
+      doc(firestore, "clases", String(grado), "config", "materias"),
+      {
+        [claveSegura(materiaId)]: !!visible,
+        actualizadoEn: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  },
+
+  /** VIGÍA del documento de visibilidad del grado. Llama
+   *  alCambiar(mapa) con el mapa FRESCO en cada cambio (y una
+   *  primera vez al conectar). Devuelve quitar() del listener. */
+  vigilar(grado, alCambiar) {
+    const ref = doc(firestore, "clases", String(grado), "config", "materias");
+    return onSnapshot(
+      ref,
+      (snap) => {
+        try { alCambiar?.(snap.exists() ? snap.data() || {} : {}); } catch (e) { /* aviso propio */ }
+      },
+      (e) => console.warn("[db] vigía materias:", e?.code || e?.message || e)
+    );
   },
 };
 
@@ -349,6 +435,16 @@ const notas = {
     return salidas;
   },
 
+  /** ESPEJO en Sheets de la nota de UNA actividad (mejor esfuerzo).
+      datos: { perfil:{nie,nombre}, clase:{dia,unidad,leccion} | {id},
+               materia, grado, actividadId?, tipo:"clase"|"examen"|"tarea",
+               puntos, titulo? }
+      · tipo "clase": columna D{dia}·U{unidad}·L{leccion} con el TOTAL
+        de la clase para ese NIE (se re-reporta y siempre queda al día).
+      · tipo "tarea"/"examen": fila del ESTUDIANTE (NIE) × columna de
+        la actividad (T/E D{día}·U·L título) con el TOTAL (el examen
+        se reporta UNA sola vez, desde finalizarExamen() de
+        js/utils/opcionMultiple.js). */
   /** NUEVO v4 — NOTA DE CLASE POR MATERIA (Firebase):
    *  users/{uid}/notas/{materiaId} = { diaN: puntos, actualizadoEn }
    *  Un documento por materia; un campo "diaN" por día trabajado
@@ -426,16 +522,6 @@ const notas = {
     }
   },
 
-  /** ESPEJO en Sheets de la nota de UNA actividad (mejor esfuerzo).
-      datos: { perfil:{nie,nombre}, clase:{dia,unidad,leccion} | {id},
-               materia, grado, actividadId?, tipo:"clase"|"examen"|"tarea",
-               puntos, titulo? }
-      · tipo "clase": columna D{dia}·U{unidad}·L{leccion} con el TOTAL
-        de la clase para ese NIE (se re-reporta y siempre queda al día).
-      · tipo "tarea"/"examen": fila del ESTUDIANTE (NIE) × columna de
-        la actividad (T/E D{día}·U·L título) con el TOTAL (el examen
-        se reporta UNA sola vez, desde finalizarExamen() de
-        js/utils/opcionMultiple.js). */
   async reportarActividad(datos) {
     try {
       return await actividad(datos || {});
@@ -461,21 +547,22 @@ const sheets = {
   /** Lee una hoja completa → { ok, valores: [ [celda…] ] } (lectura). */
   leer,
   /** Crea/actualiza hojas y sincroniza alumnado, clases, exámenes y tareas.
-      datos: { estudiantes:[{uid,nombre,nie,grado}],
-               hojas:[{grado, materia, clases, examenes, tareas}] } */
+      datos: { grado?, materia?, estudiantes:[{uid,nombre,nie}],
+               clases:[{dia,unidad,leccion,…}], examenes:[{id,titulo}],
+               tareas:[{id,titulo}] } */
   configurar,
   /** Espejo en Sheets de UNA nota de actividad (mejor esfuerzo).
       datos: { perfil:{nie,nombre}, clase:{dia,unidad,leccion},
                materia, grado, actividadId, tipo:"clase"|"examen"|"tarea",
                puntos, titulo } */
   actividad,
-  /** Registra la asistencia de UN día completo (hoja única, todos los
-      grados). datos: { fecha:"2026-10-20",
-               estudiantes:[{uid,nombre,nie,grado,estado:"+"|"-"|"P"}] } */
+  /** Registra la asistencia de UN día completo.
+      datos: { grado, fecha:"2026-10-20",
+               estudiantes:[{uid,nombre,nie,estado:"A"|"T"|"F"}] } */
   asistencia,
 };
 
 /* ---------------- Export ---------------- */
 
-export const db = { usuarios, clases, notas, sheets };
+export const db = { usuarios, clases, materias, notas, sheets };
 export default db;

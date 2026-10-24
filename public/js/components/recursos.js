@@ -1,5 +1,21 @@
 // ============================================================
-// recursos.js — Página «Recursos» (js/components/recursos.js) · v4
+// recursos.js — Página «Recursos» (js/components/recursos.js) · v5
+//
+// NUEVO EN v5 (arreglo del guardado + ciclos + materias visibles):
+//   · ARREGLADO «No se pudo guardar el recurso: … reading 'indexOf'»:
+//     el botón «Crear recurso» llamaba abrirCrear DIRECTAMENTE con
+//     addEventListener → el EVENTO del clic entraba como `editando`
+//     (esEdicion = true), y al guardar se pedía editando.id =
+//     undefined → doc() recibía un segmento undefined y el SDK de
+//     Firestore lanzaba ese error. Ahora: función flecha + guardia en
+//     abrirCrear (solo es edición si llega id + grado + materia).
+//   · MATERIAS POR CICLO (estudiante): usa materiasDeGrado() de
+//     clases.js — de 4º a 6º segundo ciclo, de 7º a 9º tercer ciclo.
+//   · MATERIAS VISIBLES (docente): botón «Materias visibles» con un
+//     grado elegido (mismo diálogo de clases.js, se guarda en
+//     clases/{grado}/config/materias vía db.materias). Si oculta una
+//     materia, sus recursos desaparecen para los estudiantes de ese
+//     grado y el que tenga uno abierto vuelve solo al inicio (VIGÍA).
 //
 // NUEVO EN v4 (los 3 pedidos):
 //   1. PDF CON CACHÉ LOCAL: el PDF se baja UNA sola vez y queda
@@ -80,7 +96,7 @@
 
 import { db } from "../data/db.js";
 import { GRADOS } from "./auth.js";
-import { MATERIAS } from "./clases.js";
+import { MATERIAS, materiasDeGrado, abrirMateriasVisibles } from "./clases.js";
 import { renderUserbar } from "./userbar.js";
 import { renderInicio } from "./inicio.js";
 import { escapeHtml } from "../utils/helpers.js";
@@ -202,6 +218,16 @@ const SVG_PAPELERA =
   '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
   '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
   '<path d="M10 11v6M14 11v6"/></svg>';
+
+const SVG_CANDADO =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+
+const SVG_CANDADO_ABIERTO =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
 
 let estilosListos = false;
 let vigiaCierreListo = false; // listeners globales de guardado (una sola vez)
@@ -516,7 +542,11 @@ function inyectarEstilos() {
     .rec-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .75rem; }
 
     /* ── Tarjeta del recurso ── */
-    .rec-tarjeta { display: flex; align-items: center; gap: .7rem; text-align: left;
+    /* flex-wrap: en tarjetas angostas los botones del docente BAJAN a
+       una segunda fila y el título recupera su ancho (antes quedaba
+       con espacio 0 y se partía letra por letra). */
+    .rec-tarjeta { display: flex; flex-wrap: wrap; align-items: center;
+      gap: .55rem .7rem; text-align: left;
       background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
       padding: .65rem .7rem; cursor: pointer; font: inherit; color: inherit;
       transition: border-color .15s, box-shadow .15s, transform .15s; }
@@ -524,11 +554,16 @@ function inyectarEstilos() {
       box-shadow: 0 4px 14px rgba(22, 163, 74, .14); transform: translateY(-1px); }
     .rec-tarjeta:focus-visible { outline: 2px solid #16a34a; outline-offset: 2px; }
     .rec-tarjeta.esta-oculta { opacity: .78; border-style: dashed; }
+    .rec-tarjeta.esta-bloqueada { cursor: not-allowed; }
     .rec-ficha { width: 46px; height: 46px; border-radius: 10px; flex: none;
       display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: .6rem; letter-spacing: .02em; }
     .rec-ficha[data-tipo="gcarpeta"], .rec-ficha[data-tipo="descarga"] { font-size: .48rem; }
-    .rec-cuerpo { min-width: 0; flex: 1; }
+    /* flex-basis AUTO (no 0): con flex-wrap, el título RESERVA su ancho
+       de contenido y los botones del docente bajan a la 2ª fila; con
+       basis 0 la línea «cerraba» con el título en ~0px y se partía
+       letra por letra. */
+    .rec-cuerpo { min-width: 0; flex: 1 1 auto; }
     /* TARJETA PREDEFINIDA: el título NO se recorta — se lee COMPLETO
        (p. ej. «Libro de texto 7mo grado»); min-height fija 2 líneas
        para que todas las tarjetas se vean uniformes. */
@@ -544,6 +579,9 @@ function inyectarEstilos() {
     .rec-oculta-tag { display: inline-flex; align-items: center; gap: .25rem;
       font-size: .68rem; font-weight: 800; color: #b91c1c;
       background: #fef2f2; border: 1px solid #fecaca; padding: 1px 7px; border-radius: 999px; }
+    .rec-bloqueada-tag { display: inline-flex; align-items: center; gap: .25rem;
+      font-size: .68rem; font-weight: 800; color: #b45309;
+      background: #fffbeb; border: 1px solid #fde68a; padding: 1px 7px; border-radius: 999px; }
     .rec-ojo { display: inline-flex; align-items: center; justify-content: center;
       width: 34px; height: 34px; border-radius: 9px; border: 1px solid #e5e7eb;
       background: #f9fafb; color: #6b7280; cursor: pointer; flex: none;
@@ -552,6 +590,10 @@ function inyectarEstilos() {
     .rec-ojo.visible { border-color: #a7f3d0; background: #ecfdf5; color: #059669; }
     .rec-ojo.eliminar:hover { border-color: #fca5a5; background: #fef2f2; color: #b91c1c; }
     .rec-ojo svg { width: 17px; height: 17px; }
+    /* Grupo de botones del docente: baja COMPLETO a la segunda fila
+       cuando la tarjeta es angosta (no botón por botón). */
+    .rec-acciones { display: flex; align-items: center; gap: .35rem;
+      margin-left: auto; flex: none; }
 
     /* ── Estados vacíos / cargando ── */
     .rec-vacio { border: 2px dashed #e5e7eb; border-radius: 1rem; padding: 2.1rem 1.2rem;
@@ -677,6 +719,8 @@ function inyectarEstilos() {
       .rec-fondo { padding: 0; }
       .rec-modal { width: 100%; height: 100%; border-radius: 0; }` : ""}
       .rec-rejilla { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: .55rem; }
+      .rec-ojo { width: 30px; height: 30px; }
+      .rec-ojo svg { width: 15px; height: 15px; }
       .rec-modal-ficha { display: none; }
     }
   `;
@@ -693,6 +737,7 @@ let recursosCache = [];     // [{ grado, materiaId, id, clase, enlace, visible, 
 let textoBusqueda = "";
 let cargando = false;
 let vigiaRec = null;        // vigía del grado (estudiante): { quitar() }
+let visibilidadMaterias = {}; // mapa del grado (estudiante): { materiaId: false… }
 
 /* ---------------- Render ---------------- */
 
@@ -710,6 +755,7 @@ export function render(perfil, contenedor) {
   textoBusqueda = "";
   cargando = false;
   gradoSel = null;
+  visibilidadMaterias = {};
 
   if (esDocente) {
     try {
@@ -726,6 +772,19 @@ export function render(perfil, contenedor) {
   iniciarVigia();   // estudiante: cierra el modal si el recurso desaparece
   renderInterno();
   cargarListado();
+
+  // Estudiante: mapa de MATERIAS VISIBLES del grado (db.js v5).
+  // Repinta cuando llegue; el vigía (iniciarVigia) lo mantiene al día.
+  if (!esDocente) {
+    const grado = (perfil.grados || [])[0];
+    if (grado != null) {
+      db.materias.deGrado(grado).then((mapa) => {
+        if (perfilActual !== perfil || esDocente) return; // ya cambió de vista
+        visibilidadMaterias = mapa || {};
+        pintarListado();
+      });
+    }
+  }
 }
 export { render as renderRecursos };
 
@@ -745,7 +804,12 @@ function renderInterno() {
       </div>
       <button class="rec-btn-crear" id="rec-btn-crear">
         <sl-icon name="plus-lg"></sl-icon> Crear recurso
-      </button>`
+      </button>
+      ${gradoSel != null && gradoSel !== "todos" ? `
+      <button class="rec-btn-volver" id="rec-btn-materias"
+        title="Elegir qué materias ven los estudiantes de ${escapeHtml(nombreGrado(gradoSel))}">
+        <sl-icon name="eye"></sl-icon> Materias visibles
+      </button>` : ""}`
     : "";
 
   contenedorActual.innerHTML = `
@@ -775,7 +839,13 @@ function renderInterno() {
   });
 
   if (esDocente) {
-    contenedorActual.querySelector("#rec-btn-crear").addEventListener("click", abrirCrear);
+    // ⚠ CON FUNCIÓN FLECHA: addEventListener pasa el EVENTO como primer
+    // argumento — abrirCrear(evento) entraba en modo EDICIÓN con
+    // editando = evento (editando.id = undefined) y al guardar doc()
+    // recibía un segmento undefined: «… reading 'indexOf'».
+    contenedorActual.querySelector("#rec-btn-crear").addEventListener("click", () => abrirCrear());
+    const btnMat = contenedorActual.querySelector("#rec-btn-materias");
+    if (btnMat) btnMat.addEventListener("click", () => abrirMateriasVisibles(gradoSel));
     contenedorActual.querySelector("#rec-chips").addEventListener("click", (e) => {
       const btn = e.target.closest(".rec-chip");
       if (!btn) return;
@@ -861,11 +931,15 @@ async function cargarListado() {
   const grados = gradosDeLaVista();
   if (!grados.length) { cargando = false; pintarListado(); return; }
 
-  // 2) Frescura: Firestore (grado × materia, en paralelo)
+  // 2) Frescura: Firestore (grado × materia, en paralelo). El
+  //    estudiante SOLO carga las materias de SU ciclo; el docente, todas.
   cargando = true;
   if (!recursosCache.length) pintarListado();
   const pares = [];
-  grados.forEach((g) => MATERIAS.forEach((m) => pares.push({ grado: g, materiaId: m.id })));
+  grados.forEach((g) => {
+    const lista = esDocente ? MATERIAS : materiasDeGrado(g);
+    lista.forEach((m) => pares.push({ grado: g, materiaId: m.id }));
+  });
   try {
     const trozos = await Promise.all(
       pares.map(async (p) => {
@@ -919,6 +993,22 @@ function pintarListado() {
     return;
   }
 
+  // Estudiante: TODAS sus materias (de ciclo) ocultas por el docente
+  const gradoEst = esDocente ? null : (perfilActual.grados || [])[0];
+  if (!esDocente && gradoEst != null && materiasDeGrado(gradoEst).every(
+    (m) => visibilidadMaterias[m.id] === false
+  )) {
+    zonaRetomar.innerHTML = "";
+    zona.innerHTML = `
+      <div class="rec-vacio">
+        <sl-icon name="eye-slash"></sl-icon>
+        <h3>Sin materias visibles</h3>
+        <p>Tu docente no tiene ninguna materia visible para
+           ${escapeHtml(nombreGrado(gradoEst))} por ahora.</p>
+      </div>`;
+    return;
+  }
+
   if (cargando && !recursosCache.length) {
     zonaRetomar.innerHTML = "";
     zona.innerHTML = `<p class="rec-cargando">Cargando recursos…</p>`;
@@ -927,8 +1017,19 @@ function pintarListado() {
 
   // Filtro por texto (título + materia + enlace) sobre filas enriquecidas
   const texto = normalizar(textoBusqueda);
+  // Materias del CICLO del estudiante (la caché vieja puede traer
+  // filas de otras materias: ya no se muestran)
+  const materiasDelCiclo = new Set(
+    gradoEst == null ? [] : materiasDeGrado(gradoEst).map((m) => m.id)
+  );
   const visibles = recursosCache.map(prepararFila).filter((r) => {
-    if (!esDocente && r.visible === false) return false; // invisible: no existe para el estudiante
+    if (!esDocente) {
+      // Piezas invisibles NO existen · materias ocultas por el docente
+      // tampoco · y solo materias del ciclo del estudiante
+      if (r.visible === false) return false;
+      if (visibilidadMaterias[r.materiaId] === false) return false;
+      if (!materiasDelCiclo.has(String(r.materiaId))) return false;
+    }
     if (!texto) return true;
     const campo = normalizar(
       [r._titulo, materiaDe(r.materiaId).nombre, r.enlace, nombreGrado(r.grado)].join(" ")
@@ -1006,8 +1107,13 @@ function pintarListado() {
       if (acc) {
         e.stopPropagation();
         if (acc.dataset.acc === "ojo") alternarVisible(fila);
+        else if (acc.dataset.acc === "candado") alternarBloqueo(fila);
         else if (acc.dataset.acc === "editar") abrirEditar(fila);
         else if (acc.dataset.acc === "eliminar") abrirConfirmarEliminar(fila);
+        return;
+      }
+      if (!esDocente && fila.bloqueada === true) {
+        notify("«" + (fila._titulo || fila.id) + "» está bloqueado por tu docente.", "warning");
         return;
       }
       abrirRecurso(fila);
@@ -1018,6 +1124,7 @@ function pintarListado() {
 function tarjetaHtml(r) {
   const tipo = TIPOS[r._res.tipo] || TIPOS.web;
   const oculta = esDocente && r.visible === false;
+  const bloqueada = r.bloqueada === true;
   const reg = registroProgreso(r._clave);
   const retomar = llevaProgreso(reg)
     ? `<span class="rec-retomar-chip">Retomar ${escapeHtml(textoRetomar(reg))}</span>`
@@ -1031,7 +1138,7 @@ function tarjetaHtml(r) {
     : "";
 
   return `
-    <article class="rec-tarjeta${oculta ? " esta-oculta" : ""}" data-clave="${escapeHtml(r._clave)}"
+    <article class="rec-tarjeta${oculta ? " esta-oculta" : ""}${bloqueada && !esDocente ? " esta-bloqueada" : ""}" data-clave="${escapeHtml(r._clave)}"
              aria-label="Abrir ${escapeHtml(r._titulo)}">
       <span class="rec-ficha" data-tipo="${r._res.tipo}"
         style="background:${tipo.fondo};color:${tipo.color}">${tipo.etiqueta}</span>
@@ -1039,17 +1146,24 @@ function tarjetaHtml(r) {
         <span class="rec-nombre">${escapeHtml(r._titulo)}</span>
         <span class="rec-datos">${chipGrado}${retomar}${sinEnlace}
           ${oculta ? `<span class="rec-oculta-tag"><sl-icon name="eye-slash"></sl-icon> Invisible</span>` : ""}
+          ${bloqueada ? `<span class="rec-bloqueada-tag"><sl-icon name="lock"></sl-icon> Bloqueado</span>` : ""}
         </span>
       </span>
       ${esDocente ? `
-      <button class="rec-ojo" data-acc="editar" title="Editar recurso: título, enlace, grado y materia"
-        aria-label="Editar recurso">${SVG_LAPIZ}</button>
-      <button class="rec-ojo${oculta ? "" : " visible"}" data-acc="ojo" title="${oculta
-        ? "Hacerlo visible para los estudiantes"
-        : "Hacerlo invisible: no existirá para los estudiantes"}"
-        aria-label="Cambiar visibilidad">${SVG_OJO}</button>
-      <button class="rec-ojo eliminar" data-acc="eliminar" title="Eliminar recurso"
-        aria-label="Eliminar recurso">${SVG_PAPELERA}</button>` : ""}
+      <span class="rec-acciones">
+        <button class="rec-ojo" data-acc="editar" title="Editar recurso: título, enlace, grado y materia"
+          aria-label="Editar recurso">${SVG_LAPIZ}</button>
+        <button class="rec-ojo${oculta ? "" : " visible"}" data-acc="ojo" title="${oculta
+          ? "Hacerlo visible para los estudiantes"
+          : "Hacerlo invisible: no existirá para los estudiantes"}"
+          aria-label="Cambiar visibilidad">${SVG_OJO}</button>
+        <button class="rec-ojo${bloqueada ? "" : " visible"}" data-acc="candado" title="${bloqueada
+          ? "Quitar el bloqueo: los estudiantes podrán abrirlo"
+          : "Bloquear: lo verán pero no podrán abrirlo"}"
+          aria-label="Bloquear o desbloquear">${bloqueada ? SVG_CANDADO : SVG_CANDADO_ABIERTO}</button>
+        <button class="rec-ojo eliminar" data-acc="eliminar" title="Eliminar recurso"
+          aria-label="Eliminar recurso">${SVG_PAPELERA}</button>
+      </span>` : ""}
     </article>`;
 }
 
@@ -1060,6 +1174,7 @@ function pintarRetomar(zonaRetomar, visibles) {
   const mapa = leerProgreso();
   let mejor = null;
   for (const r of visibles) {
+    if (r.bloqueada === true) continue; // bloqueado: no se puede abrir
     const reg = mapa[r._clave];
     if (!reg || !reg.ultimaVez) continue;
     if (!mejor || String(reg.ultimaVez) > String(mapa[mejor._clave]?.ultimaVez)) mejor = r;
@@ -1098,6 +1213,32 @@ async function alternarVisible(r) {
     );
   } catch (e) {
     notify("No se pudo cambiar la visibilidad: " + (e?.code || e?.message || "error"), "danger");
+  }
+}
+
+/* ---------------- Bloquear ⇄ desbloquear (docente) ----------------
+   BLOQUEADO = el estudiante LO VE en el listado pero NO puede
+   abrirlo. Es independiente del ojo: invisible = no existe. */
+
+async function alternarBloqueo(r) {
+  const nuevo = !(r.bloqueada === true);
+  try {
+    await db.clases.actualizar(r.grado, r.materiaId, r.id, { bloqueada: nuevo });
+    // la fila enriquecida es una COPIA: actualiza la fila CRUDA de la caché
+    const cruda = recursosCache.find(
+      (x) => x.grado === r.grado && x.materiaId === r.materiaId && x.id === r.id
+    );
+    if (cruda) cruda.bloqueada = nuevo;
+    guardarCache();
+    pintarListado();
+    notify(
+      nuevo
+        ? "«" + (r._titulo || r.id) + "» quedó BLOQUEADO: lo verán pero no podrán abrirlo."
+        : "«" + (r._titulo || r.id) + "» se DESBLOQUEÓ: los estudiantes ya pueden abrirlo.",
+      "success"
+    );
+  } catch (e) {
+    notify("No se pudo cambiar el bloqueo: " + (e?.code || e?.message || "error"), "danger");
   }
 }
 
@@ -1157,8 +1298,22 @@ function iniciarVigia() {
   if (esDocente) return;
   const grado = (perfilActual.grados || [])[0];
   if (grado == null) return;
-  const quites = MATERIAS.map((m) =>
+  // Piezas de las materias del CICLO del estudiante (las de fuera ya
+  // no le llegan ni las puede abrir)
+  const quites = materiasDeGrado(grado).map((m) =>
     db.clases.vigilar(grado, m.id, (id, motivo) => {
+      // BLOQUEO en vivo: refresca la copia local; si el recurso no
+      // está abierto, basta con repintar (tarjeta con candado y sin
+      // clic). Si está abierto, más abajo vuelve al inicio.
+      if (motivo === "bloqueada") {
+        const cruda = recursosCache.find((x) => x.materiaId === m.id && x.id === id);
+        if (cruda) cruda.bloqueada = true;
+        if (!modal || !filaActual) {
+          guardarCache();
+          pintarListado();
+          return;
+        }
+      }
       // Solo interesa si ESTE recurso está abierto en el modal
       if (!modal || !filaActual) return;
       if (filaActual.materiaId !== m.id || filaActual.id !== id) return;
@@ -1169,10 +1324,35 @@ function iniciarVigia() {
       notify(
         motivo === "eliminada"
           ? "«" + titulo + "» fue eliminado por tu docente. Volviste al inicio."
-          : "«" + titulo + "» fue cerrado por tu docente.",
+          : motivo === "bloqueada"
+            ? "«" + titulo + "» fue bloqueado por tu docente. Volviste al inicio."
+            : "«" + titulo + "» fue cerrado por tu docente.",
         "warning",
         6500
       );
+    })
+  );
+  // VIGÍA DE MATERIAS VISIBLES: si el docente OCULTA la materia del
+  // recurso abierto, el estudiante vuelve solo al inicio; si no hay
+  // modal abierto, basta con repintar el listado.
+  quites.push(
+    db.materias.vigilar(grado, (mapa) => {
+      visibilidadMaterias = mapa || {};
+      if (modal && filaActual && visibilidadMaterias[filaActual.materiaId] === false) {
+        const titulo = String(filaActual._titulo || filaActual.id || "");
+        const materia = materiaDe(filaActual.materiaId).nombre;
+        cerrarModal();
+        renderUserbar(perfilActual);
+        renderInicio(perfilActual, contenedorActual);
+        notify(
+          "Tu docente ocultó la materia «" + materia +
+          "» (cerró «" + titulo + "»). Volviste al inicio.",
+          "warning",
+          6500
+        );
+        return;
+      }
+      pintarListado();
     })
   );
   vigiaRec = {
@@ -1461,7 +1641,7 @@ async function montarVisorPdfEn(zona, clave, blob, paginaInicial, guardar, vivo 
   // Las que se acercan al viewport (±900px) se renderizan solas
   const io = new IntersectionObserver(
     (entradas) => {
-      for (const en of entradas) { // eslint-disable-line
+      for (const en of entradas) {
         if (en.isIntersecting) encolar(Number(en.target.dataset.pagina));
       }
     },
@@ -1780,7 +1960,7 @@ function cuerpoModal(fila, src) {
     </div></div>`;
   }
 
-  // garchivo · gdoc · ghoja · gdiap · gform · gcarpeta · web → iframe
+  // pdf · garchivo · gdoc · ghoja · gdiap · gform · gcarpeta · web → iframe
   // Si el sitio PROHÍBE ser embebido (X-Frame-Options, ej. mined.gob.sv)
   // NO se intenta el iframe: se muestra la ficha con el botón «Abrir
   // recurso» — sin «Refused to display» ni modal en blanco.
@@ -1973,7 +2153,11 @@ function prepararFila(f) {
    doc viejo, conservando su progreso de página/minuto). */
 
 function abrirCrear(editando = null) {
-  const esEdicion = !!editando;
+  // SOLO es EDICIÓN si llega la pieza COMPLETA (id + grado + materia).
+  // Así ningún argumento raro (p. ej. el evento de un addEventListener
+  // que llama abrirCrear directo) puede colar el diálogo en modo
+  // edición con datos undefined — el bug «reading 'indexOf'».
+  const esEdicion = !!(editando && editando.id && editando.grado != null && editando.materiaId);
   const yaHayGrado = esEdicion || (gradoSel != null && gradoSel !== "todos");
 
   const d = document.createElement("sl-dialog");
