@@ -83,11 +83,12 @@
 //       crearTitulo({ texto: "…", contenedor: pon(l1, 0, 0, 820, 48) });
 //     con las ayudas lamina() / pon() / fondo() ya incluidas.
 //
-// EXTENDER (futuras actualizaciones): buscar «REGISTRO DE RECURSOS»
-// aquí abajo y AGREGAR una entrada a la lista REGISTRO (con ruta
-// "componentes/archivo.js" o "utils/archivo.js"). Con eso el recurso
-// sale solo en el panel izquierdo, su formulario, la vista previa y
-// el código descargado. Nada más que tocar.
+// EXTENDER (futuras actualizaciones): cada recurso vive en SU BLOQUE
+// numerado (marca de inicio/fin + REGISTRO.push + validar con sus
+// OBLIGATORIOS). Para agregar uno: pega un BLOQUE nuevo al FINAL del
+// archivo, después de la PUERTA DE GUARDADO. Con eso el recurso sale
+// solo en el panel, su formulario, la vista previa, el código
+// descargado y la validación al guardar. Nada más que tocar.
 //
 // Nada de este editor escribe en la base de datos: el trabajo queda
 // en el navegador (localStorage) y el resultado final es el .js.
@@ -237,7 +238,9 @@ function urlDeRecurso(r) {
    REGISTRO DE RECURSOS
    ------------------------------------------------------------
    ▼▼▼ PARA AGREGAR UN RECURSO NUEVO (futuras actualizaciones) ▼▼▼
-   Añade una entrada a la lista REGISTRO con:
+   Pega UN BLOQUE nuevo al FINAL del archivo (después de la PUERTA
+   DE GUARDADO) con su marca de inicio/fin y, dentro del IIFE,
+   añade la entrada al REGISTRO con:
      id          clave única (normalmente el nombre del archivo)
      nombre      cómo se ve en el panel izquierdo (alfabético)
      cat         "componentes" | "utils" | "visuales"
@@ -283,6 +286,11 @@ function urlDeRecurso(r) {
      montaLista true → la función NO recibe `contenedor`: devuelve un
                  controlador con .elemento (o una lista de elementos)
                  que hay que agregar al bloque.
+     validar(valores) → (opcional, RECOMENDADO) a prueba de errores:
+                 devuelve [{ k, msg }] con lo que FALTE; la PUERTA
+                 DE GUARDADO bloquea Guardar y marca esos campos en
+                 rojo. Ayudantes listos: obligatorioTexto(),
+                 obligatorioNum() y obligatorioJson().
    ▲▲▲ NADA MÁS: panel, formulario, preview y descarga salen solos ▲▲▲
    ============================================================ */
 
@@ -298,10 +306,54 @@ function paramColumnas() {
   return { k: "columnas", et: "Columnas (2 = mitad del ancho)", tipo: "num", ej: "2 · 3 · 4" };
 }
 
-const REGISTRO = [
-  /* ------------------- COMPONENTES ------------------- */
+/* ============================================================
+   REGISTRO DE RECURSOS — BLOQUE POR BLOQUE (a prueba de errores)
+   ------------------------------------------------------------
+   Cada recurso del panel vive en SU PROPIO bloque numerado:
+     · marca de INICIO (número, id, nombre, categoría y sus
+       OBLIGATORIOS) y marca de FIN;
+     · caja autocontenida (() => { … })() con su REGISTRO.push;
+     · validar(valores) → [{ k, msg }] con lo que FALTE. La
+       PUERTA DE GUARDADO (al final del archivo) revisa TODOS
+       los validar: si algo falta, Guardar NO pasa y los
+       campos culpables quedan marcados en rojo con aviso.
+   Ayudantes compartidos: obligatorioTexto / obligatorioNum /
+   obligatorioJson (más abajo; los usan los validar).
+   ============================================================ */
 
-  {
+const REGISTRO = [];
+
+/* ── Ayudantes COMPARTIDOS de validación (devuelven [{ k, msg }];
+      lista vacía = el campo está bien) ── */
+function obligatorioTexto(v, k, et, ej) {
+  if (String(v[k] ?? "").trim() !== "") return [];
+  return [{ k, msg: "«" + et + "» es obligatorio" + (ej ? " — ej: " + ej : "") + "." }];
+}
+function obligatorioNum(v, k, et, ej) {
+  if (num(v[k]) !== undefined) return [];
+  return [{ k, msg: "«" + et + "» es obligatorio y debe ser un número" + (ej ? " — ej: " + ej : "") + "." }];
+}
+function obligatorioJson(v, k, et, ej, necesitaArreglo) {
+  const t = String(v[k] ?? "").trim();
+  if (t === "") {
+    return [{ k, msg: "«" + et + "» es obligatorio" + (ej ? " — ej: " + ej : "") + "." }];
+  }
+  const j = jsonSeguro(t);
+  if (!j.ok) return [{ k, msg: "«" + et + "» no es JSON válido — ej: " + ej }];
+  if (necesitaArreglo && !Array.isArray(j.valor)) {
+    return [{ k, msg: "«" + et + "» debe ser una lista JSON [ … ] — ej: " + ej }];
+  }
+  return [];
+}
+
+/* ------------------- COMPONENTES ------------------- */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 1 · «aviso» — Aviso destacado   [componentes]
+   Obligatorio: Texto
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "aviso",
     nombre: "Aviso destacado",
     cat: "componentes",
@@ -323,9 +375,19 @@ const REGISTRO = [
       icono: bool(v.icono, true),
       tamano: num(v.tamano),
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "texto", "Texto", "Escribe aquí el aviso"),
+  });
+})();
+/* ════════════════════════════════════════════════ fin BLOQUE 1 · «aviso» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 2 · «calendario» — Calendario del mes   [visuales]
+   Obligatorio: Mes (texto) y Año (número)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "calendario",
     nombre: "Calendario del mes",
     cat: "visuales",
@@ -367,9 +429,22 @@ const REGISTRO = [
       mostrarFestividades: bool(v.mostrarFestividades) || undefined,
       festividades: pares(v.festividades, "dia", "nombre").valor,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => [
+      ...obligatorioTexto(v, "mes", "Mes", "Septiembre"),
+      ...obligatorioNum(v, "anio", "Año", "2026"),
+    ],
+  });
+})();
+/* ═══════════════════════════════════════════ fin BLOQUE 2 · «calendario» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 3 · «cita» — Cita o frase   [componentes]
+   Obligatorio: Cita (texto)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "cita",
     nombre: "Cita o frase",
     cat: "componentes",
@@ -391,9 +466,19 @@ const REGISTRO = [
       tamano: num(v.tamano),
       alineacion: v.alineacion || undefined,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "texto", "Cita", "Escribe la frase destacada"),
+  });
+})();
+/* ═════════════════════════════════════════════════ fin BLOQUE 3 · «cita» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 4 · «codigo» — Código / texto tal cual   [componentes]
+   Obligatorio: Código
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "codigo",
     nombre: "Código / texto tal cual",
     cat: "componentes",
@@ -411,9 +496,19 @@ const REGISTRO = [
       lenguaje: v.lenguaje || undefined,
       tamano: num(v.tamano),
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "codigo", "Código", "Escribe aquí el código o texto tal cual"),
+  });
+})();
+/* ═══════════════════════════════════════════════ fin BLOQUE 4 · «codigo» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 5 · «detalles» — Contenido desplegable   [componentes]
+   Obligatorio: Rótulo + al menos 1 párrafo (filas; el editor las revisa al guardar)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "detalles",
     nombre: "Contenido desplegable",
     cat: "componentes",
@@ -439,9 +534,19 @@ const REGISTRO = [
       abierto: bool(v.abierto),
       tamano: num(v.tamano),
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "titulo", "Rótulo", "Ver la **solución**"),
+  });
+})();
+/* ═════════════════════════════════════════════ fin BLOQUE 5 · «detalles» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 6 · «encabezado» — Encabezado de clase   [componentes]
+   Obligatorio: nada — arranca con Día 1 · Unidad 1 · Lección 1
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "encabezado",
     nombre: "Encabezado de clase",
     cat: "componentes",
@@ -470,9 +575,16 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       puntajeInicial: num(v.puntajeInicial),
     }),
-  },
+  });
+})();
+/* ═══════════════════════════════════════════ fin BLOQUE 6 · «encabezado» ════ */
 
-  {
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 7 · «enlace» — Enlace / botón   [componentes]
+   Obligatorio: Texto visible + Dirección (URL)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "enlace",
     nombre: "Enlace / botón",
     cat: "componentes",
@@ -498,9 +610,22 @@ const REGISTRO = [
       nombreArchivo: v.nombreArchivo || undefined,
       tamano: num(v.tamano),
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => [
+      ...obligatorioTexto(v, "texto", "Texto visible", "Hoja de trabajo (PDF)"),
+      ...obligatorioTexto(v, "url", "Dirección (URL)", "https://…"),
+    ],
+  });
+})();
+/* ═══════════════════════════════════════════════ fin BLOQUE 7 · «enlace» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 8 · «flechas» — Flechas de navegación   [componentes]
+   Obligatorio: nada — las etiquetas son opcionales
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "flechas",
     nombre: "Flechas de navegación",
     cat: "componentes",
@@ -539,9 +664,16 @@ const REGISTRO = [
       centrado: bool(v.centrado) || undefined,
       tamano: num(v.tamano),
     }),
-  },
+  });
+})();
+/* ══════════════════════════════════════════════ fin BLOQUE 8 · «flechas» ════ */
 
-  {
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 9 · «formula» — Fórmula destacada   [componentes]
+   Obligatorio: Fórmula (LaTeX)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "formula",
     nombre: "Fórmula destacada",
     cat: "componentes",
@@ -561,9 +693,19 @@ const REGISTRO = [
       tamano: num(v.tamano),
       alineacion: v.alineacion || undefined,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "latex", "Fórmula (LaTeX)", "x^2 + 1"),
+  });
+})();
+/* ══════════════════════════════════════════════ fin BLOQUE 9 · «formula» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 10 · «formatoTexto» — Texto con formato   [componentes]
+   Obligatorio: Texto
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "formatoTexto",
     nombre: "Texto con formato",
     cat: "componentes",
@@ -581,9 +723,19 @@ const REGISTRO = [
       tamano: num(v.tamano),
       alineacion: v.alineacion || undefined,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "texto", "Texto (con marcas)", "Escribe el texto aquí"),
+  });
+})();
+/* ════════════════════════════════════════ fin BLOQUE 10 · «formatoTexto» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 11 · «imagen» — Imagen con pie   [componentes]
+   Obligatorio: Dirección de la imagen
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "imagen",
     nombre: "Imagen con pie",
     cat: "componentes",
@@ -605,9 +757,19 @@ const REGISTRO = [
       marco: bool(v.marco),
       alineacion: v.alineacion || undefined,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "url", "Dirección de la imagen", "recursos/img/figura.png"),
+  });
+})();
+/* ══════════════════════════════════════════════ fin BLOQUE 11 · «imagen» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 12 · «lista» — Lista con viñetas   [componentes]
+   Obligatorio: al menos 1 elemento (filas) — el editor lo revisa al guardar
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "lista",
     nombre: "Lista con viñetas",
     cat: "componentes",
@@ -633,9 +795,16 @@ const REGISTRO = [
       tipo: v.tipo || "vineta",
       tamano: num(v.tamano),
     }),
-  },
+  });
+})();
+/* ═══════════════════════════════════════════════ fin BLOQUE 12 · «lista» ════ */
 
-  {
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 13 · «parrafo» — Párrafo   [componentes]
+   Obligatorio: Texto
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "parrafo",
     nombre: "Párrafo",
     cat: "componentes",
@@ -653,9 +822,19 @@ const REGISTRO = [
       tamano: num(v.tamano),
       alineacion: v.alineacion || undefined,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "texto", "Texto", "Escribe el párrafo aquí"),
+  });
+})();
+/* ═════════════════════════════════════════════ fin BLOQUE 13 · «parrafo» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 14 · «pasoapaso» — Paso a paso   [componentes]
+   Obligatorio: Pasos (JSON) — debe ser una lista [ … ] válida
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "pasoapaso",
     nombre: "Paso a paso",
     cat: "componentes",
@@ -696,9 +875,20 @@ const REGISTRO = [
       desplazar: bool(v.desplazar, true),
       tamano: num(v.tamano),
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioJson(v, "pasos", "Pasos (JSON)",
+      '[{"texto": "Paso 1"}, "Paso 2"]', true),
+  });
+})();
+/* ═══════════════════════════════════════════ fin BLOQUE 14 · «pasoapaso» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 15 · «separador» — Separador   [componentes]
+   Obligatorio: nada
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "separador",
     nombre: "Separador",
     cat: "componentes",
@@ -714,9 +904,16 @@ const REGISTRO = [
       estilo: v.estilo || "linea",
       alto: num(v.alto),
     }),
-  },
+  });
+})();
+/* ═══════════════════════════════════════════ fin BLOQUE 15 · «separador» ════ */
 
-  {
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 16 · «subtitulo» — Subtítulo   [componentes]
+   Obligatorio: Texto
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "subtitulo",
     nombre: "Subtítulo",
     cat: "componentes",
@@ -736,9 +933,19 @@ const REGISTRO = [
       tamano: num(v.tamano),
       alineacion: v.alineacion || undefined,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "texto", "Texto", "Escribe el subtítulo"),
+  });
+})();
+/* ═══════════════════════════════════════════ fin BLOQUE 16 · «subtitulo» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 17 · «svg» — Figura / fondo SVG   [componentes]
+   Obligatorio: nada — sin figura ni código sale un rectángulo
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "svg",
     nombre: "Figura / fondo SVG",
     cat: "componentes",
@@ -788,9 +995,16 @@ const REGISTRO = [
       centrado: bool(v.centrado) || undefined,
       debajo: bool(v.debajo) || undefined,
     }),
-  },
+  });
+})();
+/* ═════════════════════════════════════════════════ fin BLOQUE 17 · «svg» ════ */
 
-  {
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 18 · «tabla» — Tabla   [componentes]
+   Obligatorio: Contenido (JSON) — debe ser una lista [ … ] válida
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "tabla",
     nombre: "Tabla",
     cat: "componentes",
@@ -822,9 +1036,20 @@ const REGISTRO = [
       franjas: bool(v.franjas, true),
       tamano: num(v.tamano),
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioJson(v, "contenido", "Contenido (matriz JSON)",
+      '[["Encabezado", "Col"], ["Dato", "2"]]', true),
+  });
+})();
+/* ═══════════════════════════════════════════════ fin BLOQUE 18 · «tabla» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 19 · «titulo» — Título   [componentes]
+   Obligatorio: Texto
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "titulo",
     nombre: "Título",
     cat: "componentes",
@@ -842,11 +1067,21 @@ const REGISTRO = [
       tamano: num(v.tamano),
       alineacion: v.alineacion || undefined,
     }),
-  },
 
-  /* ---------------------- UTILS ---------------------- */
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "texto", "Texto", "Escribe el título"),
+  });
+})();
+/* ══════════════════════════════════════════════ fin BLOQUE 19 · «titulo» ════ */
 
-  {
+/* ---------------------- UTILS ---------------------- */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 20 · «blank» — blank — Completar espacios   [utils]
+   Obligatorio: Texto con huecos
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "blank",
     nombre: "blank — Completar espacios",
     cat: "utils",
@@ -890,9 +1125,19 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "texto", "Texto con huecos [[respuesta]] o ___", "El agua hierve a [[100]] °C"),
+  });
+})();
+/* ═══════════════════════════════════════════════ fin BLOQUE 20 · «blank» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 21 · «crucigrama» — crucigrama — Crucigrama   [utils]
+   Obligatorio: al menos 2 palabras con su pista (filas) — el editor lo revisa al guardar
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "crucigrama",
     nombre: "crucigrama — Crucigrama",
     cat: "utils",
@@ -931,9 +1176,16 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
+  });
+})();
+/* ══════════════════════════════════════════ fin BLOQUE 21 · «crucigrama» ════ */
 
-  {
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 22 · «docsdrive» — docsdrive — Biblioteca Drive   [utils]
+   Obligatorio: Documentos (JSON) — debe ser una lista [ … ] válida
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "docsdrive",
     nombre: "docsdrive — Biblioteca Drive",
     cat: "utils",
@@ -954,9 +1206,20 @@ const REGISTRO = [
       titulo: v.titulo || "Recursos",
       docs: jsonSeguro(v.docs).valor,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioJson(v, "docs", "Documentos (JSON)",
+      '[{"enlace": "https://…", "titulo": "…", "grados": [8]}]', true),
+  });
+})();
+/* ═══════════════════════════════════════════ fin BLOQUE 22 · «docsdrive» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 23 · «multipleOpcion» — multipleOpcion — Selección múltiple   [utils]
+   Obligatorio: Indicación + opciones (filas) con al menos UNA correcta marcada (el editor lo revisa al guardar)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "multipleOpcion",
     nombre: "multipleOpcion — Selección múltiple",
     cat: "utils",
@@ -1006,9 +1269,19 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "indicacion", "Indicación", "Marca todos los números pares"),
+  });
+})();
+/* ══════════════════════════════════════ fin BLOQUE 23 · «multipleOpcion» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 24 · «opcionMultiple» — opcionMultiple — Opción múltiple   [utils]
+   Obligatorio: Indicación + respuestas (filas) con UNA correcta marcada (el editor lo revisa al guardar)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "opcionMultiple",
     nombre: "opcionMultiple — Opción múltiple",
     cat: "utils",
@@ -1052,9 +1325,19 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "indicacion", "Indicación", "¿Cuánto es 2 + 2?"),
+  });
+})();
+/* ══════════════════════════════════════ fin BLOQUE 24 · «opcionMultiple» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 25 · «ordenar» — ordenar — Ordenar objetos   [utils]
+   Obligatorio: Indicación + al menos 2 objetos en orden correcto (filas)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "ordenar",
     nombre: "ordenar — Ordenar objetos",
     cat: "utils",
@@ -1107,9 +1390,19 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "indicacion", "Indicación", "Ordena de MENOR a MAYOR"),
+  });
+})();
+/* ═════════════════════════════════════════════ fin BLOQUE 25 · «ordenar» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 26 · «presentacion» — presentacion — Diapositivas   [utils]
+   Obligatorio: Láminas (JSON) — debe ser una lista [ … ] válida
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "presentacion",
     nombre: "presentacion — Diapositivas",
     cat: "utils",
@@ -1138,9 +1431,20 @@ const REGISTRO = [
       etiquetaBoton: v.etiquetaBoton || undefined,
       mostrarContador: bool(v.mostrarContador, true),
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioJson(v, "laminas", "Láminas (JSON)",
+      '[{"titulo": "Portada", "texto": "…"}]', true),
+  });
+})();
+/* ════════════════════════════════════════ fin BLOQUE 26 · «presentacion» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 27 · «relacionar» — relacionar — Relacionar columnas   [utils]
+   Obligatorio: Indicación + al menos 2 parejas (filas)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "relacionar",
     nombre: "relacionar — Relacionar columnas",
     cat: "utils",
@@ -1187,9 +1491,19 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "indicacion", "Indicación", "Relaciona cada figura con su área"),
+  });
+})();
+/* ══════════════════════════════════════════ fin BLOQUE 27 · «relacionar» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 28 · «respuestaSimple» — respuestaSimple — Respuesta simple   [utils]
+   Obligatorio: Indicación + al menos 1 respuesta (filas)
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "respuestaSimple",
     nombre: "respuestaSimple — Respuesta simple",
     cat: "utils",
@@ -1243,9 +1557,19 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "indicacion", "Indicación", "Escribe el resultado de 8 + 5"),
+  });
+})();
+/* ═════════════════════════════════════ fin BLOQUE 28 · «respuestaSimple» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 29 · «sopaLetras» — sopaLetras — Sopa de letras   [utils]
+   Obligatorio: al menos 2 palabras (filas) — el editor lo revisa al guardar
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "sopaLetras",
     nombre: "sopaLetras — Sopa de letras",
     cat: "utils",
@@ -1283,9 +1607,16 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
+  });
+})();
+/* ══════════════════════════════════════════ fin BLOQUE 29 · «sopaLetras» ════ */
 
-  {
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 30 · «tecladoFormulas» — tecladoFormulas — Teclado matemático   [utils]
+   Obligatorio: nada
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "tecladoFormulas",
     nombre: "tecladoFormulas — Teclado matemático",
     cat: "utils",
@@ -1302,9 +1633,16 @@ const REGISTRO = [
       valorInicial: v.valorInicial || undefined,
       etiqueta: v.etiqueta || undefined,
     }),
-  },
+  });
+})();
+/* ═════════════════════════════════════ fin BLOQUE 30 · «tecladoFormulas» ════ */
 
-  {
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 31 · «tts» — tts — Leer en voz alta   [utils]
+   Obligatorio: Texto que se leerá
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "tts",
     nombre: "tts — Leer en voz alta",
     cat: "utils",
@@ -1326,9 +1664,19 @@ const REGISTRO = [
     llamadaEspecial: (v, varBloque) =>
       "renderTTS(" + varBloque + ", " + JSON.stringify(v.idioma || "es") + ", " +
       JSON.stringify(v.texto || "") + ", " + jsSource({ titulo: v.titulo || undefined }, 2).replace(/\n\s+/g, " ") + ");",
-  },
 
-  {
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => obligatorioTexto(v, "texto", "Texto que se leerá", "Escribe aquí el texto"),
+  });
+})();
+/* ═════════════════════════════════════════════════ fin BLOQUE 31 · «tts» ════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 32 · «video» — video — Video con preguntas   [utils]
+   Obligatorio: Enlace del video + Preguntas (JSON) en lista [ … ] válida
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "video",
     nombre: "video — Video con preguntas",
     cat: "utils",
@@ -1369,11 +1717,25 @@ const REGISTRO = [
       perfil: PERFIL_RAW,
       clase: CLASE_RAW,
     }),
-  },
 
-  /* --------------------- VISUALES --------------------- */
+    /* ── A PRUEBA DE ERRORES: lo obligatorio de ESTE bloque ── */
+    validar: (v) => [
+      ...obligatorioTexto(v, "enlace", "Enlace del video", "https://www.youtube.com/watch?v=abc123"),
+      ...obligatorioJson(v, "preguntas", "Preguntas (JSON)",
+        '[{"tiempo": "1:30", "indicacion": "¿Cuánto es 2 + 2?", "respuestas": ["3", "4"], "respuestaCorrecta": 1}]', true),
+    ],
+  });
+})();
+/* ═══════════════════════════════════════════════ fin BLOQUE 32 · «video» ════ */
 
-  {
+/* --------------------- VISUALES --------------------- */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 33 · «reloj» — Reloj de pared   [visuales]
+   Obligatorio: nada — arranca a las 12:00
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  REGISTRO.push({
     id: "reloj",
     nombre: "Reloj de pared",
     cat: "visuales",
@@ -1391,8 +1753,10 @@ const REGISTRO = [
       minutos: num(v.minutos) ?? 0,
       tamano: num(v.tamano),
     }),
-  },
-];
+  });
+})();
+/* ═══════════════════════════════════════════════ fin BLOQUE 33 · «reloj» ════ */
+
 
 /* ============================================================
    ESTADO del editor (solo en el navegador: localStorage)
@@ -4849,3 +5213,849 @@ function abrirModalCodigo() {
     notify("Archivo «" + nombreArchivo() + "» descargado.", "success");
   });
 }
+/* ============================================================
+   RECURSOS AGREGADOS (bloques pegados AL FINAL de crear.js)
+   ------------------------------------------------------------
+   Cada recurso nuevo entra AQUÍ como un BLOQUE numerado más:
+   su caja (() => { … })() con marca de INICIO y FIN, su
+   REGISTRO.push({...}) y su validar() con lo OBLIGATORIO.
+   La PUERTA DE GUARDADO (abajo de todo) revisa el validar de
+   TODOS los bloques: si falta algo, Guardar no pasa.
+   ============================================================ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 34 · «graficos» — Gráficos (15 tipos)   [visuales]
+   Obligatorio: según el TIPO elegido — etiquetas en 11 tipos,
+   líneas/área con etiquetas O eje X numérico, cantidades que
+   coincidan, velas 4 números por fila, burbujas 3, dispersión
+   puntos x,y, pastel/dona > 0, radar con 3+ etiquetas… También
+   marca ● en vivo y cambia el ejemplo de «Valores» por tipo.
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  /* ── Ayudantes SOLO de este bloque (viven dentro del paréntesis:
+        no tocan nada del crear.js base y no chocan con otros bloques) ── */
+  const limpia = (v) => String(v ?? "").trim();
+  const lista = (v) => {
+    const s = limpia(v);
+    return s ? s.split(",").map((p) => p.trim()).filter(Boolean) : undefined;
+  };
+  const numeros = (v) => {
+    const l = lista(v);
+    if (!l) return undefined;
+    const nums = l.map((p) => Number(p));
+    return nums.every((n) => Number.isFinite(n)) ? nums : undefined;
+  };
+  /* «3, 7, 5» → [3,7,5] (simple) · «4,6; 7,2» → [[4,6],[7,2]]
+     (series o puntos) · «[...]» JSON tal cual (casos especiales) */
+  const valores = (v) => {
+    const s = limpia(v);
+    if (!s) return undefined;
+    if (s.startsWith("[")) {
+      try { const j = JSON.parse(s); if (Array.isArray(j)) return j; } catch (_) {}
+    }
+    const filas = s.split(";").map((p) => p.trim()).filter(Boolean);
+    if (filas.length > 1) {
+      return filas.map((f) => f.split(",").map((p) => Number(p.trim())));
+    }
+    const nums = filas[0].split(",").map((p) => Number(p.trim()));
+    return nums.some((n) => !Number.isFinite(n)) ? undefined : nums;
+  };
+
+  /* Tipos que SIEMPRE necesitan etiquetas (dispersión y burbujas no
+     las dibujan; líneas/área las pueden cambiar por el eje X numérico). */
+  const REQ_ETIQUETAS = [
+    "columnas", "barras", "barras-agrupadas", "barras-apiladas",
+    "lineas-temporales", "histograma", "pastel", "dona", "radar", "velas", "cascada",
+  ];
+  const CARTESIANAS_CON_X = ["lineas", "area"];
+  const EJ_VALORES = {
+    "columnas": "3, 7, 5 · series: 4,6; 7,2",
+    "barras": "3, 7, 5 · series: 4,6; 7,2",
+    "barras-agrupadas": "4,6; 7,2 (una fila por etiqueta)",
+    "barras-apiladas": "4,6; 7,2 (una fila por etiqueta)",
+    "lineas": "3, 7, 5 · con X: 2,4; 0,1; 5,6",
+    "lineas-temporales": "3, 7, 5 · series: 4,6; 7,2",
+    "area": "3, 7, 5 · con X: 2,4; 0,1; 5,6",
+    "pastel": "30, 20, 10 (positivos)",
+    "dona": "30, 20, 10 (positivos)",
+    "dispersion": "puntos x,y: 2,3; 4,5; 6,3.5",
+    "burbujas": "x,y,tamaño: 1,2,10; 3,4,20",
+    "histograma": "3, 7, 5",
+    "radar": "4,6; 7,2 (mínimo 3 etiquetas)",
+    "velas": "10,12,8,11; 11,13,9,12",
+    "cascada": "100, -20, 30 (sin series)",
+  };
+
+  const esNumero = (n) => typeof n === "number" && Number.isFinite(n);
+  const sonNumeros = (a) => Array.isArray(a) && a.length > 0 && a.every(esNumero);
+
+  /* Devuelve [{ k, msg }] con TODO lo que le falta al gráfico elegido.
+     k = campo del formulario que hay que marcar en rojo. */
+  function validarGraficos(v) {
+    const errs = [];
+    const tipo = limpia(v.tipo);
+    if (!tipo) {
+      errs.push({ k: "tipo", msg: "Elige el tipo de gráfico (está en blanco)." });
+      return errs;
+    }
+    const ej = EJ_VALORES[tipo] || "3, 7, 5";
+    const et = lista(v.etiquetas) || [];
+    const escribioX = limpia(v.x) !== "";
+    const xs = numeros(v.x);
+    const textoVal = limpia(v.valores);
+    if (!textoVal) {
+      errs.push({ k: "valores", msg: "«Valores» es obligatorio — ej: " + ej });
+      return errs;
+    }
+    const val = valores(textoVal);
+    if (val === undefined) {
+      errs.push({ k: "valores", msg: "No pude leer «Valores»: usa números separados por comas (y «;» para series/puntos) — ej: " + ej });
+      return errs;
+    }
+
+    // 1) Etiquetas: obligatorias, opcionales o alternativas según el tipo.
+    if (REQ_ETIQUETAS.includes(tipo) && !et.length) {
+      errs.push({ k: "etiquetas", msg: "«Etiquetas» es obligatorio para «" + tipo + "» — ej: Ene, Feb, Mar" });
+    }
+    if (CARTESIANAS_CON_X.includes(tipo)) {
+      if (escribioX && xs === undefined) {
+        errs.push({ k: "x", msg: "El eje X numérico debe ser solo números — ej: 0, 2, 4, 6" });
+      } else if (!et.length && !xs) {
+        errs.push({ k: "etiquetas", msg: "Para «" + tipo + "» necesitas etiquetas O un eje X numérico (campo «Eje X numérico»)." });
+      } else if (et.length && xs && et.length !== xs.length) {
+        errs.push({ k: "x", msg: "«x» tiene " + xs.length + " valores y hay " + et.length + " etiquetas — usa solo una de las dos (o iguálalas)." });
+      }
+    }
+
+    // 2) Cantidades: las filas de valores deben coincidir con las etiquetas
+    //    (o con el eje X). Dispersión y burbujas no: sus puntos van solos.
+    const cuentaEje = REQ_ETIQUETAS.includes(tipo) ? et.length : (xs && xs.length) || et.length;
+    const dispersionBurbujas = tipo === "dispersion" || tipo === "burbujas";
+    if (cuentaEje && !dispersionBurbujas && val.length !== cuentaEje) {
+      errs.push({ k: "valores", msg: "Hay " + cuentaEje + " etiquetas y " + val.length + " valores — las dos listas deben coincidir." });
+      return errs;
+    }
+    if (dispersionBurbujas && et.length && val.length !== et.length) {
+      errs.push({ k: "valores", msg: "Hay " + et.length + " etiquetas y " + val.length + " puntos — las dos listas deben coincidir (o borra las etiquetas)." });
+      return errs;
+    }
+
+    // 3) Forma de los valores según el tipo (lo MISMO que exige el visual).
+    const filas = val.map((f) => (Array.isArray(f) ? f : [f]));
+    const todasNumeros = filas.every((f) => f.every(esNumero));
+    if (tipo === "velas") {
+      if (!val.every((f) => sonNumeros(f) && f.length >= 4)) {
+        errs.push({ k: "valores", msg: "Cada vela necesita 4 números [apertura, cierre, máximo, mínimo], separadas por «;» — ej: " + EJ_VALORES.velas });
+      }
+    } else if (tipo === "burbujas") {
+      if (!val.every((f) => sonNumeros(f) && f.length >= 3)) {
+        errs.push({ k: "valores", msg: "Cada burbuja necesita 3 números [x, y, tamaño], separadas por «;» — ej: " + EJ_VALORES.burbujas });
+      }
+    } else if (tipo === "dispersion") {
+      if (!val.every((f) => sonNumeros(f) && f.length >= 2)) {
+        errs.push({ k: "valores", msg: "Cada punto necesita 2 números [x, y], separados por «;» — ej: " + EJ_VALORES.dispersion });
+      }
+    } else if (tipo === "cascada") {
+      if (val.some(Array.isArray) || !todasNumeros) {
+        errs.push({ k: "valores", msg: "La cascada solo acepta números simples (sin «;» ni series) — ej: " + EJ_VALORES.cascada });
+      }
+    } else if (tipo === "pastel" || tipo === "dona") {
+      if (!todasNumeros || filas.some((f) => f.some((nn) => !(esNumero(nn) && nn > 0)))) {
+        errs.push({ k: "valores", msg: "«" + tipo + "» necesita valores MAYORES que cero — ej: " + EJ_VALORES.pastel });
+      }
+    } else if (!todasNumeros) {
+      errs.push({ k: "valores", msg: "Todos los valores deben ser números — ej: " + ej });
+    }
+
+    // 4) Radar: mínimo 3 ejes.
+    if (tipo === "radar" && et.length > 0 && et.length < 3) {
+      errs.push({ k: "etiquetas", msg: "El radar necesita al menos 3 etiquetas." });
+    }
+    return errs;
+  }
+
+  if (!REGISTRO.some((r) => r.id === "graficos")) {
+    REGISTRO.push({
+      id: "graficos",
+      nombre: "Gráficos (15 tipos)",
+      cat: "visuales",
+      archivo: "recursos/js/visuales/generador-graficos-universal.js",
+      imports: ["dibujarGrafico"],
+      funcion: "dibujarGrafico",
+      descripcion: "Columnas, barras, líneas, pastel, dispersión y más. SVG nativo; ejes numéricos con rango y escala (velocidad-tiempo).",
+      params: [
+        { k: "tipo", et: "Tipo de gráfico", tipo: "opcion", req: true, def: "columnas",
+          ops: ["columnas", "barras", "barras-agrupadas", "lineas", "lineas-temporales",
+                "area", "pastel", "dona", "barras-apiladas", "dispersion", "burbujas",
+                "histograma", "radar", "velas", "cascada"] },
+        { k: "titulo", et: "Título (si no, no se dibuja)", tipo: "texto", ej: "Velocidad contra tiempo" },
+        { k: "etiquetas", et: "Etiquetas (coma; sobran si usas X numérico)", tipo: "texto", ej: "Ene, Feb, Mar" },
+        { k: "valores", et: "Valores (coma = dato; «;» = series o puntos; vale JSON)", tipo: "texto", req: true,
+          ej: "3, 7, 5 · series: 4,6; 7,2 · puntos: 2,3; 4,5" },
+        { k: "x", et: "Eje X numérico: valores de x (líneas y área)", tipo: "texto", ej: "0, 1, 2, 3, 4, 5" },
+        { k: "series", et: "Nombres de las series (coma)", tipo: "texto", ej: "2025, 2026" },
+        { k: "colores", et: "Colores propios (coma)", tipo: "texto", ej: "#7c3aed, #0ea5e9" },
+        { k: "ejeVertical", et: "Nombre del eje vertical (Y)", tipo: "texto", ej: "Velocidad (m/s)" },
+        { k: "ejeHorizontal", et: "Nombre del eje horizontal (X)", tipo: "texto", ej: "Tiempo (s)" },
+        { k: "ejeMin", et: "Eje de valores: mínimo", tipo: "num", ej: "0" },
+        { k: "ejeMax", et: "Eje de valores: máximo", tipo: "num", ej: "20" },
+        { k: "ejePaso", et: "Eje de valores: escala (paso entre marcas)", tipo: "num", ej: "5" },
+        { k: "ejeMinX", et: "Eje X numérico: mínimo", tipo: "num", ej: "0" },
+        { k: "ejeMaxX", et: "Eje X numérico: máximo", tipo: "num", ej: "10" },
+        { k: "ejePasoX", et: "Eje X numérico: escala (paso entre marcas)", tipo: "num", ej: "2" },
+        { k: "mostrarCantidades", et: "Mostrar los valores", tipo: "sino" },
+        { k: "mostrarPorcentajes", et: "Mostrar porcentajes", tipo: "sino" },
+        { k: "total", et: "Total para los porcentajes (vacío = suma)", tipo: "num" },
+        { k: "ancho", et: "Ancho del gráfico (px)", tipo: "num", def: 560, ej: "560" },
+      ],
+      aOpciones: (v) => ({
+        tipo: v.tipo || "columnas",
+        titulo: limpia(v.titulo) || undefined,
+        etiquetas: lista(v.etiquetas),
+        valores: valores(v.valores),
+        x: numeros(v.x),
+        series: lista(v.series),
+        colores: lista(v.colores),
+        ancho: num(v.ancho),
+        mostrarCantidades: bool(v.mostrarCantidades) || undefined,
+        mostrarPorcentajes: bool(v.mostrarPorcentajes) || undefined,
+        total: num(v.total),
+        ejes: {
+          horizontal: limpia(v.ejeHorizontal) || undefined,
+          vertical: limpia(v.ejeVertical) || undefined,
+          min: num(v.ejeMin),
+          max: num(v.ejeMax),
+          paso: num(v.ejePaso),
+          minX: num(v.ejeMinX),
+          maxX: num(v.ejeMaxX),
+          pasoX: num(v.ejePasoX),
+        },
+      }),
+      /* ── A PRUEBA DE ERRORES: lo obligatorio según el TIPO elegido ── */
+      validar: validarGraficos,
+    });
+  }
+
+  /* ── Marcas ● en vivo: el formulario muestra como obligatorio (●)
+        solo lo que el tipo elegido pide, y cambia el ejemplo de
+        «Valores» para que se vea el formato correcto. ── */
+  function envolturaDe(form, campo) {
+    let n2 = campo;
+    while (n2 && n2.parentElement && n2.parentElement !== form) n2 = n2.parentElement;
+    return n2;
+  }
+  function marcar(form, k, req) {
+    const campo = form.querySelector('[data-k="' + k + '"]');
+    if (!campo) return;
+    const env = envolturaDe(form, campo);
+    const label = env && env.querySelector("label");
+    if (!label) return;
+    if (!!label.querySelector(".req") === req) return;
+    const viejo = label.querySelector(".req, .op");
+    if (viejo) viejo.remove();
+    const s = document.createElement("span");
+    if (req) { s.className = "req"; s.title = "Obligatorio"; s.textContent = "●"; }
+    else { s.className = "op"; s.textContent = "(opcional)"; }
+    label.appendChild(document.createTextNode(" "));
+    label.appendChild(s);
+  }
+  function refrescarRequisitos(form, b) {
+    const v = b.valores || {};
+    const tipo = limpia(v.tipo) || "columnas";
+    const et = lista(v.etiquetas) || [];
+    const xs = numeros(v.x);
+    const conX = CARTESIANAS_CON_X.includes(tipo);
+    marcar(form, "etiquetas", REQ_ETIQUETAS.includes(tipo) ? true : conX ? !xs : false);
+    marcar(form, "x", conX && !et.length);
+    const campoV = form.querySelector('[data-k="valores"]');
+    if (campoV && EJ_VALORES[tipo]) campoV.placeholder = EJ_VALORES[tipo];
+  }
+
+  /* ── Cierre de seguridad (pegar el bloque dos veces no duplica
+        las marcas en vivo). ── */
+  if (!formularioEl.__graficosVal) {
+    const formularioElBase = formularioEl;
+    formularioEl = function (b, r, medida) {
+      const form = formularioElBase(b, r, medida);
+      if (r && r.id === "graficos") {
+        const refrescar = () => refrescarRequisitos(form, b);
+        form.addEventListener("input", refrescar);
+        form.addEventListener("change", refrescar);
+        refrescar();
+      }
+      return form;
+    };
+    formularioEl.__graficosVal = true;
+  }
+})();
+/* ═════════════════════ fin BLOQUE 34 · «graficos» ═══════════════════ */
+
+/* ============================================================
+   PUERTA DE GUARDADO — a prueba de errores, para TODOS los bloques
+   ------------------------------------------------------------
+   Antes de guardar revisa validar(valores) DEL bloque: si trae
+   errores, marca esos campos en rojo, muestra el aviso claro y
+   NO guarda (no mide, no monta vista previa). Los bloques sin
+   validar se guardan como siempre. La puerta se instala UNA
+   sola vez aunque el archivo se pegue dos veces.
+   ============================================================ */
+(() => {
+  if (guardarBloque.__puertaVal) return;
+  const guardarBloqueBase = guardarBloque;
+  guardarBloque = async function (b, form) {
+    const r = recursoDe(b.recurso);
+    if (r && typeof r.validar === "function") {
+      const errs = r.validar(b.valores || {}) || [];
+      if (errs.length) {
+        errs.forEach((e) => {
+          const c = form.querySelector('[data-k="' + e.k + '"]');
+          if (c) c.classList.add("error");
+        });
+        notify(errs.map((e) => e.msg).join(" "), "warning");
+        return;
+      }
+    }
+    return guardarBloqueBase(b, form);
+  };
+  guardarBloque.__puertaVal = true;
+  guardarBloque.__graficosVal = true;   // por si arriba queda pegado el bloque viejo de gráficos
+})();
+
+/* ▼ Para agregar OTRO recurso: pega aquí abajo el siguiente BLOQUE
+   numerado — (() => { REGISTRO.push({ …, validar: … }); })() — con su
+   marca de inicio/fin y su validar. La puerta ya lo cubre. ▼ */
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 35 · «graficador-funciones-cartesianas» — Plano cartesiano
+   de funciones   [visuales]   · v2 con RECORTES de porción
+   Visual: recursos/js/visuales/graficador-funciones-cartesianas.js
+   (SVG nativo, cero librerías, cero eventos: cuadrícula según la
+   escala, ejes negros numerados, funciones en CUALQUIER formato —
+   explícitas, canónicas, cónicas e implícitas sin despejar—, áreas
+   de dominio/entre curvas, puntos con letra, acotaciones punteadas
+   y RECORTES: cada función se puede CORTAR a la porción donde x y/o
+   y vale entre dos valores dados).
+   Obligatorio: ESCALA > 0 · si escribes rangos, mín < máx ·
+   cuadrantes solo 1-4 · cada ecuación debe interpretarse (revisor de
+   sintaxis espejo del motor) · colores hex o nombre · acotaciones
+   «x:a,b; y:c» sin variables · recorte «x:a,b; y:c,d» con DOS
+   valores por eje, sin variables y sin repetir el mismo valor (si
+   llegan al revés el visual los acomoda solos) · áreas «entre»
+   (curvas y=…) o «region» (desigualdad o rangos x=a..b) · puntos
+   «A(x,y)» con coordenadas numéricas. La PUERTA DE GUARDADO usa
+   validar() de aquí abajo.
+   Si ya pegaste el BLOQUE 35 ANTERIOR, este lo REEMPLAZA solo
+   (mismo id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+   (() => {
+    /* ── Ayudantes SOLO de este bloque (no tocan nada del crear.js base) ── */
+    const limpia = (v) => String(v ?? "").trim();
+    const lineasDe = (v) => limpia(v).split("\n").map((s) => s.trim()).filter(Boolean);
+    const listaCuadrantes = (v) => {
+      const nums = limpia(v).split(",").map((s) => Number(s.trim()))
+        .filter((n) => n >= 1 && n <= 4);
+      return nums.length ? nums : undefined;
+    };
+  
+    /* ══ Revisor de sintaxis COMPACTO — ESPEJO del motor del visual.
+       Tokeniza y parsea SOLO para detectar errores ANTES de guardar;
+       no evalúa nada. Mismas reglas: ²→^2, √→sqrt, π→pi, sen→sin,
+       multiplicación implícita (2x, 2(x+1), xy), |abs|, x^-2… ══ */
+    const FN = ["sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh",
+      "sqrt", "cbrt", "abs", "ln", "log", "log10", "exp", "floor", "ceil", "round", "sign"];
+    const ALIAS = { sen: "sin", senh: "sinh", tg: "tan", arcsen: "asin", arccos: "acos", arctg: "atan", raiz: "sqrt" };
+    const CTE = ["pi", "e", "tau"];
+    const PALABRAS = [...new Set([...FN, ...Object.keys(ALIAS), ...CTE])].sort((a, b) => b.length - a.length);
+  
+    /* Devuelve la lista de símbolos o LANZA con el motivo exacto. */
+    function tokenizarCompacto(texto) {
+      let t = String(texto ?? "").toLowerCase().trim();
+      t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      for (const [re, s] of [[/²/g, "^2"], [/³/g, "^3"], [/⁴/g, "^4"], [/⁵/g, "^5"],
+        [/√/g, "sqrt"], [/π/g, "pi"], [/×|·/g, "*"], [/÷/g, "/"],
+        [/−|–|—/g, "-"], [/≥/g, ">="], [/≤/g, "<="]]) t = t.replace(re, s);
+      t = t.replace(/(\d)\s*,\s*(\d)/g, "$1.$2");
+      const toks = [];
+      const esDig = (c) => c >= "0" && c <= "9";
+      let i = 0;
+      while (i < t.length) {
+        const c = t[i];
+        if (c === " ") { i++; continue; }
+        if (esDig(c) || (c === "." && esDig(t[i + 1] ?? ""))) {
+          let j = i;
+          while (j < t.length && (esDig(t[j]) || t[j] === ".")) j++;
+          if (t[j] === "e" && (esDig(t[j + 1] ?? "") || ((t[j + 1] === "+" || t[j + 1] === "-") && esDig(t[j + 2] ?? "")))) {
+            j += 2;
+            while (j < t.length && esDig(t[j])) j++;
+          }
+          if (!Number.isFinite(Number(t.slice(i, j)))) throw new Error("«" + t.slice(i, j) + "» no es un número válido");
+          toks.push({ t: "num", v: 0 });
+          i = j;
+          continue;
+        }
+        if (c === "x" || c === "y") { toks.push({ t: "var", v: c }); i++; continue; }
+        if (c >= "a" && c <= "z") {
+          const resto = t.slice(i);
+          const palabra = PALABRAS.find((p) => resto.startsWith(p));
+          if (palabra) {
+            const canon = ALIAS[palabra] || palabra;
+            toks.push(FN.includes(canon) ? { t: "fn", v: canon } : { t: "cte", v: canon });
+            i += palabra.length;
+            continue;
+          }
+          throw new Error("no reconozco «" + ((resto.match(/^[a-z]+/) || ["?"])[0]) + "»: las variables son x y y; funciones como sin, cos, tan, sqrt, abs, ln, log, exp (también sen, tg, raiz)");
+        }
+        if (c === "(" || c === ")") { toks.push({ t: "pa", v: c }); i++; continue; }
+        if (c === "|") { toks.push({ t: "barra" }); i++; continue; }
+        if ("^*/+-".includes(c)) { toks.push({ t: "op", v: c }); i++; continue; }
+        if (c === ">") { toks.push({ t: "comp", v: t[i + 1] === "=" ? ">=" : ">" }); i += t[i + 1] === "=" ? 2 : 1; continue; }
+        if (c === "<") { toks.push({ t: "comp", v: t[i + 1] === "=" ? "<=" : "<" }); i += t[i + 1] === "=" ? 2 : 1; continue; }
+        if (c === "=") { toks.push({ t: "igual" }); i++; continue; }
+        throw new Error("no acepto el símbolo «" + c + "»");
+      }
+      /* multiplicación implícita (misma regla que el visual, con estado
+         de barras para que y=|x| no se rompa) */
+      const conMult = [];
+      let barraAbierta = false;
+      for (const tk of toks) {
+        const prev = conMult[conMult.length - 1];
+        const prevCierra = prev && (prev.t === "num" || prev.t === "var" || prev.t === "cte" ||
+          (prev.t === "pa" && prev.v === ")") ||
+          (prev.t === "barra" && !barraAbierta));
+        const tkAbre = tk && (tk.t === "num" || tk.t === "var" || tk.t === "cte" ||
+          tk.t === "fn" || (tk.t === "pa" && tk.v === "(") ||
+          (tk.t === "barra" && !barraAbierta));
+        if (tk.t === "barra") {
+          if (prevCierra && tkAbre) conMult.push({ t: "op", v: "*" });
+          barraAbierta = !barraAbierta;
+          conMult.push(tk);
+          continue;
+        }
+        if (prev && prevCierra && tkAbre) conMult.push({ t: "op", v: "*" });
+        conMult.push(tk);
+      }
+      return conMult;
+    }
+  
+    function revisarCadena(toks) {
+      let pos = 0;
+      const mirar = () => toks[pos];
+      function expr() {
+        termino();
+        while (mirar() && mirar().t === "op" && (mirar().v === "+" || mirar().v === "-")) { pos++; termino(); }
+      }
+      function termino() {
+        factor();
+        while (mirar() && mirar().t === "op" && (mirar().v === "*" || mirar().v === "/")) { pos++; factor(); }
+      }
+      function factor() {
+        if (mirar() && mirar().t === "op" && (mirar().v === "-" || mirar().v === "+")) { pos++; factor(); return; }
+        potencia();
+      }
+      function potencia() {
+        atomo();
+        if (mirar() && mirar().t === "op" && mirar().v === "^") { pos++; factor(); }
+      }
+      function atomo() {
+        const tk = mirar();
+        if (!tk) throw new Error("la expresión termina antes de lo esperado");
+        if (tk.t === "num" || tk.t === "cte" || tk.t === "var") { pos++; return; }
+        if (tk.t === "fn") {
+          pos++;
+          if (!(mirar() && mirar().t === "pa" && mirar().v === "(")) throw new Error(tk.v + "(…) necesita paréntesis — ej: " + tk.v + "(x)");
+          pos++; expr();
+          if (!(mirar() && mirar().t === "pa" && mirar().v === ")")) throw new Error("falta cerrar el paréntesis de " + tk.v + "(…");
+          pos++; return;
+        }
+        if (tk.t === "pa" && tk.v === "(") {
+          pos++; expr();
+          if (!(mirar() && mirar().t === "pa" && mirar().v === ")")) throw new Error("falta cerrar un paréntesis");
+          pos++; return;
+        }
+        if (tk.t === "barra") {
+          pos++; expr();
+          if (!(mirar() && mirar().t === "barra")) throw new Error("falta la segunda barra |…|");
+          pos++; return;
+        }
+        if (tk.t === "comp") throw new Error("un comparador («" + tk.v + "») solo va en las ÁREAS (region), no en una ecuación");
+        if (tk.t === "igual") throw new Error("una ecuación solo puede llevar UN signo «=»");
+        throw new Error("no espero «" + (tk.v ?? "|") + "» ahí");
+      }
+      expr();
+      if (pos < toks.length) throw new Error("sobran símbolos al final (revisa la expresión)");
+    }
+  
+    /* null = se entiende · texto = el problema (para marcar en rojo).
+       La ecuación se parte en su signo «=» y CADA lado se revisa solo
+       (igual que hace el motor del visual). */
+    function errorDeExpresion(texto, conComparador) {
+      let t = String(texto ?? "").toLowerCase().trim();
+      t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      for (const [re, s] of [[/²/g, "^2"], [/³/g, "^3"], [/⁴/g, "^4"], [/⁵/g, "^5"],
+        [/√/g, "sqrt"], [/π/g, "pi"], [/×|·/g, "*"], [/÷/g, "/"],
+        [/−|–|—/g, "-"], [/≥/g, ">="], [/≤/g, "<="]]) t = t.replace(re, s);
+      t = t.replace(/(\d)\s*,\s*(\d)/g, "$1.$2");
+      if (!t) return "está vacía";
+      const partes = t.split("=");
+      if (partes.length > 2) return "lleva más de un signo «=»";
+      for (const lado of partes) {
+        const mal = revisarLado(lado, conComparador);
+        if (mal) return mal;
+      }
+      return null;
+    }
+  
+    function revisarLado(lado, conComparador) {
+      try {
+        const toks = tokenizarCompacto(lado);
+        if (!toks.length) return "hay un lado vacío (revisa el signo «=»)";
+        const idx = toks.findIndex((tk) => tk.t === "comp");
+        if (idx >= 0 && !conComparador) {
+          return "lleva un comparador («" + toks[idx].v + "»): las desigualdades van en las ÁREAS, no aquí";
+        }
+        if (idx >= 0) {
+          revisarCadena(toks.slice(0, idx));
+          revisarCadena(toks.slice(idx + 1));
+          return null;
+        }
+        revisarCadena(toks);
+        return null;
+      } catch (e) {
+        return e.message;
+      }
+    }
+  
+    /* ¿Trae x o y de verdad? (acotaciones, rangos y coordenadas no pueden) */
+    function traeVariables(texto) {
+      try {
+        return tokenizarCompacto(texto).some((tk) => tk.t === "var");
+      } catch (_) {
+        return false;
+      }
+    }
+  
+    /* Colores: mismo criterio del visual (hex 3/4/6/8 o nombre) */
+    const NOMBRES_COLOR = ["negro", "blanco", "gris", "rojo", "vino", "rosa", "fucsia",
+      "naranja", "amarillo", "lima", "verde", "turquesa", "cian", "celeste", "azul",
+      "morado", "violeta", "cafe", "marron"];
+    function colorOK(t) {
+      const s = String(t ?? "").toLowerCase().trim();
+      if (!s) return false;
+      if (NOMBRES_COLOR.includes(s)) return true;
+      return /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(s);
+    }
+  
+    /* ── lectura de líneas «a | b | c» cuando el contenido puede llevar
+          barras de valor absoluto (y=|x|): color y acotaciones se toman
+          del FINAL y la ecuación se queda con todo lo demás (IGUAL que
+          el visual) ── */
+    const esSegAcot = (s) => /^\s*[xy]\s*:.+$/i.test(s);
+    const esSegRango = (s) => /^([xy])\s*=\s*.+\.\..+$/.test(s);
+    const esSegRecorte = (s) => /^recorte(\s*:|\s|$)/i.test(
+      String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim());
+    function quitaColor(segs) {
+      if (segs.length < 2) return "";
+      const ultimo = segs[segs.length - 1];
+      if (colorOK(ultimo)) return segs.pop();
+      return "";
+    }
+    /* { ecuacion, color, acot, rec, colorMalo } — colorMalo = había una
+       ecuación completa seguida de un segmento que NO es color válido.
+       Los segmentos se leen del FINAL: recorte → acotaciones → color. */
+    function partirFuncion(lin) {
+      const segs = lin.split("|").map((s) => s.trim());
+      const out = { ecuacion: "", color: "", acot: "", rec: undefined, colorMalo: "" };
+      if (segs.length >= 2 && esSegRecorte(segs[segs.length - 1])) {
+        out.rec = segs.pop().replace(/^recorte\s*:?/i, "").trim();
+      }
+      if (segs.length >= 2 && esSegAcot(segs[segs.length - 1])) out.acot = segs.pop();
+      out.color = quitaColor(segs);
+      if (segs.length === 2) {
+        const mal = errorDeExpresion(segs[0], false);
+        if (!mal) out.colorMalo = segs[1];
+      }
+      out.ecuacion = segs.join("|").trim();
+      return out;
+    }
+  
+    /* Rango «x=de..a» (áreas «entre» y «region») */
+    function errorDeRango(texto, donde) {
+      const m = String(texto ?? "").trim().match(/^([xy])\s*=\s*(.+?)\.\.(.+)$/);
+      if (!m) return donde + ": el rango se escribe «x=de..a» — ej: x=0..4 (llegó «" + texto + "»)";
+      for (const lado of [m[2], m[3]]) {
+        const mal = errorDeExpresion(lado, false);
+        if (mal) return donde + ": no entiendo «" + lado + "» en el rango — " + mal;
+        if (traeVariables(lado)) return donde + ": el rango no puede llevar x ni y — usa números (ej: x=0..4 o x=0..2pi)";
+      }
+      return null;
+    }
+  
+    /* RECORTE «x:a,b; y:c,d»: DOS valores por eje, sin variables y
+       sin repetir el mismo valor (el ancho cero no dibuja nada; si
+       llegan al revés el visual los acomoda solos). Espejo del
+       parsearRecorte del visual. */
+    const esNumPlano = (s) => /^[+-]?(\d+\.?\d*|\.\d+)$/.test(String(s).trim());
+    function errorDeRecorte(texto, donde) {
+      const t = String(texto ?? "").trim();
+      if (!t) {
+        return donde + ": el recorte está vacío — escribe «x:a,b» y/o «y:c,d» (mínimo y máximo de la porción), ej: x:0,4; y:2,8";
+      }
+      let vistos = "";
+      for (const seg of t.split(";").map((s) => s.trim()).filter(Boolean)) {
+        const m = seg.match(/^([xy])\s*:\s*(.+)$/i);
+        if (!m) {
+          return donde + ": el recorte «" + seg + "» no se entiende — usa «x:a,b» y/o «y:c,d» (mínimo y máximo), ej: x:0,4; y:2,8";
+        }
+        const eje = m[1].toLowerCase();
+        if (vistos.includes(eje)) return donde + " repite el recorte de " + eje;
+        vistos += eje;
+        const vals = m[2].split(",").map((s) => s.trim()).filter(Boolean);
+        if (vals.length !== 2) {
+          return donde + ": el recorte de " + eje + " necesita DOS valores (mínimo y máximo) — ej: " + eje + ":0,4";
+        }
+        for (const val of vals) {
+          const mal = errorDeExpresion(val, false);
+          if (mal) return donde + ": no entiendo «" + val + "» en el recorte — " + mal;
+          if (traeVariables(val)) {
+            return donde + ": el recorte de " + eje + " no puede llevar x ni y — escribe números (ej: " + eje + ":0,4 o " + eje + ":0,2pi)";
+          }
+        }
+        if (vals[0] === vals[1] ||
+            (esNumPlano(vals[0]) && esNumPlano(vals[1]) && Number(vals[0]) === Number(vals[1]))) {
+          return donde + ": el recorte de " + eje + " repite el mismo valor — necesita el mínimo y el máximo distintos, ej: " + eje + ":0,4";
+        }
+      }
+      return null;
+    }
+  
+    /* ── A PRUEBA DE ERRORES: TODO lo que el visual exige ── */
+    function validarGraficador(v) {
+      const errs = [];
+  
+      /* escala: obligatoria, > 0, y que no explote la cuadrícula */
+      const escala = num(v.escala);
+      if (escala === undefined) {
+        errs.push({ k: "escala", msg: "«Escala de la cuadrícula» es obligatorio y debe ser un número mayor que 0 — ej: 1" });
+      } else if (!(escala > 0)) {
+        errs.push({ k: "escala", msg: "La escala debe ser MAYOR que 0 — ej: 1 · 2 · 0.5" });
+      } else {
+        const ax0 = num(v.rangoXmin), ax1 = num(v.rangoXmax);
+        const ay0 = num(v.rangoYmin), ay1 = num(v.rangoYmax);
+        const anchoX = ax0 !== undefined && ax1 !== undefined && ax1 > ax0 ? ax1 - ax0 : 40;
+        const altoY = ay0 !== undefined && ay1 !== undefined && ay1 > ay0 ? ay1 - ay0 : 40;
+        if (anchoX / escala > 160 || altoY / escala > 160) {
+          errs.push({ k: "escala", msg: "Con esa escala salen más de 160 líneas de cuadrícula — usa una escala mayor (ej: 2, 5 o 10) o un rango menor." });
+        }
+      }
+  
+      /* rangos: si escribes los DOS, mín < máx */
+      const rx0 = num(v.rangoXmin), rx1 = num(v.rangoXmax);
+      const ry0 = num(v.rangoYmin), ry1 = num(v.rangoYmax);
+      if (rx0 !== undefined && rx1 !== undefined && !(rx1 > rx0)) {
+        errs.push({ k: "rangoXmax", msg: "El máximo de X debe ser MAYOR que el mínimo (escribiste " + rx0 + " y " + rx1 + ")." });
+      }
+      if (ry0 !== undefined && ry1 !== undefined && !(ry1 > ry0)) {
+        errs.push({ k: "rangoYmax", msg: "El máximo de Y debe ser MAYOR que el mínimo (escribiste " + ry0 + " y " + ry1 + ")." });
+      }
+  
+      /* cuadrantes: solo 1, 2, 3, 4 */
+      const cTxt = limpia(v.cuadrantes);
+      if (cTxt) {
+        const partes = cTxt.split(",").map((s) => s.trim()).filter(Boolean);
+        if (!partes.length || partes.some((p) => !/^[1-4]$/.test(p))) {
+          errs.push({ k: "cuadrantes", msg: "«Cuadrantes» solo acepta 1, 2, 3 y 4 separados por comas — ej: 1,2,3,4 (vacío = los cuatro)." });
+        }
+      }
+  
+      /* funciones: ecuación interpretable + color + recorte + acotaciones */
+      lineasDe(v.funciones).forEach((lin, i) => {
+        const n = " (línea " + (i + 1) + ")";
+        const p = partirFuncion(lin);
+        if (p.colorMalo) {
+          errs.push({ k: "funciones", msg: "Color no válido" + n + ": «" + p.colorMalo + "» — usa hex (#e74c3c) o nombre (rojo, azul, verde, negro, morado, celeste…)." });
+          return;
+        }
+        const ec = p.ecuacion;
+        if (!ec) {
+          errs.push({ k: "funciones", msg: "Hay una línea sin ecuación — ej: y = x^2 | rojo | x:-2,5" });
+          return;
+        }
+        const mal = errorDeExpresion(ec, false);
+        if (mal) {
+          errs.push({ k: "funciones", msg: "No entiendo la ecuación" + n + ": «" + ec + "» — " + mal + ". Ejemplos: y = x^2 · y=(x-2)^2+1 · x=y^2-4 · x^2+y^2=9" });
+          return;
+        }
+        if (p.color && !colorOK(p.color)) {
+          errs.push({ k: "funciones", msg: "Color no válido" + n + ": «" + p.color + "» — usa hex (#e74c3c) o nombre (rojo, azul, verde, negro, morado, celeste…)." });
+        }
+        if (p.rec !== undefined) {
+          const malRec = errorDeRecorte(p.rec, "El recorte de la función" + n);
+          if (malRec) errs.push({ k: "funciones", msg: malRec });
+        }
+        if (p.acot) {
+          String(p.acot).split(";").map((s) => s.trim()).filter(Boolean).forEach((seg) => {
+            const m = seg.match(/^([xy])\s*:\s*(.+)$/i);
+            if (!m) {
+              errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + seg + "» no se entiende — usa «x:a,b» o «y:c» (límites o asíntotas), ej: x:-2,5; y:3" });
+              return;
+            }
+            const vals = m[2].split(",").map((s) => s.trim()).filter(Boolean).slice(0, 2);
+            if (!vals.length) {
+              errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + seg + "» no tiene valor — ej: y:3" });
+              return;
+            }
+            for (const val of vals) {
+              const malV = errorDeExpresion(val, false);
+              if (malV) {
+                errs.push({ k: "funciones", msg: "Acotaciones" + n + ": no entiendo «" + val + "» — " + malV });
+              } else if (traeVariables(val)) {
+                errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + val + "» no puede llevar x ni y — escribe un número (ej: pi/2, -3)" });
+              }
+            }
+          });
+        }
+      });
+  
+      /* áreas: «entre | curvas | x=de..a | color» o «region | def | color» */
+      lineasDe(v.areas).forEach((lin, i) => {
+        const n = " (línea " + (i + 1) + ")";
+        const partes = lin.split("|").map((s) => s.trim());
+        const tipo = partes[0].toLowerCase();
+        if (tipo !== "entre" && tipo !== "region") {
+          errs.push({ k: "areas", msg: "El área" + n + " debe empezar con «entre» o «region» — ej: entre | y=x^2 ; y=0 | x=0..4 | #2563eb44" });
+          return;
+        }
+        const color = quitaColor(partes);
+        if (tipo === "entre") {
+          let rango = "";
+          if (partes.length >= 3 && esSegRango(partes[partes.length - 1])) rango = partes.pop();
+          const curvas = partes.slice(1).join("|").split(";").map((s) => s.trim()).filter(Boolean);
+          if (!curvas.length) { errs.push({ k: "areas", msg: "El área" + n + " (entre) necesita las curvas — ej: y=x^2 ; y=0" }); return; }
+          if (curvas.length > 2) { errs.push({ k: "areas", msg: "El área" + n + " admite máximo 2 curvas separadas por «;»" }); return; }
+          for (const c of curvas) {
+            const mal = errorDeExpresion(c, false);
+            if (mal) { errs.push({ k: "areas", msg: "El área" + n + ": no entiendo «" + c + "» — " + mal }); continue; }
+            if (!/^y\s*=/.test(c)) {
+              errs.push({ k: "areas", msg: "El área" + n + ": para «entre» las curvas van despejadas en y — ej: y=x^2 (llegó «" + c + "»)" });
+            }
+          }
+          if (rango) {
+            const malR = errorDeRango(rango, "El área" + n);
+            if (malR) errs.push({ k: "areas", msg: malR });
+          }
+          if (color && !colorOK(color)) {
+            errs.push({ k: "areas", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#2563eb44) o nombre (azul, verde…)." });
+          }
+        } else {
+          if (partes.length < 2) { errs.push({ k: "areas", msg: "El área" + n + " (region) necesita una desigualdad (y >= x^2) o un rango (x=-2..2)" }); return; }
+          let def = partes.slice(1).join("|").trim();
+          if (/^(no|!)\s+/.test(def)) def = def.replace(/^(no|!)\s+/, "");
+          if (/[<>]/.test(def)) {
+            const m = def.match(/^(.*?)(>=|<=|>|<)(.*)$/);
+            if (!m || !m[1].trim() || !m[3].trim()) {
+              errs.push({ k: "areas", msg: "El área" + n + ": desigualdad incompleta — ej: y >= x^2" });
+            } else {
+              for (const lado of [m[1], m[3]]) {
+                const mal = errorDeExpresion(lado, false);
+                if (mal) { errs.push({ k: "areas", msg: "El área" + n + ": no entiendo «" + lado.trim() + "» — " + mal }); }
+              }
+            }
+          } else if (/=/.test(def) && !/\.\./.test(def)) {
+            errs.push({ k: "areas", msg: "El área" + n + ": en «region» la igualdad no se colorea — usa una desigualdad (>=, >, <=, <) o un rango (x=a..b)" });
+          } else {
+            const rangos = def.split(",").map((s) => s.trim()).filter(Boolean);
+            if (!rangos.length) {
+              errs.push({ k: "areas", msg: "El área" + n + " (region) necesita una desigualdad (y >= x^2) o un rango (x=-2..2)" });
+            } else {
+              for (const r of rangos) {
+                const malR = errorDeRango(r, "El área" + n);
+                if (malR) errs.push({ k: "areas", msg: malR });
+              }
+            }
+          }
+          if (color && !colorOK(color)) {
+            errs.push({ k: "areas", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#2563eb44) o nombre (azul, verde…)." });
+          }
+        }
+      });
+  
+      /* puntos: «A(x,y) | color» con coordenadas numéricas */
+      lineasDe(v.puntos).forEach((lin, i) => {
+        const n = " (línea " + (i + 1) + ")";
+        const partes = lin.split("|").map((s) => s.trim());
+        const color = quitaColor(partes);
+        const m = partes.join("|").match(/^([A-Za-z])\s*\(\s*(.+?)\s*[;,]\s*(.+?)\s*\)$/);
+        if (!m) {
+          errs.push({ k: "puntos", msg: "El punto" + n + " no se entiende — formato: A(2,3) | color (UNA letra y las coordenadas x,y)" });
+          return;
+        }
+        for (const coord of [m[2], m[3]]) {
+          const mal = errorDeExpresion(coord, false);
+          if (mal) {
+            errs.push({ k: "puntos", msg: "El punto" + n + ": no entiendo la coordenada «" + coord + "» — " + mal });
+          } else if (traeVariables(coord)) {
+            errs.push({ k: "puntos", msg: "El punto" + n + ": la coordenada «" + coord + "» no puede llevar x ni y — escribe un número (ej: pi/2, -3, 1/4)" });
+          }
+        }
+        if (color && !colorOK(color)) {
+          errs.push({ k: "puntos", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#8e44ad) o nombre (morado, rojo…)." });
+        }
+      });
+  
+      /* ancho razonable */
+      const ancho = num(v.ancho);
+      if (ancho !== undefined && !(ancho >= 200 && ancho <= 1000)) {
+        errs.push({ k: "ancho", msg: "El ancho debe estar entre 200 y 1000 px — ej: 560" });
+      }
+      return errs;
+    }
+  
+    /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+    const entrada = {
+      id: "graficador-funciones-cartesianas",
+      nombre: "Plano cartesiano de funciones",
+      cat: "visuales",
+      archivo: "recursos/js/visuales/graficador-funciones-cartesianas.js",
+      imports: ["dibujarGraficadorCartesiano"],
+      funcion: "dibujarGraficadorCartesiano",
+      descripcion: "Plano con cuadrícula según escala: funciones en cualquier formato (explícitas, canónicas, cónicas e implícitas), áreas de dominio/entre curvas, puntos con letra, límites punteados y RECORTES de porción por valores de x/y.",
+      params: [
+        { k: "rangoXmin", et: "Eje X: mínimo (vacío = -20)", tipo: "num", ej: "-6" },
+        { k: "rangoXmax", et: "Eje X: máximo (vacío = 20)", tipo: "num", ej: "8" },
+        { k: "rangoYmin", et: "Eje Y: mínimo (vacío = -20)", tipo: "num", ej: "-4" },
+        { k: "rangoYmax", et: "Eje Y: máximo (vacío = 20)", tipo: "num", ej: "10" },
+        { k: "escala", et: "Escala de la cuadrícula", tipo: "num", req: true, ej: "1 · 2 · 0.5" },
+        { k: "cuadrantes", et: "Cuadrantes a mostrar (vacío = los 4)", tipo: "texto", ej: "1,2,3,4" },
+        { k: "funciones", et: "Funciones / ecuaciones — una por línea: ecuación | color | acotaciones | recorte", tipo: "lineas",
+          ej: "y = x^2 | rojo | x:-2,5; y:3 | recorte x:-2,5\ny = (x-2)^2+1 | azul\nx^2+y^2=9 | verde | recorte x:-3,3; y:0,3\nx=y^2-4" },
+        { k: "areas", et: "Áreas a colorear — una por línea", tipo: "lineas",
+          ej: "entre | y=x^2 ; y=4-x | x=0..4 | #2563eb44\nregion | y >= x^2 | #dc262633\nregion | x=0..4 | #16a34a33  (dominio)\nregion | no y > 0 | #94a3b822  (no dominio)" },
+        { k: "puntos", et: "Puntos — una por línea: Letra(x,y) | color", tipo: "lineas",
+          ej: "A(2,3) | #8e44ad\nB(-1,0.5)\nV(2,1) | morado" },
+        { k: "etiquetas", et: "Etiquetar cada gráfica con su ecuación", tipo: "sino", def: true },
+        { k: "ancho", et: "Ancho del plano (px)", tipo: "num", def: 560, ej: "560" },
+      ],
+      aOpciones: (v) => ({
+        rango: {
+          xMin: num(v.rangoXmin),
+          xMax: num(v.rangoXmax),
+          yMin: num(v.rangoYmin),
+          yMax: num(v.rangoYmax),
+        },
+        escala: num(v.escala),
+        cuadrantes: listaCuadrantes(v.cuadrantes),
+        funciones: lineasDe(v.funciones),
+        areas: lineasDe(v.areas),
+        puntos: lineasDe(v.puntos),
+        etiquetas: bool(v.etiquetas, true),
+        ancho: num(v.ancho),
+      }),
+      /* ── A PRUEBA DE ERRORES: revisor espejo del motor del visual ── */
+      validar: validarGraficador,
+    };
+    /* Reemplaza o agrega: si ya está pegado el BLOQUE 35 viejo, esta
+       versión ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+    const i = REGISTRO.findIndex((r) => r.id === "graficador-funciones-cartesianas");
+    if (i >= 0) REGISTRO[i] = entrada;
+    else REGISTRO.push(entrada);
+  })();
+  /* ═══════════════ fin BLOQUE 35 · «graficador-funciones-cartesianas» ═══════════════ */
