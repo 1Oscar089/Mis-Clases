@@ -6059,3 +6059,222 @@ function abrirModalCodigo() {
     else REGISTRO.push(entrada);
   })();
   /* ═══════════════ fin BLOQUE 35 · «graficador-funciones-cartesianas» ═══════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 36 · «tarjetaElementoQuimico» — Tarjeta química del elemento
+   [visuales] · v1.1 (masa aproximada con DOS decimales)
+   Visual: recursos/js/visuales/ciencias/tarjetaElementoQuimico.js
+   (HTML/CSS nativos, cero librerías, cero eventos: un CUADRADO PERFECTO
+   con número atómico, símbolo, nombre en los dos idiomas, masa atómica
+   exacta y APROXIMADA con DOS decimales, protones-electrones-neutrones,
+   periodo, grupo, bloque s/p/d/f, familia, estados de oxidación y
+   configuración completa y reducida. La GAMA DE COLOR de bordes y
+   acentos se adapta sola a la categoría: alcalinos rojo intenso,
+   alcalinotérreos naranja claro, transición amarillo/gris, lantánidos
+   marrón, actínidos violeta, otros metales verde azulado, metaloides
+   oliva, no metales azul claro, halógenos morado, gases nobles
+   rosa/magenta. Sin contenedor se muestra centrada en el <body>.)
+   Obligatorio: AL MENOS UN dato bien escrito — con uno que llegue
+   correcto, los otros quedan opcionales:
+     · Número atómico: entero 1–118.
+     · Símbolo: SENSIBLE a mayúsculas («Na» sí; «na» NO — el revisor
+       lo detecta y sugiere la grafía correcta).
+     · Nombre: español o inglés, SIN importar mayúsculas ni acentos
+       («sodio», «SODIO», «sodium», «Oxígeno»… — el revisor coteja
+       contra la lista de los 118 nombres en los DOS idiomas).
+   Idioma de la tarjeta: «español» o «english» (lista fija).
+   La PUERTA DE GUARDADO usa validar() de aquí abajo.
+   Si ya pegaste este BLOQUE 36 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  /* ── Ayudantes SOLO de este bloque (no tocan nada del crear.js base) ── */
+  const limpia = (v) => String(v ?? "").trim();
+
+  /* Los 118 símbolos VÁLIDOS en orden (H → Og): sirven para revisar
+     AQUÍ MISMO el símbolo — SENSIBLE a mayúsculas — sin cargar el visual. */
+  const SIMBOLOS = (
+    "H He Li Be B C N O F Ne " +
+    "Na Mg Al Si P S Cl Ar K Ca " +
+    "Sc Ti V Cr Mn Fe Co Ni Cu Zn " +
+    "Ga Ge As Se Br Kr Rb Sr Y Zr " +
+    "Nb Mo Tc Ru Rh Pd Ag Cd In Sn " +
+    "Sb Te I Xe Cs Ba La Ce Pr Nd " +
+    "Pm Sm Eu Gd Tb Dy Ho Er Tm Yb " +
+    "Lu Hf Ta W Re Os Ir Pt Au Hg " +
+    "Tl Pb Bi Po At Rn Fr Ra Ac Th " +
+    "Pa U Np Pu Am Cm Bk Cf Es Fm " +
+    "Md No Lr Rf Db Sg Bh Hs Mt Ds " +
+    "Rg Cn Nh Fl Mc Lv Ts Og"
+  ).split(" ");
+
+  /* Los 118 nombres en ESPAÑOL y en INGLÉS, en el mismo orden: el
+     revisor coteja el nombre SIN importar mayúsculas ni acentos. */
+  const NOMBRES_ES = (
+    "Hidrógeno Helio Litio Berilio Boro Carbono Nitrógeno Oxígeno Flúor Neón " +
+    "Sodio Magnesio Aluminio Silicio Fósforo Azufre Cloro Argón Potasio Calcio " +
+    "Escandio Titanio Vanadio Cromo Manganeso Hierro Cobalto Níquel Cobre Zinc " +
+    "Galio Germanio Arsénico Selenio Bromo Kriptón Rubidio Estroncio Itrio Circonio " +
+    "Niobio Molibdeno Tecnecio Rutenio Rodio Paladio Plata Cadmio Indio Estaño " +
+    "Antimonio Telurio Yodo Xenón Cesio Bario Lantano Cerio Praseodimio Neodimio " +
+    "Prometio Samario Europio Gadolinio Terbio Disprosio Holmio Erbio Tulio Iterbio " +
+    "Lutecio Hafnio Tantalio Wolframio Renio Osmio Iridio Platino Oro Mercurio " +
+    "Talio Plomo Bismuto Polonio Astato Radón Francio Radio Actinio Torio " +
+    "Protactinio Uranio Neptunio Plutonio Americio Curio Berkelio Californio Einstenio Fermio " +
+    "Mendelevio Nobelio Lawrencio Rutherfordio Dubnio Seaborgio Bohrio Hasio Meitnerio Darmstatio " +
+    "Roentgenio Copernicio Nihonio Flerovio Moscovio Livermorio Teneso Oganesón"
+  );
+  const NOMBRES_EN = (
+    "Hydrogen Helium Lithium Beryllium Boron Carbon Nitrogen Oxygen Fluorine Neon " +
+    "Sodium Magnesium Aluminum Silicon Phosphorus Sulfur Chlorine Argon Potassium Calcium " +
+    "Scandium Titanium Vanadium Chromium Manganese Iron Cobalt Nickel Copper Zinc " +
+    "Gallium Germanium Arsenic Selenium Bromine Krypton Rubidium Strontium Yttrium Zirconium " +
+    "Niobium Molybdenum Technetium Ruthenium Rhodium Palladium Silver Cadmium Indium Tin " +
+    "Antimony Tellurium Iodine Xenon Cesium Barium Lanthanum Cerium Praseodymium Neodymium " +
+    "Promethium Samarium Europium Gadolinium Terbium Dysprosium Holmium Erbium Thulium Ytterbium " +
+    "Lutetium Hafnium Tantalum Tungsten Rhenium Osmium Iridium Platinum Gold Mercury " +
+    "Thallium Lead Bismuth Polonium Astatine Radon Francium Radium Actinium Thorium " +
+    "Protactinium Uranium Neptunium Plutonium Americium Curium Berkelium Californium Einsteinium Fermium " +
+    "Mendelevium Nobelium Lawrencium Rutherfordium Dubnium Seaborgium Bohrium Hassium Meitnerium Darmstadtium " +
+    "Roentgenium Copernicium Nihonium Flerovium Moscovium Livermorium Tennessine Oganesson"
+  );
+  const sinAcentos = (s) =>
+    String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  const NOMBRES = new Set((NOMBRES_ES + " " + NOMBRES_EN).split(" ").map(sinAcentos).filter(Boolean));
+
+  /* ── A PRUEBA DE ERRORES: la regla de ESTE bloque ──
+     · AL MENOS UN dato (número, símbolo o nombre) — si uno llega bien
+       escrito, los otros quedan opcionales;
+     · número: entero 1–118;
+     · símbolo: contra los 118 símbolos EXACTOS (distingue mayúsculas,
+       y si estaba bien pero mal escrito en mayúsculas, sugiere «Na»);
+     · nombre: letras + contra los 118 nombres ES y EN sin acentos. */
+  function validarTarjeta(v) {
+    const errs = [];
+    const num = limpia(v.numeroAtomico);
+    const sim = limpia(v.simbolo);
+    const nom = limpia(v.nombre);
+
+    if (!num && !sim && !nom) {
+      const msg = "Escribe AL MENOS UN dato del elemento: número atómico (1–118), símbolo («Na») o nombre («sodio» / «sodium»). Con uno bien escrito, los otros quedan opcionales.";
+      errs.push({ k: "numeroAtomico", msg });
+      errs.push({ k: "simbolo", msg: " " });
+      errs.push({ k: "nombre", msg: " " });
+      return errs;
+    }
+
+    if (num) {
+      const n = Number(num);
+      if (!/^\d+$/.test(num) || !Number.isInteger(n) || n < 1 || n > 118) {
+        errs.push({ k: "numeroAtomico", msg: "«Número atómico» debe ser un ENTERO entre 1 y 118 (llegó «" + num + "»), ej: 11 para el sodio." });
+      }
+    }
+
+    if (sim) {
+      if (!SIMBOLOS.includes(sim)) {
+        const casi = SIMBOLOS.find((s) => s.toLowerCase() === sim.toLowerCase());
+        errs.push({ k: "simbolo", msg: casi
+          ? "El símbolo SÍ distingue mayúsculas: escribiste «" + sim + "» pero el correcto es «" + casi + "»."
+          : "«" + sim + "» no es el símbolo de ningún elemento (los 118 van del H al Og). Revisa la grafía exacta, ej: Na · Cl · Fe." });
+      }
+    }
+
+    if (nom) {
+      if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+([ -][A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$/.test(nom)) {
+        errs.push({ k: "nombre", msg: "«Nombre» solo acepta letras (español o inglés), ej: «sodio», «sodium», «Oxígeno» — si querías buscar por número, usa el campo «Número atómico»." });
+      } else if (!NOMBRES.has(sinAcentos(nom))) {
+        errs.push({ k: "nombre", msg: "No reconozco el nombre «" + nom + "». Escribe el nombre del elemento en ESPAÑOL o INGLÉS (sin importar mayúsculas ni acentos), ej: «sodio» o «sodium»." });
+      }
+    }
+
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "tarjetaElementoQuimico",
+    nombre: "Tarjeta química del elemento",
+    cat: "visuales",
+    archivo: "recursos/js/visuales/ciencias/tarjetaElementoQuimico.js",
+    imports: ["mostrarTarjetaElemento"],
+    funcion: "mostrarTarjetaElemento",
+    descripcion: "Tarjeta CUADRADA con todo sobre un elemento: masa exacta y aproximada (2 decimales), protones-electrones-neutrones, periodo, grupo, bloque, familia, oxidaciones y configuraciones completa/reducida. Se busca por número atómico, símbolo o nombre (español o inglés) — con UN dato bien escrito alcanza; los colores se adaptan a la categoría.",
+    params: [
+      { k: "numeroAtomico", et: "Número atómico (1–118) — opcional si escribes símbolo o nombre", tipo: "num", ej: "11" },
+      { k: "simbolo", et: "Símbolo químico — SENSIBLE a mayúsculas — opcional", tipo: "texto", ej: "Na · Cl · Fe" },
+      { k: "nombre", et: "Nombre en español o inglés — sin importar mayúsculas ni acentos — opcional", tipo: "texto", ej: "sodio · sodium · Oxígeno" },
+      { k: "idioma", et: "Idioma de la tarjeta", tipo: "opcion", ops: ["español", "english"], def: "español" },
+    ],
+    aOpciones: (v) => ({
+      numeroAtomico: num(v.numeroAtomico),
+      simbolo: limpia(v.simbolo) || undefined,
+      nombre: limpia(v.nombre) || undefined,
+      idioma: v.idioma || "español",
+    }),
+    aCodigo: (v) => ({
+      numeroAtomico: num(v.numeroAtomico),
+      simbolo: limpia(v.simbolo) || undefined,
+      nombre: limpia(v.nombre) || undefined,
+      idioma: v.idioma || "español",
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del visual ── */
+    validar: validarTarjeta,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 36, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const i = REGISTRO.findIndex((r) => r.id === "tarjetaElementoQuimico");
+  if (i >= 0) REGISTRO[i] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═════════════════ fin BLOQUE 36 · «tarjetaElementoQuimico» ═══════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 37 · «tablaPeriodica» — Tabla periódica interactiva   [utils]
+   Util: js/utils/ciencias/tablaPeriodica.js
+   Tabla COMPLETA de los 118 elementos: 18 grupos y 7 periodos
+   numerados, metales de transición en su sitio y las series internas
+   (lantánidos y actínidos) en las DOS filas de abajo, cada familia
+   con SU color (la misma gama de la tarjeta química) y leyenda.
+   Cada celda muestra SOLO: número atómico, peso atómico completo
+   (los sintéticos entre paréntesis), símbolo y nombre. AL PULSAR un
+   elemento se abre un MODAL (✕ · Esc · clic en el fondo) con la
+   TARJETA QUÍMICA de ese elemento (la del visual
+   recursos/js/visuales/ciencias/tarjetaElementoQuimico.js: masa
+   exacta y aproximada con 2 decimales, protones-electrones-
+   neutrones, periodo, grupo, bloque s/p/d/f, familia, oxidaciones y
+   configuraciones completa/reducida); si ese visual no estuviera,
+   el modal muestra una ficha básica con los datos de la tabla.
+   Obligatorio: NADA — la tabla se muestra completa sola; solo se
+   elige el idioma (la tarjeta de cada elemento sale en ese idioma).
+   Escala sola con el ancho del contenedor (container queries), así
+   que cabe en una lámina de clase o en el celular sin deformarse.
+   La PUERTA DE GUARDADO no necesita validar() aquí: no hay campos
+   que puedan quedar vacíos (el idioma es una lista fija).
+   Si ya pegaste este BLOQUE 37 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const entrada = {
+    id: "tablaPeriodica",
+    nombre: "tablaPeriodica — Tabla periódica",
+    cat: "utils",
+    archivo: "utils/ciencias/tablaPeriodica.js",
+    imports: ["tablaPeriodica"],
+    funcion: "tablaPeriodica",
+    descripcion: "Tabla periódica completa con colores por familia (18 grupos, 7 periodos, transición, lantánidos y actínidos): número atómico, peso atómico, símbolo y nombre por elemento; al pulsar uno se abre su tarjeta química en un modal.",
+    params: [
+      { k: "idioma", et: "Idioma de la tabla y de las tarjetas", tipo: "opcion", ops: ["español", "english"], def: "español" },
+    ],
+    aOpciones: (v) => ({
+      idioma: v.idioma || "español",
+    }),
+    aCodigo: (v) => ({
+      idioma: v.idioma || "español",
+    }),
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 37, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const i = REGISTRO.findIndex((r) => r.id === "tablaPeriodica");
+  if (i >= 0) REGISTRO[i] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═════════════════ fin BLOQUE 37 · «tablaPeriodica» ═════════════════ */
