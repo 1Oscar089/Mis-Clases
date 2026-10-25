@@ -6278,3 +6278,707 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═════════════════ fin BLOQUE 37 · «tablaPeriodica» ═════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 38 · «calculadoraCientifica» — Calculadora científica FX  [utils]
+   Util: js/utils/ciencias/calculadoraCientifica.js
+   Calculadora científica INTERACTIVA que emula una física tipo FX-991:
+   carcasa oscura mate con pad direccional, LCD de dos filas (expresión
+   en matriz de puntos con indicadores S·A·hyp·M·STO·RCL y modo
+   DEG/RAD/GRA + resultado en dígitos de 7 segmentos), capas SHIFT
+   (amarillo) y ALPHA (magenta) funcionales, paréntesis, potencias y
+   raíces, fracciones a b/c con S⇔D, trigonometría con inversas e
+   hiperbólicas, log/ln/log□, π y e, factorial, Ans, variables A…F X Y
+   M con STO/RCL, M+/M−, ENG, °′″, CALC, integral ∫dx y d/dx con X,
+   historial ▲▼, cursor ◀▶, menú CONFIG (modo angular) y OFF.
+   RESTRICCIÓN PEDAGÓGICA: el campo «funcionesDeshabilitadas» apaga
+   teclas o funciones concretas («sin», «SHIFT:sin», «ALPHA:D»,
+   «integral», «log», «x!»…): se ven grises, sin hover ni clic, la
+   serigrafía de la capa bloqueada se atenúa y TAMBIÉN se bloquea la
+   entrada desde el teclado físico de la computadora.
+   Obligatorio: NADA — sin configurar sale completa y habilitada.
+   La PUERTA DE GUARDADO valida con validarCalculadora() que cada
+   nombre de la lista se reconozca (evita bloqueos mal escritos que
+   después no bloquearían nada).
+   Si ya pegaste este BLOQUE 38 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpiaLista = (s) =>
+    String(s == null ? "" : s)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+  /* ── A PRUEBA DE ERRORES: espejo del reconocedor del util ──
+     Cada nombre debe ser una tecla o función real (con sus alias:
+     sin⁻¹, sinh, 10^x, e^x, π, x!, ∛, d/dx, M−, STO, OFF, sen, ^, =…)
+     para que un bloqueo mal escrito no pase inadvertido. */
+  const IDS = new Set([
+    "shift", "alpha", "mode", "on", "calc", "integral", "inv", "logbase", "sqr",
+    "sqrt", "cube", "pow", "log", "ln", "neg", "dms", "hyp", "sin", "cos", "tan",
+    "rcl", "eng", "lpar", "rpar", "sd", "mplus", "del", "ac", "add", "sub", "mul",
+    "div", "eq", "dot", "exp", "ans", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+  ]);
+  const LETRAS = { A: "neg", B: "dms", C: "hyp", D: "sin", E: "cos", F: "tan", X: "rpar", Y: "sd", M: "mplus" };
+  const ALIAS = {
+    "sin⁻¹": 1, "sin-1": 1, asin: 1, arcsin: 1, asen: 1, arcosen: 1, "sen⁻¹": 1,
+    "cos⁻¹": 1, "cos-1": 1, acos: 1, arccos: 1,
+    "tan⁻¹": 1, "tan-1": 1, atan: 1, arctan: 1, atg: 1, "tg⁻¹": 1,
+    sinh: 1, senh: 1, cosh: 1, tanh: 1, tgh: 1,
+    "sinh⁻¹": 1, asinh: 1, "cosh⁻¹": 1, acosh: 1, "tanh⁻¹": 1, atanh: 1,
+    "x!": 1, factorial: 1, "∛": 1, raizcubica: 1, "raízcubica": 1, "raízcúbica": 1,
+    "10^x": 1, "10ˣ": 1, "10x": 1, "e^x": 1, "eˣ": 1, ex: 1,
+    "π": 1, pi: 1, "d/dx": 1, ddx: 1, derivada: 1,
+    "m−": 1, "m-": 1, mmenos: 1, "memoria−": 1, sto: 1, almacenar: 1,
+    off: 1, apagar: 1, integral: 1, "∫dx": 1, "∫": 1,
+    euler: 1, "número e": 1, numeroe: 1,
+    setup: 1, config: 1, configuración: 1, configuracion: 1,
+    "s⇔d": 1, sd: 1, ans: 1, "x²": 1, x2: 1, cuadrado: 1,
+    "x³": 1, x3: 1, cubo: 1, "x⁻¹": 1, "x^-1": 1, inversa: 1,
+    "√": 1, "raíz": 1, raiz: 1, "x■": 1, potencia: 1, "^": 1,
+    "log□": 1, logbase: 1, "×10ˣ": 1, "×10^x": 1, exp: 1, "ᴇ": 1,
+    "m+": 1, mplus: 1, "=": 1, eq: 1, igual: 1,
+    del: 1, delete: 1, borrar: 1, ac: 1, "all clear": 1, on: 1, mode: 1,
+    shift: 1, alpha: 1, hyp: 1, h: 1, calc: 1, rcl: 1, eng: 1,
+    "(": 1, ")": 1, "paréntesis": 1, parentesis: 1,
+    "+": 1, "-": 1, "−": 1, menos: 1, "*": 1, "×": 1, por: 1, x: 1,
+    "/": 1, "÷": 1, dividido: 1, ".": 1, punto: 1, coma: 1,
+    "°′″": 1, dms: 1, grados: 1, sen: 1, tg: 1,
+  };
+
+  function seReconoce(txt) {
+    let t = String(txt == null ? "" : txt).trim();
+    if (!t) return true;
+    let capa = "n";
+    const m = t.match(/^(shift|alpha|hyp)\s*[:\-·]\s*(.+)$/i);
+    if (m) {
+      capa = m[1].toLowerCase() === "shift" ? "s" : m[1].toLowerCase() === "alpha" ? "a" : "h";
+      t = m[2].trim();
+    }
+    const clave = t.toLowerCase();
+    const letra = clave.toUpperCase();
+    if (capa === "a" && LETRAS[letra]) return true;
+    if (capa === "n") {
+      if (/^[abcfxy]$/.test(clave) && LETRAS[letra]) return true;
+      if (clave === "m" || clave === "e") return true;
+    }
+    if (ALIAS[clave]) return true;
+    if (IDS.has(clave)) return true;
+    return /^[0-9]$/.test(clave);
+  }
+
+  function validarCalculadora(v) {
+    const errs = [];
+    const lista = limpiaLista(v.funcionesDeshabilitadas);
+    const malas = lista.filter((t) => !seReconoce(t));
+    if (malas.length) {
+      errs.push({
+        k: "funcionesDeshabilitadas",
+        msg: "No reconozco «" + malas.join("», «") + "». Usa teclas o funciones reales separadas por coma, ej: «sin, SHIFT:sin, ALPHA:D, integral, log, x!». Teclas: sin · cos · tan · log · ln · sqrt · sqr · cube · pow · inv · logBase · frac · exp · ans · sd · eng · dms · hyp · rcl · mplus · calc · integral · lpar · rpar · del · ac · mode · on · shift · alpha · eq · 0-9 · dot · add · sub · mul · div. Capas: «SHIFT:tecla», «ALPHA:letra (A-F, X, Y, M)», «hyp:tecla».",
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "calculadoraCientifica",
+    nombre: "calculadoraCientifica — Calculadora científica",
+    cat: "utils",
+    archivo: "utils/calculadoraCientifica.js",
+    imports: ["calculadoraCientifica"],
+    funcion: "calculadoraCientifica",
+    descripcion: "Calculadora científica interactiva tipo FX-991: LCD de dos filas (expresión + 7 segmentos), capas SHIFT/ALPHA/hyp, fracciones, trigonometría, logaritmos, π-e, factorial, Ans, variables, CALC, integral y d/dx. Permite DESHABILITAR teclas o funciones concretas (se atenúan y también se bloquea el teclado físico).",
+    params: [
+      { k: "funcionesDeshabilitadas", et: "Teclas/funciones DESHABILITADAS separadas por coma — vacío = todo habilitado", tipo: "texto", ej: "sin, SHIFT:sin, ALPHA:D, integral, log, x!" },
+      { k: "modoAngulo", et: "Modo angular inicial", tipo: "opcion", ops: ["DEG", "RAD", "GRA"], def: "DEG" },
+    ],
+    aOpciones: (v) => ({
+      funcionesDeshabilitadas: limpiaLista(v.funcionesDeshabilitadas),
+      modoAngulo: v.modoAngulo || "DEG",
+    }),
+    aCodigo: (v) => ({
+      funcionesDeshabilitadas: limpiaLista(v.funcionesDeshabilitadas),
+      modoAngulo: v.modoAngulo || "DEG",
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarCalculadora,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 38, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const i = REGISTRO.findIndex((r) => r.id === "calculadoraCientifica");
+  if (i >= 0) REGISTRO[i] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═════════════════ fin BLOQUE 38 · «calculadoraCientifica» ═══════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 39 · «formateadorEcuacionesQuimicas» — Ecuaciones químicas
+   [visuales]
+   Visual: recursos/js/visuales/ciencias/formateadorEcuacionesQuimicas.js
+   Construye UNA ECUACIÓN QUÍMICA profesional y tipográficamente
+   exacta: subíndices (H2O → H₂O, Ca(NO3)2 → Ca(NO₃)₂), cargas en
+   superíndice («SO4 2-» → SO₄²⁻, «Fe3+» → Fe³⁺, «NO3-» → NO₃⁻),
+   coeficientes resaltados delante (el 1 no se escribe), estados de
+   agregación pequeños (s · l · g · ac), punto de hidratación
+   (CuSO4·5H2O), efectos ↑ gas y ↓ precipitado, y la flecha central
+   según el tipo: irreversible →, reversible ⇌, equilibrio ⇄, con
+   los factores externos centrados SOBRE y DEBAJO (Δ, Calor,
+   catalizador, °C, atm…). Tres temas: «clasico» (papel claro),
+   «laboratorio» (tarjeta cuadriculada con rótulo) y «neon» (oscuro
+   con brillo). Escala con el ancho del contenedor sin deformarse.
+   Forma corta por especie: «[coeficiente]fórmula(estado)[↑|↓]»,
+   ej: «2H2(g), O2(g)» → «2H2O(l)». El visual también acepta
+   objetos: { formula, coeficiente, estado, efecto }.
+   Obligatorio: reactivos y productos (AL MENOS UNO de cada); cada
+   especie debe tener letras (una fórmula sin elementos no se puede
+   leer). La PUERTA DE GUARDADO lo revisa con validarEcuacion().
+   Si ya pegaste este BLOQUE 39 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+  const lista = (s) =>
+    String(s == null ? "" : s)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+  /* ── A PRUEBA DE ERRORES: espejo del lector del visual ──
+     Una especie es legible si, quitando coeficiente inicial,
+     (estado) final, flechas ↑↓ y la carga, quedan LETRAS
+     (elementos). «123» o «!!» no lo son. */
+  function especieLegible(txt) {
+    let t = String(txt == null ? "" : txt).trim();
+    if (!t) return false;
+    t = t.replace(/^\d+\s*/, "");
+    t = t.replace(/\s*\(([^()]*)\)\s*$/, "");
+    t = t.replace(/[↑↓]\s*$/, "");
+    t = t.replace(/\^?\s?\d*[+-]\s*$/, "").trim();
+    return /[A-Za-z]/.test(t);
+  }
+
+  function validarEcuacion(v) {
+    const errs = [];
+    const re = lista(v.reactivos);
+    const pr = lista(v.productos);
+
+    if (!re.length) {
+      errs.push({
+        k: "reactivos",
+        msg: "Escribe AL MENOS UN reactivo, ej: «2H2(g), O2(g)» — [coeficiente]fórmula(estado), separados por coma.",
+      });
+    } else {
+      const malas = re.filter((t) => !especieLegible(t));
+      if (malas.length) {
+        errs.push({
+          k: "reactivos",
+          msg: "No puedo leer " + malas.map((m) => "«" + m + "»").join(", ") +
+            " como fórmula: una especie necesita LETRAS (elementos), ej: H2SO4 · Ca(OH)2 · SO4 2- · Fe3+.",
+        });
+      }
+    }
+
+    if (!pr.length) {
+      errs.push({
+        k: "productos",
+        msg: "Escribe AL MENOS UN producto, ej: «2H2O(l), CO2(g)↑» — con ↑ para gas liberado y ↓ para precipitado.",
+      });
+    } else {
+      const malas = pr.filter((t) => !especieLegible(t));
+      if (malas.length) {
+        errs.push({
+          k: "productos",
+          msg: "No puedo leer " + malas.map((m) => "«" + m + "»").join(", ") +
+            " como fórmula: una especie necesita LETRAS (elementos), ej: H2O · CaO · CO2 · AgCl.",
+        });
+      }
+    }
+
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "formateadorEcuacionesQuimicas",
+    nombre: "formateadorEcuacionesQuimicas — Ecuaciones químicas",
+    cat: "visuales",
+    archivo: "recursos/js/visuales/ciencias/formateadorEcuacionesQuimicas.js",
+    imports: ["generarEcuacionQuimica"],
+    funcion: "generarEcuacionQuimica",
+    descripcion: "Ecuación química profesional y tipográficamente exacta: subíndices, cargas (SO4 2- → SO₄²⁻, Fe3+ → Fe³⁺), coeficientes resaltados, estados (s·l·g·ac), ↑ gas / ↓ precipitado y flecha según el tipo (irreversible →, reversible ⇌, equilibrio ⇄) con factores externos centrados sobre y bajo la flecha (Δ, Calor, Pt, °C, atm). Tres temas: clasico, laboratorio y neon.",
+    params: [
+      { k: "reactivos", et: "Reactivos separados por coma — [coeficiente]fórmula(estado)", tipo: "texto", ej: "2H2(g), O2(g)" },
+      { k: "productos", et: "Productos separados por coma — ↑ gas / ↓ precipitado al final", tipo: "texto", ej: "2H2O(l), CO2(g)↑" },
+      { k: "tipoReaccion", et: "Flecha de la reacción", tipo: "opcion", ops: ["irreversible", "reversible", "equilibrio"], def: "irreversible" },
+      { k: "factorSuperior", et: "Factor SOBRE la flecha (calor, Δ, catalizador, °C, atm) — opcional", tipo: "texto", ej: "Δ · Calor · 200 °C · Pt" },
+      { k: "factorInferior", et: "Factor DEBAJO de la flecha — opcional", tipo: "texto", ej: "1 atm · H2O · cat" },
+      { k: "tema", et: "Tema visual", tipo: "opcion", ops: ["clasico", "laboratorio", "neon"], def: "clasico" },
+    ],
+    aOpciones: (v) => ({
+      reactivos: lista(v.reactivos),
+      productos: lista(v.productos),
+      tipoReaccion: v.tipoReaccion || "irreversible",
+      factoresFlecha: {
+        superior: limpia(v.factorSuperior) || undefined,
+        inferior: limpia(v.factorInferior) || undefined,
+      },
+      tema: v.tema || "clasico",
+    }),
+    aCodigo: (v) => ({
+      reactivos: lista(v.reactivos),
+      productos: lista(v.productos),
+      tipoReaccion: v.tipoReaccion || "irreversible",
+      factoresFlecha: {
+        superior: limpia(v.factorSuperior) || undefined,
+        inferior: limpia(v.factorInferior) || undefined,
+      },
+      tema: v.tema || "clasico",
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del visual ── */
+    validar: validarEcuacion,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 39, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const i = REGISTRO.findIndex((r) => r.id === "formateadorEcuacionesQuimicas");
+  if (i >= 0) REGISTRO[i] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═════════════════ fin BLOQUE 39 · «formateadorEcuacionesQuimicas» ═══ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 40 · «creadorFigurasGeometricas» — Creador de figuras geométricas (v2)
+   [visuales]
+   Visual: recursos/js/visuales/ciencias/creadorFigurasGeometricas.js
+   Dibuja FIGURAS GEOMÉTRICAS A ESCALA con acabado profesional:
+   · Planas: polígonos regulares (3–100 lados, medida del lado) e
+     irregulares (lista de lados → polígono cíclico por bisección),
+     círculos (radio) y elipses (radio mayor y menor).
+   · Sólidos: prismas rectos e inclinados de cualquier base, pirámides,
+     poliedros regulares platónicos (caras 4·6·8·12·20 + arista),
+     cilindros, conos, conos truncados y esferas, con PROYECCIÓN
+     ISOMÉTRICA, algoritmo del pintor y aristas ocultas discontinuas.
+   · ROTACIÓN ELEGIBLE: «vistaGiro» (0–360°) y «vistaElev» (2–85°)
+     para la vista completa, y «giro»/«elev» PROPIOS de cada figura
+     (en planas el giro rota el dibujo en su plano; en sólidos gira
+     sobre el eje vertical y «elev» ajusta la cámara de esa figura).
+   · ACABADO PROFESIONAL: sombreado Lambert cara a cara, degradados en
+     los sólidos de revolución, sombra proyectada en el suelo, cotas
+     finas con halo y AUTO-AJUSTE del viewBox al bounding box real del
+     SVG ya renderizado → LA FIGURA JAMÁS SALE CORTADA, a ningún ancho.
+   · Composición de 2+ figuras con orientación «horizontal» (izquierda
+     a derecha) o «vertical» (apiladas de arriba hacia abajo).
+   · COTAS configurables por arreglo («cotas»): líneas de dimensión con
+     flechas y etiquetas alineadas (lado, lados_individuales, apotema,
+     altura, radio, diámetro, radioMayor/Menor, largo/ancho, generatriz,
+     inclinación β, área lateral/total y volumen como fichas).
+   · Estilo: color de borde, grosor, color de relleno y opacidad
+     (semitransparente para ver la estructura interna del sólido).
+     Temas: «clasico», «laboratorio» (cuadriculado con rótulo) y
+     «neon» (oscuro con brillo). Escala UNIFORME: nunca se deforma.
+   Forma corta por figura: «tipo;medidas;cotas=…», separadas por «|»:
+     cilindro;r=4,h=10,giro=30;cotas=radio,altura
+     poligono;n=5,L=4,giro=45;cotas=lado,apotema
+     poligono;regular=no,medidas=4,5,6,7;cotas=lados_individuales
+     prisma;n=6,L=3,h=8,inc=15,elev=50;cotas=lado,altura,inclinacion
+     poliedroRegular;caras=12,L=2,giro=120;cotas=lado,volumen
+     conoTruncado;R=6,rs=3,h=8,g=8.54;cotas=R,r,h,g
+   Alias de medidas: n=lados · L=lado · h=altura · r=radio · R=radioBase
+   · rs=radioSuperior · a=radioMayor · b=radioMenor · g=generatriz ·
+   inc=inclinacion · giro=rotación propia (°) · rot=giro · elev=elevación
+   propia de la vista (°, solo sólidos).
+   Obligatorio: AL MENOS UNA figura y las medidas de cada tipo
+   (poliedroRegular solo acepta caras 4·6·8·12·20; los lados de un
+   irregular deben cumplir la desigualdad del polígono). La PUERTA DE
+   GUARDADO lo revisa con validarFiguras() (espejo del visual).
+   Si ya pegaste este BLOQUE 40 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  const ALIAS_MEDIDA = {
+    n: "lados", lados: "lados", L: "lado", lado: "lado", h: "altura",
+    altura: "altura", r: "radio", radio: "radio", R: "radioBase",
+    radioBase: "radioBase", rs: "radioSuperior", radioSuperior: "radioSuperior",
+    a: "radioMayor", radioMayor: "radioMayor", b: "radioMenor",
+    radioMenor: "radioMenor", g: "generatriz", generatriz: "generatriz",
+    inc: "inclinacion", inclinacion: "inclinacion", caras: "caras",
+    giro: "giro", rot: "giro", elev: "elev",
+  };
+
+  const CLAVES_NUM = ["lados", "lado", "altura", "radio", "radioMayor",
+    "radioMenor", "radioBase", "radioSuperior", "generatriz",
+    "inclinacion", "caras", "giro", "elev"];
+
+  function normaTipo(t) {
+    const s = String(t == null ? "" : t).trim().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (/^(poligono|polygon)/.test(s)) return "poligono";
+    if (/^(circulo|circle)/.test(s)) return "circulo";
+    if (/^(elipse|ellipse)/.test(s)) return "elipse";
+    if (/^prisma|^prism/.test(s)) return "prisma";
+    if (/^piramide|^pyramid/.test(s)) return "piramide";
+    if (/^(poliedro|platonic)/.test(s)) return "poliedroRegular";
+    if (/(truncado|tronco)/.test(s)) return "conoTruncado";
+    if (/^cono|^cone/.test(s)) return "cono";
+    if (/^(cilindro|cylinder)/.test(s)) return "cilindro";
+    if (/^(esfera|sphere|bola)/.test(s)) return "esfera";
+    return null;
+  }
+
+  /* ── Lector de la forma corta: «tipo;clave=valor,…;cotas=a,b» ── */
+  function leeFiguras(txt) {
+    return String(txt == null ? "" : txt)
+      .split("|")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .map((t) => {
+        const partes = t.split(";").map((x) => x.trim()).filter(Boolean);
+        const fig = { tipo: partes[0] || "" };
+        let listaActiva = null;
+        for (let i = 1; i < partes.length; i++) {
+          for (const par of partes[i].split(",")) {
+            const trozo = par.trim();
+            if (!trozo) continue;
+            const m = trozo.match(/^([A-Za-z_]+)\s*=\s*(.*)$/);
+            if (!m) {
+              /* valor suelto: continúa la última lista (cotas/medidas) */
+              if (listaActiva === "cotas" && Array.isArray(fig.cotas)) fig.cotas.push(trozo);
+              else if (listaActiva === "medidas" && Array.isArray(fig.medidas)) {
+                const n = Number(trozo.replace(",", "."));
+                if (Number.isFinite(n) && n > 0) fig.medidas.push(n);
+              }
+              continue;
+            }
+            const clave = m[1], valor = m[2].trim();
+            if (clave === "cotas") {
+              fig.cotas = [valor];
+              listaActiva = "cotas";
+            } else if (clave === "medidas") {
+              const n = Number(valor.replace(",", "."));
+              fig.medidas = Number.isFinite(n) && n > 0 ? [n] : [];
+              listaActiva = "medidas";
+            } else if (clave === "regular") {
+              fig.regular = !/^(no|false|0)$/i.test(valor);
+              listaActiva = null;
+            } else if (ALIAS_MEDIDA[clave]) {
+              fig[ALIAS_MEDIDA[clave]] = Number(valor.replace(",", "."));
+              listaActiva = null;
+            }
+          }
+        }
+        return fig;
+      });
+  }
+
+  /* ── A PRUEBA DE ERRORES: espejo del visual ── */
+  const MEDIDAS_REQ = {
+    poligono: ["lado"], circulo: ["radio"], elipse: ["radioMayor", "radioMenor"],
+    prisma: ["lados", "lado", "altura"], piramide: ["lados", "lado", "altura"],
+    poliedroRegular: ["caras", "lado"], cilindro: ["radio", "altura"],
+    cono: ["radio", "altura"], esfera: ["radio"],
+    conoTruncado: ["radioBase", "radioSuperior", "altura"],
+  };
+  const EJEMPLO = {
+    poligono: "poligono;n=5,L=4", circulo: "circulo;r=5",
+    elipse: "elipse;a=7,b=4", prisma: "prisma;n=6,L=3,h=8",
+    piramide: "piramide;n=4,L=4,h=7", poliedroRegular: "poliedroRegular;caras=8,L=3",
+    cilindro: "cilindro;r=4,h=10", cono: "cono;r=4,h=9",
+    esfera: "esfera;r=5", conoTruncado: "conoTruncado;R=6,rs=3,h=8",
+  };
+  const COTAS_VALIDAS = {
+    poligono: ["lado", "lados_individuales", "apotema", "perimetro", "area"],
+    circulo: ["radio", "diametro", "perimetro", "area"],
+    elipse: ["radioMayor", "radioMenor", "largo", "ancho", "area"],
+    prisma: ["lado", "altura", "apotemaBase", "inclinacion", "areaLateral", "areaTotal", "volumen"],
+    piramide: ["lado", "altura", "apotemaBase", "apotemaLateral", "areaLateral", "areaTotal", "volumen"],
+    poliedroRegular: ["lado", "areaTotal", "volumen"],
+    cilindro: ["radio", "diametro", "altura", "areaLateral", "areaTotal", "volumen"],
+    cono: ["radio", "diametro", "altura", "generatriz", "areaLateral", "areaTotal", "volumen"],
+    esfera: ["radio", "diametro", "areaTotal", "volumen"],
+    conoTruncado: ["radioBase", "radioSuperior", "diametroBase", "diametroSuperior", "altura", "generatriz", "areaLateral", "areaTotal", "volumen"],
+  };
+
+  function validarFiguras(v) {
+    const errs = [];
+    const figuras = leeFiguras(v.figuras);
+    if (!figuras.length) {
+      errs.push({
+        k: "figuras",
+        msg: "Escribe AL MENOS UNA figura, ej: «cilindro;r=4,h=10;cotas=radio,altura» — tipo;medidas;cotas — y «|» para varias: «cilindro;r=4,h=10|cono;r=4,h=9».",
+      });
+      return errs;
+    }
+    figuras.forEach((f, i) => {
+      const ordinal = (i + 1) + "ª";
+      const tipo = normaTipo(f.tipo);
+      if (!tipo) {
+        errs.push({
+          k: "figuras",
+          msg: "La " + ordinal + " figura «" + (f.tipo || "¿vacía?") + "» no es un tipo válido: poligono, circulo, elipse, prisma, piramide, poliedroRegular, cilindro, cono, conoTruncado, esfera.",
+        });
+        return;
+      }
+      let req = MEDIDAS_REQ[tipo] || [];
+      if (tipo === "poligono" && (f.regular === false || Array.isArray(f.medidas))) {
+        req = []; /* irregular: exige la LISTA de lados, no «lado» */
+        if (!Array.isArray(f.medidas) || f.medidas.length < 3) {
+          errs.push({
+            k: "figuras",
+            msg: "El polígono irregular necesita la LISTA de medidas de todos sus lados (al menos 3), ej: «poligono;regular=no,medidas=4,5,6,7;cotas=lados_individuales».",
+          });
+        }
+      }
+      const faltan = req.filter((kk) => !(Number(f[kk]) > 0));
+      if (faltan.length) {
+        errs.push({
+          k: "figuras",
+          msg: "A la " + ordinal + " figura («" + tipo + "») le falta" + (faltan.length > 1 ? "n" : "") +
+            " la medida" + (faltan.length > 1 ? "s" : "") + ": " + faltan.join(", ") +
+            ". Ej: «" + EJEMPLO[tipo] + "».",
+        });
+      }
+      if (tipo === "poliedroRegular" && Number(f.caras) > 0 && ![4, 6, 8, 12, 20].includes(Number(f.caras))) {
+        errs.push({
+          k: "figuras",
+          msg: "Las caras del poliedro regular solo pueden ser 4 (tetraedro), 6 (cubo), 8 (octaedro), 12 (dodecaedro) o 20 (icosaedro); pusiste «" + f.caras + "».",
+        });
+      }
+      if (f.giro !== undefined && !Number.isFinite(f.giro)) {
+        errs.push({
+          k: "figuras",
+          msg: "El giro de la " + ordinal + " figura debe ser un número de grados, ej: «giro=30» (0–360).",
+        });
+      }
+      if (f.elev !== undefined && (!Number.isFinite(f.elev) || f.elev <= 0)) {
+        errs.push({
+          k: "figuras",
+          msg: "La elevación propia (elev) de la " + ordinal + " figura debe ser un ángulo en grados entre 2 y 85, ej: «elev=50».",
+        });
+      }
+      (f.cotas || []).forEach((c) => {
+        if (!COTAS_VALIDAS[tipo].includes(c)) {
+          errs.push({
+            k: "figuras",
+            msg: "La cota «" + c + "» no existe para «" + tipo + "». Válidas: " + COTAS_VALIDAS[tipo].join(", ") + ".",
+          });
+        }
+      });
+    });
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "creadorFigurasGeometricas",
+    nombre: "creadorFigurasGeometricas — Figuras geométricas",
+    cat: "visuales",
+    archivo: "recursos/js/visuales/matematicas/creadorFigurasGeometricas.js",
+    imports: ["generarFigurasGeometricas"],
+    funcion: "generarFigurasGeometricas",
+    descripcion: "Creador visual de figuras geométricas con acabado profesional y trazadas a escala: polígonos regulares (3–100 lados) e irregulares (polígono cíclico con la lista de lados), círculos, elipses, prismas rectos e inclinados, pirámides, poliedros regulares platónicos (caras 4·6·8·12·20), cilindros, conos, conos truncados y esferas con proyección isométrica, aristas ocultas discontinuas, sombreado Lambert, degradados y sombra en el suelo. ROTACIÓN ELEGIBLE: vistaGiro/vistaElev de la escena y giro/elev propios por figura. Auto-ajuste del viewBox: la figura nunca sale cortada. Cotas con flechas (lado, apotema, altura, radio, diámetro, radioMayor/Menor, generatriz, inclinación β, áreas y volumen) y composiciones verticales u horizontales. Temas: clasico, laboratorio, neon.",
+    params: [
+      { k: "figuras", et: "Figuras — tipo;medidas;cotas=… (varias con |)", tipo: "area", req: true, ej: "cilindro;r=4,h=10,giro=30;cotas=radio,altura|cono;r=4,h=9;cotas=radio,generatriz" },
+      { k: "composicion", et: "Orientación de la composición", tipo: "opcion", ops: ["horizontal", "vertical"], def: "horizontal" },
+      { k: "espacio", et: "Espacio entre figuras (px)", tipo: "num", def: "34" },
+      { k: "vistaGiro", et: "Giro de la vista en grados 0–360 (opcional)", tipo: "num", def: "45" },
+      { k: "vistaElev", et: "Elevación de la vista en grados 2–85 (opcional)", tipo: "num", def: "35.3" },
+      { k: "borde", et: "Color del borde (hex, opcional)", tipo: "texto", ej: "#1e3a5f" },
+      { k: "relleno", et: "Color de relleno (hex, opcional)", tipo: "texto", ej: "#3b82f6" },
+      { k: "grosor", et: "Grosor del trazo", tipo: "num", def: "2.4" },
+      { k: "opacidad", et: "Opacidad del relleno (0.05–1)", tipo: "num", def: "0.35" },
+      { k: "unidad", et: "Unidad de las cotas (opcional)", tipo: "texto", ej: "cm · m · u" },
+      { k: "tema", et: "Tema visual", tipo: "opcion", ops: ["clasico", "laboratorio", "neon"], def: "clasico" },
+    ],
+    aOpciones: (v) => {
+      const o = {
+        figuras: leeFiguras(v.figuras),
+        composicion: v.composicion === "vertical" ? "vertical" : "horizontal",
+        espacio: Number(v.espacio) > 0 ? Number(v.espacio) : 34,
+        borde: limpia(v.borde) || undefined,
+        relleno: limpia(v.relleno) || undefined,
+        grosor: Number(v.grosor) > 0 ? Number(v.grosor) : 2.4,
+        opacidad: Math.min(1, Math.max(0.05, Number(v.opacidad) || 0.35)),
+        unidad: limpia(v.unidad) || undefined,
+        tema: v.tema || "clasico",
+      };
+      const vg = Number(v.vistaGiro), ve = Number(v.vistaElev);
+      const vista = {};
+      if (limpia(v.vistaGiro) !== "" && Number.isFinite(vg)) vista.giro = vg;
+      if (limpia(v.vistaElev) !== "" && Number.isFinite(ve)) vista.elevacion = ve;
+      if (vista.giro !== undefined || vista.elevacion !== undefined) o.vista = vista;
+      return o;
+    },
+    aCodigo: (v) => {
+      const figuras = leeFiguras(v.figuras).map((f) => {
+        const o = { tipo: normaTipo(f.tipo) || f.tipo };
+        CLAVES_NUM.forEach((k) => { if (f[k] !== undefined) o[k] = f[k]; });
+        if (!Number(o.giro)) delete o.giro;
+        if (o.elev !== undefined && !Number(o.elev)) delete o.elev;
+        if (f.regular === false) { o.regular = false; }
+        if (Array.isArray(f.medidas)) o.medidas = f.medidas;
+        if (Array.isArray(f.cotas)) o.cotas = f.cotas;
+        return o;
+      });
+      const codigo = {
+        figuras,
+        composicion: v.composicion === "vertical" ? "vertical" : "horizontal",
+        espacio: Number(v.espacio) > 0 ? Number(v.espacio) : 34,
+        tema: v.tema || "clasico",
+      };
+      const vg = Number(v.vistaGiro), ve = Number(v.vistaElev);
+      if (limpia(v.vistaGiro) !== "" && Number.isFinite(vg)) codigo.vista = { giro: vg };
+      if (limpia(v.vistaElev) !== "" && Number.isFinite(ve)) {
+        codigo.vista = { ...(codigo.vista || {}), elevacion: ve };
+      }
+      if (limpia(v.borde)) codigo.borde = limpia(v.borde);
+      if (limpia(v.relleno)) codigo.relleno = limpia(v.relleno);
+      if (Number(v.grosor) > 0) codigo.grosor = Number(v.grosor);
+      if (Number(v.opacidad) > 0) codigo.opacidad = Math.min(1, Number(v.opacidad));
+      if (limpia(v.unidad)) codigo.unidad = limpia(v.unidad);
+      return codigo;
+    },
+    /* ── A PRUEBA DE ERRORES: revisor espejo del visual ── */
+    validar: validarFiguras,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 40, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const i = REGISTRO.findIndex((r) => r.id === "creadorFigurasGeometricas");
+  if (i >= 0) REGISTRO[i] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 40 · «creadorFigurasGeometricas» ═════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 41 · «oracionesIngles» — Revisor de oraciones (inglés/español)
+   [utils] · v2
+   Util: js/utils/ingles/oracionesIngles.js
+   Herramienta interactiva de ESCRITURA Y EVALUACIÓN en DOS INTENTOS
+   con tarjeta COLORIDA (color configurable; nada de papel crema):
+   cabecera con degradado del color elegido, campos con renglones y
+   marcas de corrección tipo corrector. El estudiante escribe
+   «cantidadInputs» oraciones y presiona «Enviar / Check»: se revisan
+   ortografía, gramática y estructura; cada fragmento con error se
+   marca en ROJO brillante y, al pasar el mouse o al tocarlo, muestra
+   la explicación («Spelling error: Did you mean 'thought'?»,
+   «Grammar error: subject–verb agreement…», mayúscula inicial, punto
+   final…). Las oraciones totalmente correctas se APRUEBAN en verde y
+   quedan congeladas; se avisa que queda 1 intento para corregir las
+   marcadas y el botón pasa a «Revisar Correcciones» (reevaluación
+   final). PUNTAJE EQUITATIVO: puntajeTotal se reparte en partes
+   iguales (puntajeTotal / cantidadInputs por oración) y cada oración
+   obtiene su puntaje completo SOLO si queda sin errores al finalizar;
+   panel final con el total obtenido y el desglose por oración.
+   NUEVO v2 — «estructuraEsperada»: el docente escribe el TIEMPO
+   GRAMATICAL y/o el PATRÓN que el estudiante debe respetar (ej.:
+   «Past Simple», «subject + verb + adverb of frequency», «subject +
+   verb + object + time expression», «pasado simple») y el corrector
+   lo valida oración por oración: detecta el tiempo (Past/Present
+   Simple, Continuous, Perfect, will, going to; en español presente,
+   pretérito, imperfecto, futuro, continuo) y la presencia/posición de
+   cada parte (el adverbio de frecuencia va ENTRE el sujeto y el verbo
+   o después de «be»); marca el fragmento y explica qué corregir, para
+   que el estudiante no escriba lo que quiera. Se muestra en una
+   franja «Estructura esperada» dentro de la tarjeta.
+   NUEVO v2 — «colorTarjeta»: color de la tarjeta en HEX o rgb()
+   (defecto #7c3aed). REGLA DEL PROYECTO: en adelante TODOS los utils
+   y visuales aceptan este parámetro opcional con un color por defecto.
+   «usarApiExterna» activa la API gratuita de LanguageTool
+   (api.languagetool.org, UNA petición por intento con todas las
+   oraciones; si falla, avisa y repliega al revisor local). Las
+   comprobaciones de estructura y estructuraEsperada SIEMPRE se suman.
+   «idioma» elige el idioma evaluado: «en» (defecto, explicaciones en
+   inglés) o «es» (explicaciones en español) — el revisor local
+   también funciona sin red.
+   Obligatorio: indicacion con letras, cantidadInputs entero 1–50 y
+   puntajeTotal > 0. Opcional: estructuraEsperada (texto libre) y
+   colorTarjeta (HEX/rgb; se valida el formato). La PUERTA DE
+   GUARDADO lo revisa con validarOraciones() (espejo del util).
+   Si ya pegaste este BLOQUE 41 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+  const numDe = (v) => Number(String(v == null ? "" : v).replace(",", "."));
+
+  /* ── A PRUEBA DE ERRORES: espejo del util ── */
+  function validarOraciones(v) {
+    const errs = [];
+    if (!/[A-Za-zÁÉÍÓÚÑáéíóúñü]/.test(limpia(v.indicacion))) {
+      errs.push({
+        k: "indicacion",
+        msg: "Escribe la INDICACIÓN de la actividad con letras, ej: «Write 3 sentences in Past Simple.».",
+      });
+    }
+    const cantidad = numDe(v.cantidadInputs);
+    if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 50) {
+      errs.push({
+        k: "cantidadInputs",
+        msg: "La cantidad de oraciones debe ser un NÚMERO ENTERO entre 1 y 50, ej: 3.",
+      });
+    }
+    const puntaje = numDe(v.puntajeTotal);
+    if (!Number.isFinite(puntaje) || puntaje <= 0) {
+      errs.push({
+        k: "puntajeTotal",
+        msg: "El puntaje total debe ser un NÚMERO mayor que 0, ej: 10.",
+      });
+    }
+    const color = limpia(v.colorTarjeta);
+    if (color && !/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i.test(color)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El COLOR de la tarjeta debe ser un valor HEX o rgb() válido, ej: #7c3aed o #0ea5e9.",
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "oracionesIngles",
+    nombre: "oracionesIngles — Revisor de oraciones (inglés/español)",
+    cat: "utils",
+    archivo: "utils/ingles/oracionesIngles.js",
+    imports: ["generarRevisorOraciones"],
+    funcion: "generarRevisorOraciones",
+    descripcion: "Revisor de redacción en DOS INTENTOS con tarjeta colorida (colorTarjeta configurable, defecto #7c3aed): el estudiante escribe las oraciones, «Enviar / Check» marca en ROJO los fragmentos con errores (ortografía, gramática, estructura y la ESTRUCTURA ESPERADA del docente: tiempo gramatical y/o patrón como «subject + verb + adverb of frequency», validada oración por oración) con explicación al pasar el mouse o al tocar, aprueba en verde y congela las correctas, y «Revisar Correcciones» reevalúa tras el segundo intento. Puntaje equitativo (puntajeTotal / cantidadInputs por oración) con panel final y desglose. Revisor local propio (inglés y español) más API gratuita de LanguageTool opcional (usarApiExterna).",
+    params: [
+      { k: "indicacion", et: "Indicación de la actividad (instrucciones para el estudiante)", tipo: "area", req: true, ej: "Write 3 sentences in Past Simple." },
+      { k: "cantidadInputs", et: "Cantidad de oraciones (1–50)", tipo: "num", req: true, def: "3" },
+      { k: "puntajeTotal", et: "Puntaje total de la actividad (se reparte en partes iguales)", tipo: "num", req: true, def: "10" },
+      { k: "estructuraEsperada", et: "Estructura esperada (tiempo gramatical y/o patrón con +; el corrector la valida; vacío = solo ortografía/gramática)", tipo: "area", ej: "subject + verb + adverb of frequency · Past Simple · pasado simple" },
+      { k: "idioma", et: "Idioma que se evalúa", tipo: "opcion", ops: ["en", "es"], def: "en" },
+      { k: "usarApiExterna", et: "Revisor externo LanguageTool (requiere internet; si falla usa el local)", tipo: "opcion", ops: ["no", "sí"], def: "no" },
+      { k: "colorTarjeta", et: "Color de la tarjeta en HEX o rgb() (opcional; defecto #7c3aed)", tipo: "texto", def: "#7c3aed", ej: "#7c3aed · #0ea5e9" },
+    ],
+    aOpciones: (v) => ({
+      indicacion: limpia(v.indicacion) || "Escribe las oraciones solicitadas.",
+      cantidadInputs: Math.max(1, Math.min(50, Math.floor(numDe(v.cantidadInputs)) || 1)),
+      puntajeTotal: numDe(v.puntajeTotal) > 0 ? numDe(v.puntajeTotal) : 10,
+      estructuraEsperada: limpia(v.estructuraEsperada),
+      idioma: v.idioma === "es" ? "es" : "en",
+      usarApiExterna: v.usarApiExterna === "sí" || v.usarApiExterna === "si",
+      colorTarjeta: limpia(v.colorTarjeta) || "#7c3aed",
+    }),
+    aCodigo: (v) => ({
+      indicacion: limpia(v.indicacion) || "Escribe las oraciones solicitadas.",
+      cantidadInputs: Math.max(1, Math.min(50, Math.floor(numDe(v.cantidadInputs)) || 1)),
+      puntajeTotal: numDe(v.puntajeTotal) > 0 ? numDe(v.puntajeTotal) : 10,
+      estructuraEsperada: limpia(v.estructuraEsperada),
+      idioma: v.idioma === "es" ? "es" : "en",
+      usarApiExterna: v.usarApiExterna === "sí" || v.usarApiExterna === "si",
+      colorTarjeta: limpia(v.colorTarjeta) || "#7c3aed",
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarOraciones,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 41, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const i = REGISTRO.findIndex((r) => r.id === "oracionesIngles");
+  if (i >= 0) REGISTRO[i] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═════════════════ fin BLOQUE 41 · «oracionesIngles» ═════════════════ */

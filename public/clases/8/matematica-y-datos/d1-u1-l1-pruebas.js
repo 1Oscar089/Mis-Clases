@@ -1,7 +1,7 @@
 // ============================================================
 // CLASE generada con el editor «Crear» — Mis Clases Online
 // Tipo: clase · ID: — · Título: Mis Clases Online
-// Fecha: 22 de octubre de 2026
+// Fecha: 25 de octubre de 2026
 //
 // CÓMO USARLO
 //   1. Guarda este archivo (con el nombre del ID) 3 carpetas
@@ -157,9 +157,8 @@ async function montar(perfil, contenedor, clase) {
   const volver = contenedor.querySelector("#cg-volver");
 
   // ── Módulos usados (con reintento y aviso claro si falta uno) ──
-  const { crearFlechas } = await cargar("../../../js/componentes/flechas.js", ["crearFlechas"]);
+  const { crearFormatoTexto } = await cargar("../../../js/componentes/formatoTexto.js", ["crearFormatoTexto"]);
   const { crearSecciones } = await cargar("../../../js/componentes/section.js", ["crearSecciones"]);
-  const { crearTitulo } = await cargar("../../../js/componentes/titulo.js", ["crearTitulo"]);
   const { renderInicio } = await cargar("../../../js/components/inicio.js", ["renderInicio"]);
   const { renderUserbar } = await cargar("../../../js/components/userbar.js", ["renderUserbar"]);
 
@@ -171,23 +170,14 @@ async function montar(perfil, contenedor, clase) {
     renderInicio(perfil, contenedor);
   });
 
-    // ════ Sección 1 — espacio de 820×468 px ════
-    const l1 = lamina(468, 820);
+    // ════ Sección 1 — espacio de 820×783 px ════
+    const l1 = lamina(783, 820);
 
-  // ── Título · mide 760×51 px ──
-  crearTitulo({
-    texto: "LA  __CELULA__",
-    alineacion: "centro",
-    contenedor: pon(l1, 20, 0, 760, 51)
-  });
-
-  // ── Flechas de navegación · mide 820×78 px ──
-  crearFlechas({
-    alAnterior: () => { /* TODO: acción ← */ },
-    alSiguiente: () => { /* TODO: acción → */ },
-    puedeAnterior: false,
-    puedeSiguiente: true,
-    contenedor: pon(l1, 0, 390, 820, 78)
+  // ── Texto con formato · mide 820×62 px ──
+  crearFormatoTexto({
+    texto: "✏️ {{Copia en tu cuaderno|naranja}}",
+    tamano: 28,
+    contenedor: pon(l1, 0, 10, 820, 62)
   });
 
   // ── Documento final: CORRIDO con 1 sección; con 2 o más, una a la vez ──
