@@ -6982,3 +6982,217 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═════════════════ fin BLOQUE 41 · «oracionesIngles» ═════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 42 · «botonEnviar» — Botón Enviar del examen   [utils]
+   Util: js/utils/botonEnviar.js
+   El botón ENVIAR que se coloca AL FINAL de un examen (donde el
+   docente quiera, arrastrándolo en el lienzo). Al tocarlo (con
+   confirmación opcional) se hace el ENVÍO COMPLETO del examen:
+   1) se califican TODOS los bloques de actividad de la página que el
+      estudiante NO envió uno a uno (los utils se registran solos:
+      opcionMultiple, multipleOpcion, respuestaSimple, ordenar,
+      relacionar, sopaLetras, crucigrama, blank…); lo vacío o
+      incorrecto vale 0 (regla de siempre);
+   2) se fija nota.enviado, se guarda en Firestore/localStorage y se
+      reporta el TOTAL al Sheet UNA vez (finalizarExamen);
+   3) el botón queda «Examen enviado · Nota final: X pts», se oculta
+      la caja de envío por defecto (#cg-envio) del archivo generado
+      para NO duplicar botones y se habilita la salida.
+   Si el examen ya venía enviado, arranca mostrando ese estado con la
+   nota guardada. Vista docente: demo sin guardado. En clase/tarea se
+   ve pero avisa que solo envía exámenes.
+   ENLAZADO con el BLOQUE 43 «timer»: comparten el mismo envío
+   (window.__mcoEnvioExamen) — si el tiempo se acaba ANTES, el reloj
+   dispara el mismo envío (sin confirmación) y este botón queda
+   sincronizado con el aviso «Se acabó el tiempo…».
+   NUEVO (REGLA DEL PROYECTO): colorTarjeta opcional en HEX/rgb con
+   defecto #16a34a (verde envío); todos los utils/visuales lo
+   aceptan en adelante.
+   Obligatorio: nada (todo tiene defecto). Opcional: texto, titulo,
+   confirmar y colorTarjeta (se valida el formato).
+   Si ya pegaste este BLOQUE 42 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* ── A PRUEBA DE ERRORES: espejo del util ── */
+  function validarBoton(v) {
+    const errs = [];
+    const color = limpia(v.colorTarjeta);
+    if (color && !/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i.test(color)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El COLOR del botón debe ser un valor HEX o rgb() válido, ej: #16a34a o #0ea5e9.",
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "botonEnviar",
+    nombre: "botonEnviar — Botón Enviar del examen",
+    cat: "utils",
+    archivo: "utils/botonEnviar.js",
+    imports: ["botonEnviar"],
+    funcion: "botonEnviar",
+    descripcion:
+      "El botón ENVIAR al final del examen: califica todos los bloques de actividad de la página que quedaron sin enviar, guarda la nota y reporta al Sheet (una vez), muestra «Examen enviado · Nota final» y cierra el examen. Confirmación opcional. ENLAZADO con «timer — Temporizador de examen»: si el tiempo se acaba, el reloj dispara el MISMO envío sin confirmar. Color configurable (colorTarjeta, defecto #16a34a).",
+    params: [
+      { k: "texto", et: "Rótulo del botón", tipo: "texto", def: "Enviar examen" },
+      { k: "titulo", et: "Título del examen para el reporte (opcional; defecto: el título de la pieza)", tipo: "texto" },
+      { k: "confirmar", et: "Pedir confirmación al tocar (el temporizador nunca confirma)", tipo: "sino", def: true },
+      { k: "colorTarjeta", et: "Color del botón en HEX o rgb() (opcional; defecto #16a34a)", tipo: "texto", def: "#16a34a", ej: "#16a34a · #7c3aed" },
+    ],
+    /* ctx trae el perfil DEMO y la clase de la vista previa: sin ellos
+       el util se levanta los pantalones y NO pinta nada. Mismo patrón
+       del resto de utils (BLOQUE 20, 21…). */
+    aOpciones: (v, ctx) => ({
+      texto: limpia(v.texto) || "Enviar examen",
+      titulo: limpia(v.titulo) || undefined,
+      confirmar: bool(v.confirmar, true),
+      colorTarjeta: limpia(v.colorTarjeta) || "#16a34a",
+      tipo: ctx.tipo,
+      perfil: ctx.perfil,
+      clase: ctx.clase,
+    }),
+    aCodigo: (v, ctx) => ({
+      texto: limpia(v.texto) || "Enviar examen",
+      titulo: limpia(v.titulo) || undefined,
+      confirmar: bool(v.confirmar, true),
+      colorTarjeta: limpia(v.colorTarjeta) || "#16a34a",
+      tipo: ctx.tipo,
+      perfil: PERFIL_RAW,
+      clase: CLASE_RAW,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarBoton,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 42, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const i = REGISTRO.findIndex((r) => r.id === "botonEnviar");
+  if (i >= 0) REGISTRO[i] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 42 · «botonEnviar» ═══════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 43 · «timer» — Temporizador de examen   [utils]
+   Util: js/utils/timer.js
+   Cuenta regresiva ENLAZADA al botón Enviar: el docente pasa el
+   TIEMPO que tienen los estudiantes para el examen y, al llegar a 0,
+   el examen SE ENVÍA SOLO (el mismo envío de «botonEnviar»: califica
+   todo lo pendiente, guarda la nota y la reporta al Sheet) — sin
+   confirmación, como debe ser. Reloj con ⏱ + rótulo + barra de
+   progreso del color elegido: AMBAR cuando queda ≤ 20 % (o ≤ 5 min)
+   y ROJO pulsante cuando queda ≤ 1 min (o ≤ 10 %).
+   ANTI-TRAMPA: el tiempo QUE QUEDA se recuerda en localStorage como
+   FECHA LÍMITE (mco_timer_{uid}_{claseId}_{id}): si el estudiante
+   recarga, el reloj SIGUE por donde iba (no reinicia); si la fecha
+   límite ya pasó, envía de inmediato. Si el examen ya venía enviado,
+   el reloj arranca detenido con «Examen enviado · Nota final: X pts».
+   Vista docente: demo que corre pero NO envía nada. En clase/tarea
+   cuenta y avisa «Tiempo agotado» sin enviar (el envío automático
+   solo aplica a exámenes).
+   'tiempo' acepta: MINUTOS (45) · "45" · "45 min" · "90m" · "1h 30m" ·
+   "1:30" (1 min 30 s) · "1:00:00" (1 hora).
+   NUEVO (REGLA DEL PROYECTO): colorTarjeta opcional en HEX/rgb con
+   defecto #0ea5e9 (celeste reloj).
+   Obligatorio: 'tiempo' interpretable como duración. Opcional:
+   texto (rótulo), id estable (recomendado) y colorTarjeta.
+   Si ya pegaste este BLOQUE 43 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* ── A PRUEBA DE ERRORES: espejo de parseTiempo del util ── */
+  const ES_MIN = /^\s*\d+(\.\d+)?\s*$/;
+  const ES_RELOJ = /^\s*(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?\s*$/;
+  const ES_COMB = /(\d+(?:[.,]\d+)?)\s*(?:h|hr|hora|horas)\b|(\d+(?:[.,]\d+)?)\s*(?:m|min|minutos?)\b|(\d+)\s*(?:s|seg|segundos?)\b/i;
+
+  function segundosDe(v) {
+    const s = limpia(v);
+    if (!s) return null;
+    if (ES_MIN.test(s)) {
+      const min = Number(s.replace(",", "."));
+      return min > 0 ? Math.max(1, Math.round(min * 60)) : null;
+    }
+    const r = s.match(ES_RELOJ);
+    if (r) {
+      const a = +r[1], b = +r[2], c = r[3] != null ? +r[3] : null;
+      if (b > 59 || (c != null && c > 59)) return null;
+      const total = c == null ? a * 60 + b : a * 3600 + b * 60 + c;
+      return total > 0 ? Math.round(total) : null;
+    }
+    if (ES_COMB.test(s)) return 1; // combinación h/m/s: el util la afina
+    return null;
+  }
+
+  function validarTimer(v) {
+    const errs = [];
+    if (!segundosDe(v.tiempo)) {
+      errs.push({
+        k: "tiempo",
+        msg: "El TIEMPO no se entiende: pasa MINUTOS (45), «45 min», «90m», «1h 30m», «1:30» (1 min 30 s) o «1:00:00» (1 hora).",
+      });
+    }
+    const color = limpia(v.colorTarjeta);
+    if (color && !/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i.test(color)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El COLOR del reloj debe ser un valor HEX o rgb() válido, ej: #0ea5e9 o #f59e0b.",
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "timer",
+    nombre: "timer — Temporizador de examen",
+    cat: "utils",
+    archivo: "utils/timer.js",
+    imports: ["temporizador"],
+    funcion: "temporizador",
+    descripcion:
+      "Cuenta regresiva del examen ENLAZADA al botón Enviar: al llegar a 0 el examen SE ENVÍA SOLO (califica lo pendiente, guarda la nota y la reporta al Sheet) sin confirmación. Reloj ⏱ con barra de progreso; ámbar al quedar ≤ 20 % y rojo pulsante al quedar ≤ 1 min. El tiempo restante se recuerda aunque recarguen la página (anti-trampa) y si ya pasó envía de inmediato. 'tiempo' acepta minutos (45), «45 min», «90m», «1h 30m», «1:30» o «1:00:00». Color configurable (colorTarjeta, defecto #0ea5e9).",
+    params: [
+      { k: "tiempo", et: "Tiempo para el examen (minutos o «1h 30m», «mm:ss»…)", tipo: "texto", req: true, def: "45", ej: "45 · 90m · 1h 30m · 1:30 · 1:00:00" },
+      { k: "texto", et: "Rótulo del reloj", tipo: "texto", def: "Tiempo restante" },
+      { k: "id", et: "id estable del reloj (opcional, recomendado: no reinicia al recargar)", tipo: "texto", ej: "tiempo-examen-1" },
+      { k: "colorTarjeta", et: "Color del reloj en HEX o rgb() (opcional; defecto #0ea5e9)", tipo: "texto", def: "#0ea5e9", ej: "#0ea5e9 · #f59e0b" },
+    ],
+    /* ctx trae el perfil DEMO y la clase de la vista previa: sin ellos
+       el util se levanta los pantalones y NO pinta nada. Mismo patrón
+       del resto de utils (BLOQUE 20, 21…). */
+    aOpciones: (v, ctx) => ({
+      tiempo: limpia(v.tiempo) || "45",
+      texto: limpia(v.texto) || "Tiempo restante",
+      id: limpia(v.id) || undefined,
+      colorTarjeta: limpia(v.colorTarjeta) || "#0ea5e9",
+      tipo: ctx.tipo,
+      perfil: ctx.perfil,
+      clase: ctx.clase,
+    }),
+    aCodigo: (v, ctx) => ({
+      tiempo: limpia(v.tiempo) || "45",
+      texto: limpia(v.texto) || "Tiempo restante",
+      id: limpia(v.id) || undefined,
+      colorTarjeta: limpia(v.colorTarjeta) || "#0ea5e9",
+      tipo: ctx.tipo,
+      perfil: PERFIL_RAW,
+      clase: CLASE_RAW,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarTimer,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 43, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const j = REGISTRO.findIndex((r) => r.id === "timer");
+  if (j >= 0) REGISTRO[j] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 43 · «timer» ═══════════════════ */

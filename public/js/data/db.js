@@ -42,8 +42,9 @@
 //   · db.materias.setVisible(grado, materiaId, visible)
 //       → el DOCENTE elige qué materias se ven para ese grado.
 //         Guarda un boolean por materia en el documento
-//         clases/{grado}/config/materias (queda dentro del mismo
-//         árbol de clases: las reglas de 4 segmentos lo cubren).
+//         clases/{grado}/config/materias (db.js v5): lo que no es
+//         false ⇒ VISIBLE. La misma la usa recursos.js (botón
+//         «Materias visibles» con un grado elegido).
 //   · db.materias.vigilar(grado, alCambiar)
 //       → onSnapshot del documento: si el docente oculta una materia
 //         EN VIVO, las vistas reciben el mapa nuevo al instante (el
@@ -51,6 +52,15 @@
 //         deGrado/vigilar son de MEJOR ESFUERZO (fallo ⇒ materias
 //         visibles, la app nunca se rompe); setVisible SÍ lanza
 //         (la UI avisa con su toast).
+//
+// NUEVO EN v7.2 (bloqueo automático por envío de examen):
+//   · db.clases.bloquearEstudiante(grado, materiaId, id, uid)
+//       → marca bloqueadas.{uid} = true en la pieza en cuanto el
+//         estudiante ENVÍA su examen (lo llama finalizarExamen de
+//         js/utils/opcionMultiple.js). Escritura por puntos: NO pisa
+//         el resto del mapa del docente. El estudiante queda fuera
+//         de la pieza (igual que el candado) y solo puede revisar
+//         su puntaje desde la tarjeta («Mi puntaje»).
 //
 // NUEVO EN v4 (eliminación + cierre en vivo · nota de clase):
 //   · db.clases.vigilar(grado, materiaId, alCerrar)
@@ -196,6 +206,28 @@ const clases = {
     );
   },
 
+  /** NUEVO v7.2 — BLOQUEO AUTOMÁTICO POR ENVÍO (examen): deja el uid
+   *  del estudiante marcado en el mapa bloqueadas de la pieza en
+   *  cuanto su examen queda ENVIADO. Escribe la ruta por puntos
+   *  bloqueadas.{uid} = true para NO pisar el resto del mapa (los
+   *  bloqueos del docente quedan intactos). Con esa marca la pieza
+   *  queda CERRADA para ese estudiante — igual que el candado del
+   *  docente: no puede volver a entrar, solo revisar su puntaje
+   *  desde la tarjeta (botón «Mi puntaje»).
+   *  Puede lanzar: lo trata quien llama (finalizarExamen lo deja en
+   *  mejor esfuerzo; el bloqueo se reintenta en la próxima visita). */
+  async bloquearEstudiante(grado, materiaId, id, uid) {
+    const u = claveSegura(uid);
+    if (!u) return;
+    await updateDoc(
+      doc(firestore, "clases", String(grado), materiaId, id),
+      {
+        ["bloqueadas." + u]: true,
+        actualizadoEn: serverTimestamp(),
+      }
+    );
+  },
+
   /** NUEVO v3 — Elimina UNA pieza. La usa el botón ELIMINAR de las
    *  tarjetas (clases, tareas, exámenes y recursos) y el editor de
    *  recursos al MOVER un recurso a otro grado/materia.
@@ -204,46 +236,68 @@ const clases = {
     await deleteDoc(doc(firestore, "clases", String(grado), materiaId, id));
   },
 
-  /** NUEVO v4 — VIGÍA EN TIEMPO REAL de UNA materia de un grado.
-   *  Escucha clases/{grado}/{materiaId} con onSnapshot y llama
-   *  alCerrar(id, motivo) cuando una pieza que ESTABA VISIBLE:
-   *    · se borra            → motivo "eliminada"
-   *    · pasa a invisible    → motivo "invisible"
-   *  Las piezas invisibles o nuevas no disparan nada (el estudiante
-   *  nunca pudo entrar a ellas). Devuelve la función quitar() del
-   *  listener (la llama la vista al salir de la página). */
-  
-  vigilar(grado, materiaId, alCerrar) {
+  /** NUEVO v4 · v7.1 — VIGÍA EN TIEMPO REAL de UNA materia de un
+   *  grado. Escucha clases/{grado}/{materiaId} con onSnapshot y llama
+   *  alCerrar(id, motivo, datos) cuando una pieza que ESTABA VISIBLE:
+   *    · se borra                       → motivo "eliminada"
+   *    · pasa a invisible               → motivo "invisible"
+   *    · se BLOQUEA para el estudiante  → motivo "bloqueada"
+   *    · se DESBLOQUEA para él          → motivo "desbloqueada" (v7.1)
+   *  v7.1 — BLOQUEO PERSONALIZADO: con uid (estudiante) el motivo
+   *  "bloqueada" sale cuando el docente pone bloqueada: true (TODOS)
+   *  O marca SU uid en el mapa bloqueadas; también sale la primera vez
+   *  que el mapa pasa a incluirlo. Sin uid (compatibilidad) solo mira
+   *  el boolean global. `datos` = los datos frescos del doc (el
+   *  listado se actualiza con el estado real). Las piezas invisibles
+   *  o nuevas no disparan nada (el estudiante nunca pudo entrar a
+   *  ellas). Devuelve la función quitar() del listener. */
+  vigilar(grado, materiaId, alCerrar, uid = null) {
     const ref = collection(firestore, "clases", String(grado), materiaId);
-    const visibles = new Map();   // id → estaba visible (true|false)
-    const bloqueadas = new Map(); // id → estaba bloqueada (true|false)
+    const visibles = new Map(); // id → estaba visible (true|false)
+    const bloqueo = new Map();  // id → estado de bloqueo anterior {global, mapa}
+    const paraMi = (estado) =>
+      uid
+        ? estado.global || estado.mapa[uid] === true
+        : estado.global;
     const quitar = onSnapshot(
       ref,
       (snap) => {
         const actuales = new Set();
         snap.forEach((d) => {
           actuales.add(d.id);
-          const visible = d.data().visible !== false;
-          const bloqueada = d.data().bloqueada === true;
+          const datos = d.data();
+          const visible = datos.visible !== false;
+          const estado = {
+            global: datos.bloqueada === true,
+            mapa:
+              datos.bloqueadas && typeof datos.bloqueadas === "object"
+                ? datos.bloqueadas
+                : {},
+          };
           const antes = visibles.get(d.id);
-          const antesBloqueada = bloqueadas.get(d.id);
+          const antesEstado = bloqueo.get(d.id);
+          const estaParaMi = paraMi(estado);
+          const antesParaMi = antesEstado ? paraMi(antesEstado) : false;
           if (antes === true && !visible) {
-            try { alCerrar?.(d.id, "invisible"); } catch (e) { /* aviso propio */ }
+            try { alCerrar?.(d.id, "invisible", datos); } catch (e) { /* aviso propio */ }
           }
-          // NUEVO v6 — BLOQUEO: estaba abierta (visible y sin candado)
-          // y el docente la BLOQUEA → el estudiante que esté DENTRO
-          // vuelve al inicio (mismo trato que invisible/eliminada).
-          if (antes === true && antesBloqueada === false && bloqueada) {
-            try { alCerrar?.(d.id, "bloqueada"); } catch (e) { /* aviso propio */ }
+          // BLOQUEO (v6 global · v7.1 por estudiante): estaba abierta
+          // (visible y sin bloqueo para MÍ) y el docente me bloqueó →
+          // el estudiante que esté DENTRO vuelve al inicio.
+          if (antes === true && !antesParaMi && estaParaMi) {
+            try { alCerrar?.(d.id, "bloqueada", datos); } catch (e) { /* aviso propio */ }
+          } else if (antes === true && antesParaMi && !estaParaMi) {
+            // v7.1 — DESBLOQUEO para mí: solo refresca el listado
+            try { alCerrar?.(d.id, "desbloqueada", datos); } catch (e) { /* aviso propio */ }
           }
           visibles.set(d.id, visible);
-          bloqueadas.set(d.id, bloqueada);
+          bloqueo.set(d.id, estado);
         });
         // Borradas: estaban registradas y ya no existen en la colección
         for (const [id, estabaVisible] of visibles) {
           if (!actuales.has(id)) {
             visibles.delete(id);
-            bloqueadas.delete(id);
+            bloqueo.delete(id);
             if (estabaVisible) {
               try { alCerrar?.(id, "eliminada"); } catch (e) { /* aviso propio */ }
             }
@@ -254,7 +308,6 @@ const clases = {
     );
     return quitar;
   },
-
 };
 
 /* ------- MATERIAS VISIBLES POR GRADO — clases/{grado}/config/materias -------

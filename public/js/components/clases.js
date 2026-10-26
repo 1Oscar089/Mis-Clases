@@ -1,6 +1,33 @@
 // ============================================================
 // clases.js — VISTA de piezas: Clases · Exámenes · Tareas ·
-//             Recursos (js/components/clases.js) · v7
+//             Recursos (js/components/clases.js) · v7.2
+//
+// NUEVO EN v7.2 (BLOQUEO AUTOMÁTICO POR ENVÍO de exámenes):
+//   · Cuando el estudiante ENVÍA su examen (botón, timer o el envío
+//     por defecto del archivo generado), finalizarExamen()
+//     (opcionMultiple.js) deja la pieza BLOQUEADA para él solo a él
+//     (db.clases.bloquearEstudiante → bloqueadas.{uid} = true, la
+//     MISMA maquinaria del candado del docente).
+//   · La tarjeta del estudiante muestra «Enviado» (verde) y su clic
+//     NO abre la pieza: abre «Mi puntaje» directamente — solo puede
+//     REVISAR SUS RESULTADOS (nota por actividad + nota final).
+//   · El VIGÍA NO lo expulsa si el bloqueo que llega es el de SU
+//     propio envío (sigue viendo «Examen enviado» dentro hasta
+//     salir); el bloqueo del docente sigue expulsando al toque.
+//   · El candado del docente puede quitar esa marca, pero al
+//     reabrir el examen se vuelve a auto-bloquear (sigue enviado).
+//
+// NUEVO EN v7.1 (BLOQUEO PERSONALIZADO por estudiante):
+//   · El candado YA NO bloquea de una vez: abre el listado de
+//     ESTUDIANTES del grado (users/{uid}) con «Seleccionar todas» /
+//     «No seleccionar ninguna», buscador y casilla por estudiante.
+//   · Se guarda en clases/{grado}/{materia}/{id}: bloqueada (boolean
+//     = TODOS) o bloqueadas (mapa uid→true = SOLO esos). Al marcar
+//     a TODOS se usa el boolean global; parcial → mapa.
+//   · El estudiante solo queda fuera si el bloqueo es global o su
+//     uid está en la lista; el VIGÍA lo expulsa EN VIVO si el docente
+//     lo bloquea mientras está dentro (db.clases.vigilar con uid).
+//   · Aplica a clases, tareas, exámenes y recursos (mismo candado).
 //
 // NUEVO EN v7 (materias por ciclo + materias visibles por grado):
 //   · CICLOS + cicloDeGrado() + materiasDeGrado(): el estudiante SOLO
@@ -494,6 +521,21 @@ function inyectarEstilos() {
     }
     .clase-card.esta-bloqueada { cursor: not-allowed; }
     .clase-card.esta-bloqueada .clase-accion { cursor: pointer; }
+    /* NUEVO v7.2 — Distintivo ENVIADO (solo estudiante): la pieza se
+       le bloqueó sola al enviar su examen; el clic abre «Mi puntaje». */
+    .clase-enviada {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .18rem .55rem;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 800;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #15803d;
+    }
+    .clase-card.esta-bloqueada .clase-enviada { cursor: pointer; }
 
     .clase-card h3 {
       margin: 0 0 .2rem;
@@ -699,6 +741,80 @@ function inyectarEstilos() {
       font-size: .9rem;
     }
 
+    /* BLOQUEO PERSONALIZADO (v7.1): modal con el listado de estudiantes */
+    .pz-bloq-acciones {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      flex-wrap: wrap;
+      margin: 0 0 .5rem;
+    }
+    .pz-bloq-acciones .clases-btn-crear { padding: .38rem .8rem; font-size: .78rem; }
+    .pz-bloq-buscar {
+      flex: 1;
+      min-width: 150px;
+      border: 1px solid #e5e7eb;
+      border-radius: .7rem;
+      padding: .42rem .7rem;
+      font: inherit;
+      font-size: .84rem;
+    }
+    .pz-bloq-buscar:focus {
+      outline: none;
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, .12);
+    }
+    .pz-bloq-contador {
+      font-size: .78rem;
+      font-weight: 700;
+      color: #6b7280;
+      margin: 0 0 .5rem;
+    }
+    .pz-bloq-contador b { color: #b91c1c; }
+    .pz-bloq-cargando {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      color: #6b7280;
+      font-size: .9rem;
+      padding: 1rem 0;
+    }
+    .pz-bloq-cargando[hidden] { display: none; }
+    .pz-bloq-lista {
+      max-height: min(330px, 46vh);
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: .8rem;
+    }
+    .pz-bloq-lista[hidden] { display: none; }
+    .pz-bloq-fila {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .3rem .7rem;
+      border-bottom: 1px solid #f3f0fa;
+      font-size: .88rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pz-bloq-fila:last-child { border-bottom: none; }
+    .pz-bloq-fila:hover { background: #faf7ff; }
+    .pz-bloq-fila sl-checkbox { flex: none; --sl-input-font-size: .88rem; }
+    .pz-bloq-nombre {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pz-bloq-nie { color: #9ca3af; font-size: .74rem; font-weight: 700; }
+    .pz-bloq-vacio {
+      padding: 1.2rem 1rem;
+      text-align: center;
+      color: #6b7280;
+      font-size: .88rem;
+    }
+
     /* Celular: buscador y botón apilados */
     @media (max-width: 767px) {
       .clases-buscador-fila { flex-direction: column; align-items: stretch; }
@@ -884,9 +1000,28 @@ function cargarListado() {
 function cardHtml(c) {
   const color = colorDeMateria(c.materiaId);
   const oculta = esDocente && c.visible === false;
-  const bloqueada = c.bloqueada === true;
+  // BLOQUEO (v7.1): global (boolean) o POR ESTUDIANTE (mapa uid→true).
+  // El docente ve el candado según el estado global; el estudiante
+  // queda fuera solo si es global O su uid está en la lista.
+  const global = c.bloqueada === true;
+  const nBloq = Object.keys(mapaBloqueo(c)).length;
+  const bloqueada = esDocente ? global : piezaBloqueadaParaMi(c);
+  // NUEVO v7.2 — BLOQUEO POR ENVÍO PROPIO: pieza bloqueada para el
+  // estudiante Y nota local con enviado → la tarjeta muestra
+  // «Enviado» (verde) en vez de «Bloqueado»: el clic abre «Mi puntaje».
+  const enviadoPorMi = !esDocente && bloqueada && notaLocalEnviada(c.id);
   const info = tipoDe(c.tipo || tipoActual);
   const textoBloq = info.etiqueta === "examen" ? "Bloqueado" : "Bloqueada";
+  const etiquetaBloqueo = global
+    ? textoBloq + " · todos"
+    : nBloq > 0
+      ? `${textoBloq} · ${nBloq} est.`
+      : textoBloq;
+  const tituloCandado = global
+    ? textoBloq + " para TODOS: abrir la lista para revisar o quitar"
+    : nBloq > 0
+      ? `${textoBloq} para ${nBloq} estudiante(s): cambiar a quiénes afecta`
+      : "Bloquear: elegir qué estudiantes no podrán entrar";
   const sub = (c.unidad != null && c.unidad !== "") || (c.leccion != null && c.leccion !== "")
     ? `Unidad ${escapeHtml(String(c.unidad ?? "—"))} · Lección ${escapeHtml(String(c.leccion ?? "—"))}`
     : "Material de apoyo";
@@ -897,7 +1032,11 @@ function cardHtml(c) {
       <div class="clase-cab">
         ${c.dia != null && c.dia !== "" ? `<span class="clase-dia">Día ${escapeHtml(String(c.dia))}</span>` : ""}
         ${oculta ? `<span class="clase-oculta"><sl-icon name="eye-slash"></sl-icon> Invisible</span>` : ""}
-        ${bloqueada ? `<span class="clase-bloqueada"><sl-icon name="lock"></sl-icon> ${textoBloq}</span>` : ""}
+        ${enviadoPorMi
+          ? `<span class="clase-enviada" title="Ya enviaste esto: solo puedes revisar tu puntaje"><sl-icon name="check-lg"></sl-icon> Enviado</span>`
+          : global || (esDocente && nBloq > 0) || (!esDocente && bloqueada)
+            ? `<span class="clase-bloqueada"><sl-icon name="lock"></sl-icon> ${escapeHtml(etiquetaBloqueo)}</span>`
+            : ""}
       </div>
       <h3>${escapeHtml(c.clase || c.id)}</h3>
       <p>${sub}</p>
@@ -915,10 +1054,8 @@ function cardHtml(c) {
         <button class="clase-accion${oculta ? "" : " activa"}" data-acc="ojo" title="${oculta ? "Hacerla visible para los estudiantes" : "Hacerla invisible: no existirá para los estudiantes"}" aria-label="Cambiar visibilidad">
           <sl-icon name="${oculta ? "eye-slash" : "eye"}"></sl-icon>
         </button>
-        <button class="clase-accion${bloqueada ? "" : " activa"}" data-acc="candado" title="${bloqueada
-          ? "Quitar el bloqueo: los estudiantes podrán entrar"
-          : "Bloquear: la verán pero no podrán entrar"}" aria-label="Bloquear o desbloquear">
-          <sl-icon name="${bloqueada ? "lock-fill" : "unlock"}"></sl-icon>
+        <button class="clase-accion${global || nBloq > 0 ? "" : " activa"}" data-acc="candado" title="${escapeHtml(tituloCandado)}" aria-label="${escapeHtml(tituloCandado)}">
+          <sl-icon name="${global ? "lock-fill" : nBloq > 0 ? "lock" : "unlock"}"></sl-icon>
         </button>
         ${c.tipo !== "recurso" ? `
         <button class="clase-accion" data-acc="resultados" title="Resultados del estudiante por actividad y nota final" aria-label="Ver resultados">
@@ -1036,14 +1173,22 @@ function pintarListado() {
       if (acc) {
         e.stopPropagation();
         if (acc.dataset.acc === "ojo") alternarVisible(clase);
-        else if (acc.dataset.acc === "candado") alternarBloqueo(clase);
+        else if (acc.dataset.acc === "candado") abrirBloqueo(clase);
         else if (acc.dataset.acc === "puntaje") abrirMiPuntaje(clase);
         else if (acc.dataset.acc === "editar") abrirEditarTitulo(clase);
         else if (acc.dataset.acc === "resultados") abrirResultados(clase);
         else if (acc.dataset.acc === "eliminar") abrirConfirmarEliminar(clase);
         return;
       }
-      if (!esDocente && clase.bloqueada === true) {
+      if (!esDocente && piezaBloqueadaParaMi(clase)) {
+        // NUEVO v7.2 — BLOQUEO POR ENVÍO PROPIO: si la nota local dice
+        // ENVIADO, el bloqueo es el AUTOMÁTICO de su envío: el clic NO
+        // abre la pieza, abre «Mi puntaje» directamente — solo puede
+        // revisar sus resultados (nota por actividad y nota final).
+        if (notaLocalEnviada(clase.id)) {
+          abrirMiPuntaje(clase);
+          return;
+        }
         notify(
           "«" + (clase.clase || clase.id) + "» está " +
           (tipoDe(clase.tipo || tipoActual).etiqueta === "examen" ? "bloqueado" : "bloqueada") +
@@ -1171,32 +1316,277 @@ async function alternarVisible(c) {
   }
 }
 
-/* ---------------- Bloquear ⇄ desbloquear (boolean en Firebase) ----------------
-   BLOQUEADA = el estudiante LA VE en el listado pero NO puede
-   entrar (tarjeta con candado y sin clic). Es independiente del
-   ojo: invisible = no existe; bloqueada = existe pero cerrada. */
+/* ---------------- BLOQUEO PERSONALIZADO (v7.1) ----------------
+   El candado YA NO bloquea de una vez: abre el listado de
+   ESTUDIANTES del grado con «Seleccionar todas» / «No seleccionar
+   ninguna», buscador y casilla por estudiante, y el docente decide
+   a quiénes afecta. Se guarda en el doc de la pieza:
+     · bloqueada: true        → bloqueada para TODOS (boolean global,
+                                cubre también a estudiantes nuevos)
+     · bloqueadas: {uid:true} → bloqueada SOLO para esos (parcial)
+     · ambos vacíos           → abierta para todos
+   Marcar a TODOS = boolean global; una parte = mapa; nadie = abierta.
+   El estudiante solo queda fuera si es global o SU uid está marcado;
+   el vigía lo expulsa en vivo si el docente lo bloquea dentro. */
 
-async function alternarBloqueo(c) {
-  const nuevo = !(c.bloqueada === true);
+function mapaBloqueo(c) {
+  return c && c.bloqueadas && typeof c.bloqueadas === "object"
+    ? c.bloqueadas
+    : {};
+}
+
+/** ¿Esta pieza está bloqueada PARA ESTE perfil? (global o su uid) */
+function piezaBloqueadaParaMi(c, perfil = perfilActual) {
+  if (!c) return false;
+  if (c.bloqueada === true) return true;
+  const mapa = mapaBloqueo(c);
+  const uid = perfil?.uid;
+  return !!(uid && mapa[uid] === true);
+}
+
+/** NUEVO v7.2 — ¿El estudiante YA ENVIÓ esta pieza? Lectura SÍNCRONA
+ *  del respaldo local de la nota (localStorage mco_nota_{uid}_{id},
+ *  la MISMA clave que usan las utils). La marca enviado solo la dejan
+ *  los EXÁMENES (enviar respuesta, botón de enviar, timer o salida
+ *  forzada). Diferencia el bloqueo AUTOMÁTICO por envío (el clic en
+ *  la tarjeta abre «Mi puntaje» — solo revisa resultados) del
+ *  bloqueo del docente (aviso y fuera). Docente/sin uid: false. */
+function notaLocalEnviada(claseId) {
+  if (esDocente || !perfilActual?.uid || !claseId) return false;
   try {
-    await db.clases.actualizar(c.grado, c.materiaId, c.id, { bloqueada: nuevo });
-    c.bloqueada = nuevo;
-    try {
-      localStorage.setItem(
-        claveCacheDocente(c.grado, c.materiaId, tipoActual),
-        JSON.stringify(piezasCache)
-      );
-    } catch (e) { /* ignorar */ }
-    pintarListado();
-    notify(
-      nuevo
-        ? "«" + (c.clase || c.id) + "» quedó BLOQUEADA: la verán pero no podrán entrar."
-        : "«" + (c.clase || c.id) + "» se DESBLOQUEÓ: los estudiantes ya pueden entrar.",
-      "success"
+    const d = JSON.parse(
+      localStorage.getItem("mco_nota_" + perfilActual.uid + "_" + claseId) || "null"
     );
+    return !!(d && d.enviado);
   } catch (e) {
-    notify("No se pudo cambiar el bloqueo: " + (e?.code || e?.message || "error"), "danger");
+    return false;
   }
+}
+
+function abrirBloqueo(c) {
+  const info = tipoDe(c.tipo || tipoActual);
+  const textoBloq = info.etiqueta === "examen" ? "bloqueado" : "bloqueada";
+  const textoBloqMayus = textoBloq.charAt(0).toUpperCase() + textoBloq.slice(1);
+  const globalActual = c.bloqueada === true;
+  const mapaActual = mapaBloqueo(c);
+
+  const d = crearDialogo(
+    "",
+    "Bloquear estudiantes — " + (c.clase || c.id),
+    `
+    <p class="clases-crear-info">
+      <strong>${escapeHtml(c.clase || c.id)}</strong> ·
+      ${escapeHtml(nombreGrado(c.grado))} ·
+      ${escapeHtml(c.materia || materiaDe(c.materiaId).nombre)}
+      <br/>Marca a los estudiantes que NO podrán entrar (la verán, pero
+      cerrada). Los que no estén marcados entran con normalidad.
+      Los que YA enviaron un examen aparecen marcados: el sistema
+      los bloquea solos al enviar (solo pueden revisar su puntaje).
+    </p>
+    <div class="pz-bloq-acciones">
+      <button type="button" class="clases-btn-crear" id="bl-todas">Seleccionar todas</button>
+      <button type="button" class="clases-btn-crear" id="bl-ninguna">No seleccionar ninguna</button>
+      <input type="search" id="bl-buscar" class="pz-bloq-buscar"
+             placeholder="Buscar estudiante…" autocomplete="off" />
+    </div>
+    <div class="pz-bloq-contador" id="bl-contador"></div>
+    <div class="pz-bloq-cargando" id="bl-cargando">
+      <sl-spinner></sl-spinner> Cargando estudiantes…
+    </div>
+    <div class="pz-bloq-lista" id="bl-lista" hidden></div>
+    <sl-button slot="footer" id="bl-cancelar">Cancelar</sl-button>
+    <sl-button slot="footer" variant="primary" pill id="bl-guardar">Guardar bloqueo</sl-button>`
+  );
+
+  let estudiantes = [];        // [{uid, nombre, nie…}] del grado
+  const estado = new Map();    // uid → ¿bloqueado? (la fuente de verdad)
+  const fantasma = new Set();  // uids bloqueados que ya no están en el grado
+
+  // Orden POR ÍNDICE de palabra (igual que el modal de resultados):
+  // [2] apellido 1 → [3] apellido 2 → [0] nombre 1 → [1] nombre 2
+  const claveNombre = (p) => {
+    const palabras = (n) => String(n || "").trim().split(/\s+/).filter(Boolean);
+    const k = (x) =>
+      [x[2] || "", x[3] || "", x[0] || "", x[1] || ""]
+        .join(" ").toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return k(palabras(p.nombre));
+  };
+
+  const seleccionados = () => [...estado.values()].filter(Boolean).length;
+
+  const refrescarContador = () => {
+    const el = d.querySelector("#bl-contador");
+    const n = seleccionados();
+    el.innerHTML = !estudiantes.length
+      ? ""
+      : n === 0
+        ? "Nadie seleccionado: la " + escapeHtml(info.etiqueta) + " queda ABIERTA para todos."
+        : `<b>${n}</b> de ${estudiantes.length + fantasma.size} seleccionado(s): no podrán entrar.`;
+  };
+
+  const pintarLista = () => {
+    const zona = d.querySelector("#bl-lista");
+    const filtro = normalizar(d.querySelector("#bl-buscar").value || "");
+    const visibles = estudiantes.filter((x) =>
+      !filtro ||
+      normalizar(String(x.nombre || "")).includes(filtro) ||
+      String(x.nie ?? "").includes(filtro)
+    );
+    if (!estudiantes.length) {
+      zona.hidden = false;
+      zona.innerHTML = `<div class="pz-bloq-vacio">
+        No hay estudiantes registrados en ${escapeHtml(nombreGrado(c.grado))}.
+        Aun así puedes guardar: la ${escapeHtml(info.etiqueta)} quedará abierta.
+      </div>`;
+      refrescarContador();
+      return;
+    }
+    zona.hidden = false;
+    zona.innerHTML = visibles.length
+      ? visibles
+          .map((x) => {
+            const marca = estado.get(x.uid) ? "checked" : "";
+            const nie = x.nie !== "" && x.nie != null ? String(x.nie) : "";
+            return `
+        <label class="pz-bloq-fila" data-uid="${escapeHtml(x.uid)}">
+          <sl-checkbox size="small" ${marca}></sl-checkbox>
+          <span class="pz-bloq-nombre">${escapeHtml(x.nombre || "(sin nombre)")}</span>
+          ${nie ? `<span class="pz-bloq-nie">NIE ${escapeHtml(nie)}</span>` : ""}
+        </label>`;
+          })
+          .join("")
+      : `<div class="pz-bloq-vacio">Ningún estudiante coincide con la búsqueda.</div>`;
+    refrescarContador();
+  };
+
+  // Casillas: sl-change real + clic en la fila entera (sin doble toggle)
+  d.querySelector("#bl-lista").addEventListener("sl-change", (e) => {
+    const cb = e.target.closest("sl-checkbox");
+    if (!cb) return;
+    const fila = cb.closest(".pz-bloq-fila");
+    if (fila) estado.set(fila.dataset.uid, !!cb.checked);
+    refrescarContador();
+  });
+  d.querySelector("#bl-lista").addEventListener("click", (e) => {
+    if (e.target.closest("sl-checkbox")) return; // la casilla ya alterna sola
+    const fila = e.target.closest(".pz-bloq-fila");
+    if (!fila) return;
+    const cb = fila.querySelector("sl-checkbox");
+    if (!cb) return;
+    cb.checked = !cb.checked; // programático: NO emite sl-change
+    estado.set(fila.dataset.uid, !!cb.checked);
+    refrescarContador();
+  });
+
+  d.querySelector("#bl-todas").addEventListener("click", () => {
+    estudiantes.forEach((x) => estado.set(x.uid, true));
+    pintarLista();
+  });
+  d.querySelector("#bl-ninguna").addEventListener("click", () => {
+    [...estado.keys()].forEach((u) => estado.set(u, false));
+    pintarLista();
+  });
+  d.querySelector("#bl-buscar").addEventListener("input", pintarLista);
+  d.querySelector("#bl-cancelar").addEventListener("click", () => d.hide());
+
+  // Guardar: TODOS → boolean global · parte → mapa · nadie → abierta
+  d.querySelector("#bl-guardar").addEventListener("click", async () => {
+    const guardar = d.querySelector("#bl-guardar");
+    const n = seleccionados();
+    const enLista = estudiantes.filter((x) => estado.get(x.uid)).length;
+    guardar.loading = true;
+    let campos;
+    let mensaje;
+    if (estudiantes.length > 0 && enLista === estudiantes.length) {
+      campos = { bloqueada: true, bloqueadas: {} };
+      mensaje =
+        "«" + (c.clase || c.id) + "» quedó " + textoBloq.toUpperCase() +
+        " PARA TODOS los estudiantes (la ven, pero no pueden entrar).";
+    } else if (n === 0) {
+      campos = { bloqueada: false, bloqueadas: {} };
+      mensaje =
+        "«" + (c.clase || c.id) + "» quedó ABIERTA: nadie está " + textoBloq + ".";
+    } else {
+      const mapa = {};
+      estado.forEach((v, u) => { if (v) mapa[u] = true; });
+      campos = { bloqueada: false, bloqueadas: mapa };
+      mensaje =
+        "«" + (c.clase || c.id) + "» quedó " + textoBloqMayus.toLowerCase() +
+        " para " + n + " estudiante(s): los demás entran con normalidad.";
+    }
+    try {
+      await db.clases.actualizar(c.grado, c.materiaId, c.id, campos);
+      c.bloqueada = campos.bloqueada;
+      c.bloqueadas = campos.bloqueadas;
+      const cruda = piezasCache.find(
+        (x) => x.grado === c.grado && x.materiaId === c.materiaId && x.id === c.id
+      );
+      if (cruda) {
+        cruda.bloqueada = campos.bloqueada;
+        cruda.bloqueadas = campos.bloqueadas;
+      }
+      try {
+        localStorage.setItem(
+          claveCacheDocente(c.grado, c.materiaId, tipoActual),
+          JSON.stringify(piezasCache)
+        );
+      } catch (e) { /* ignorar */ }
+      d.hide();
+      pintarListado();
+      notify(mensaje, "success");
+    } catch (e) {
+      notify(
+        "No se pudo guardar el bloqueo: " + (e?.code || e?.message || "error"),
+        "danger"
+      );
+    } finally {
+      guardar.loading = false;
+    }
+  });
+
+  // Cargar los estudiantes del grado (con Reintentar si falla)
+  const cargar = async () => {
+    d.querySelector("#bl-cargando").hidden = false;
+    d.querySelector("#bl-lista").hidden = true;
+    try {
+      estudiantes = (await db.usuarios.porGrado(c.grado))
+        .filter((x) => x.rol !== "docente")
+        .sort((a, b) => claveNombre(a).localeCompare(claveNombre(b), "es"));
+
+      // Estado actual: global → todos marcados; parcial → su uid.
+      // Uids bloqueados que YA NO están en el grado se conservan
+      // (siguen bloqueados hasta que el docente los quite).
+      estado.clear();
+      fantasma.clear();
+      const enLista = new Set(estudiantes.map((x) => x.uid));
+      estudiantes.forEach((x) =>
+        estado.set(x.uid, globalActual || mapaActual[x.uid] === true)
+      );
+      Object.keys(mapaActual).forEach((u) => {
+        if (mapaActual[u] === true && !enLista.has(u)) {
+          estado.set(u, true);
+          fantasma.add(u);
+        }
+      });
+
+      d.querySelector("#bl-cargando").hidden = true;
+      pintarLista();
+    } catch (e) {
+      d.querySelector("#bl-cargando").hidden = true;
+      const zona = d.querySelector("#bl-lista");
+      zona.hidden = false;
+      zona.innerHTML = `
+        <div class="pz-bloq-vacio">
+          No se pudieron leer los estudiantes (${escapeHtml(String(e?.code || e?.message || "error"))}).<br/>
+          Revisa las reglas de Firestore: el docente necesita leer <b>users</b>.
+          <br/><button class="clases-btn-crear" id="bl-reintentar" style="margin-top:.7rem">Reintentar</button>
+        </div>`;
+      zona.querySelector("#bl-reintentar").addEventListener("click", cargar);
+    }
+  };
+
+  cargar();
 }
 
 /* ---------------- ELIMINAR pieza (docente, con confirmación) ----------------
@@ -1263,9 +1653,16 @@ function iniciarVigia() {
   const grado = (perfilActual.grados || [])[0];
   if (grado == null) return;
   // Piezas de las materias del CICLO del estudiante (las de fuera del
-  // ciclo ya no le llegan ni las puede abrir)
+  // ciclo ya no le llegan ni las puede abrir). v7.1: se pasa el uid →
+  // el vigía detecta el BLOQUEO PERSONALIZADO (global o su uid) y el
+  // desbloqueo, y trae los datos frescos del doc para el listado.
   const quites = materiasDeGrado(grado).map((m) =>
-    db.clases.vigilar(grado, m.id, (id, motivo) => piezaCerradaRemota(m.id, id, motivo))
+    db.clases.vigilar(
+      grado,
+      m.id,
+      (id, motivo, datos) => piezaCerradaRemota(m.id, id, motivo, datos),
+      perfilActual.uid
+    )
   );
   // VIGÍA DE MATERIAS VISIBLES: si el docente oculta LA MATERIA en
   // vivo (clases/{grado}/config/materias), el estudiante que esté
@@ -1315,20 +1712,39 @@ function ajustarMateriaSegunVisibilidad() {
   }
 }
 
-function piezaCerradaRemota(materiaId, id, motivo) {
-  // BLOQUEO en vivo: refresca la copia local y repinta el listado
+function piezaCerradaRemota(materiaId, id, motivo, datos) {
+  // BLOQUEO/DESBLOQUEO en vivo: refresca la copia local con los datos
+  // frescos del doc (global + mapa por uid) y repinta el listado
   // (tarjeta con candado y sin clic) mientras el estudiante NO está
-  // dentro; si está dentro, más abajo vuelve al inicio.
-  if (motivo === "bloqueada") {
+  // dentro; si está dentro y le llegó un bloqueo, más abajo vuelve al
+  // inicio. El DESBLOQUEO en vivo solo refresca la tarjeta.
+  if (motivo === "bloqueada" || motivo === "desbloqueada") {
     const fila = piezasCache.find((x) => x.materiaId === materiaId && x.id === id);
-    if (fila) fila.bloqueada = true;
+    if (fila && datos && typeof datos === "object") {
+      fila.bloqueada = datos.bloqueada === true;
+      fila.bloqueadas =
+        datos.bloqueadas && typeof datos.bloqueadas === "object"
+          ? datos.bloqueadas
+          : {};
+    } else if (fila && motivo === "bloqueada") {
+      fila.bloqueada = true; // sin datos (llamador viejo): lo conservador
+    }
     const fuera = !piezaAbierta || !piezaAbierta.raiz || !piezaAbierta.raiz.isConnected;
     if (fuera) pintarListado();
+    if (motivo === "desbloqueada") return; // nadie sale por desbloqueo
   }
   const p = piezaAbierta;
   // ¿Sigue DENTRO? (la raíz de la pieza sigue conectada al DOM)
   if (!p || !p.raiz || !p.raiz.isConnected) return;
   if (p.clase.materiaId !== materiaId || p.clase.id !== id) return;
+  // NUEVO v7.2 — BLOQUEO POR ENVÍO PROPIO: si el bloqueo que acaba de
+  // llegar es el AUTOMÁTICO de SU envío (la nota local ya dice
+  // enviado: finalizarExamen guardó la nota ANTES de escribir el
+  // bloqueo), NO se expulsa: la página del examen ya está en estado
+  // «Examen enviado» (todo bloqueado) y lo natural es que termine de
+  // ver su nota y salga él mismo. El bloqueo del DOCENTE (sin envío
+  // propio) sigue expulsando al toque como siempre.
+  if (motivo === "bloqueada" && notaLocalEnviada(id)) return;
   cerrarPorDocente(p.clase, motivo);
 }
 

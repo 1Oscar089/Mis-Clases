@@ -1,6 +1,9 @@
 // ============================================================
 // opcionMultiple.js — Pregunta de opción múltiple reutilizable
-// (js/utils/opcionMultiple.js) · v6: OPCIONES EN ORDEN ALEATORIO
+// (js/utils/opcionMultiple.js) · v6.1: finalizarExamen() BLOQUEA la
+// pieza para el estudiante en cuanto envía su examen (db.clases.
+// bloquearEstudiante → bloqueadas.{uid}: solo puede revisar su
+// puntaje con «Mi puntaje») · v6: OPCIONES EN ORDEN ALEATORIO
 // (anti-copia) PERSISTENTE por navegador hasta responder (js/utils/
 // aleatorio.js); antes v5: TAMAÑO en pantalla — 'columnas'
 // (2 = mitad del ancho, 3 = tercio, 4 = cuarto → varias preguntas LADO
@@ -655,7 +658,11 @@ export async function sumarPuntos(perfil, clase, preguntaId, puntos, opciones = 
 /** CIERRE DE UN EXAMEN: fija la marca de "enviado" en la nota y
  *  reporta el TOTAL al Sheet UNA sola vez. La llama el archivo del
  *  examen justo después de enviar todos los bloques; los bloques ya
- *  guardaron su valor al responder enviar(). Docente: no hace nada. */
+ *  guardaron su valor al responder enviar(). Docente: no hace nada.
+ *  NUEVO v7.2 — BLOQUEO AUTOMÁTICO: tras guardar la nota, deja la
+ *  pieza BLOQUEADA para ese estudiante (bloqueadas.{uid} = true vía
+ *  db.clases.bloquearEstudiante; mejor esfuerzo). Ya no puede volver
+ *  a entrar: solo revisar sus resultados con «Mi puntaje». */
 export async function finalizarExamen(perfil, clase, opciones = {}) {
   if (!perfil?.uid || !clase?.id) return { ok: false, razon: "datos" };
   if (esDocente(perfil)) {
@@ -679,6 +686,26 @@ export async function finalizarExamen(perfil, clase, opciones = {}) {
     });
   } catch (e) {
     console.warn("[finalizarExamen] Firestore no disponible:", e?.code || e);
+  }
+
+  // ── NUEVO v7.2 · BLOQUEO AUTOMÁTICO POR ENVÍO ──
+  // En cuanto el examen queda ENVIADO, la pieza se bloquea SOLA para
+  // ese estudiante (db.clases.bloquearEstudiante escribe
+  // bloqueadas.{uid} = true, sin pisar el mapa del docente): ya no
+  // puede volver a entrar; solo revisar sus resultados desde la
+  // tarjeta (botón «Mi puntaje»). El TIMER y el botón de enviar
+  // llegan aquí por el mismo camino, y también el auto-envío de la
+  // próxima visita tras una salida forzada. MEJOR ESFUERZO: si
+  // falla (sin conexión / pieza borrada), el envío no se pierde y
+  // el bloqueo se vuelve a intentar en la próxima visita.
+  try {
+    if (clase.grado != null && clase.materiaId) {
+      await db.clases.bloquearEstudiante(
+        clase.grado, clase.materiaId, clase.id, perfil.uid
+      );
+    }
+  } catch (e) {
+    console.warn("[finalizarExamen] bloqueo automático no guardó:", e?.code || e);
   }
 
   const espejo = await db.notas
@@ -1125,6 +1152,18 @@ export function opcionMultiple(config = {}) {
       resolverUnaVez(ganado);
       return { puntos: ganado, maxPuntaje: puntaje };
     };
+
+    // REGISTRO GLOBAL DE ENVÍO (window.__mcoEnvioExamen): el botón
+    // final del examen (utils/botonEnviar.js) o el «Enviar examen» de
+    // siempre califican aquí las respuestas que el estudiante NO envió
+    // una a una. Clave = qid: si el bloque se remonta, la última
+    // instancia reemplaza a la vieja (nunca se califica dos veces).
+    try {
+      const reg = (window.__mcoEnvioExamen = window.__mcoEnvioExamen || { mapa: {} });
+      if (reg.mapa && typeof reg.mapa === "object") {
+        reg.mapa[qid] = () => Promise.resolve(enviarExamen()).catch(() => null);
+      }
+    } catch (e) { /* sin window: el flujo manual sigue igual */ }
 
     contenedor.append(caja);
     aplicarTamano(caja, config); // v5: columnas / ancho (tras el montaje)
