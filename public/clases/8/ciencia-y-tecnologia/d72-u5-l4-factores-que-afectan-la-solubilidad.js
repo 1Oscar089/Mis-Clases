@@ -1,7 +1,7 @@
 // ============================================================
 // CLASE generada con el editor «Crear» — Mis Clases Online
 // Tipo: clase · ID: — · Título: Mis Clases Online
-// Fecha: 27 de octubre de 2026
+// Fecha: 28 de octubre de 2026
 //
 // CÓMO USARLO
 //   1. Guarda este archivo (con el nombre del ID) 3 carpetas
@@ -158,6 +158,7 @@ async function montar(perfil, contenedor, clase) {
 
   // ── Módulos usados (con reintento y aviso claro si falta uno) ──
   const { crearFormula } = await cargar("../../../js/componentes/formula.js", ["crearFormula"]);
+  const { crearLista } = await cargar("../../../js/componentes/lista.js", ["crearLista"]);
   const { crearParrafo } = await cargar("../../../js/componentes/parrafo.js", ["crearParrafo"]);
   const { crearSecciones } = await cargar("../../../js/componentes/section.js", ["crearSecciones"]);
   const { crearTitulo } = await cargar("../../../js/componentes/titulo.js", ["crearTitulo"]);
@@ -191,7 +192,7 @@ async function montar(perfil, contenedor, clase) {
     contenedor: pon(l1, 50, 70, 720, 116)
   });
 
-  // ── cuadriculaVocabulario — Cuadrícula de vocabulario · mide 760×257 px ──
+  // ── cuadriculaVocabulario — Cuadrícula de vocabulario · mide 760×255 px ──
   cuadriculaVocabulario({
     titulo: "La temperatura",
     columnas: 2,
@@ -210,13 +211,13 @@ async function montar(perfil, contenedor, clase) {
         descripcion: "Al **aumentar** la temperatura, **disminuye** la solubilidad"
       }
     ],
-    contenedor: pon(l1, 30, 220, 760, 257)
+    contenedor: pon(l1, 30, 220, 760, 255)
   });
 
-    // ════ Sección 2 — espacio de 820×523 px ════
-    const l2 = lamina(523, 820);
+    // ════ Sección 2 — espacio de 820×628 px ════
+    const l2 = lamina(628, 820);
 
-  // ── cuadriculaVocabulario — Cuadrícula de vocabulario · mide 750×236 px ──
+  // ── cuadriculaVocabulario — Cuadrícula de vocabulario · mide 750×234 px ──
   cuadriculaVocabulario({
     titulo: "La Presion",
     columnas: 2,
@@ -235,29 +236,40 @@ async function montar(perfil, contenedor, clase) {
         descripcion: "**Disminuye** la solubilidad del gas"
       }
     ],
-    contenedor: pon(l2, 30, 0, 750, 236)
+    contenedor: pon(l2, 30, 0, 750, 234)
   });
 
   // ── Párrafo · mide 750×82 px ──
   crearParrafo({
     texto: "{{**Ley de Henry:**|rojo}} **La solubilidad de un gas es directamente proporcional a la presión**",
     tamano: 20,
-    contenedor: pon(l2, 30, 280, 750, 82)
+    contenedor: pon(l2, 30, 260, 750, 82)
   });
 
-  // ── Fórmula destacada · mide 750×113 px ──
+  // ── Fórmula destacada · mide 750×112 px ──
   crearFormula({
     latex: "C=kP",
     bloque: true,
     tamano: 20,
     alineacion: "centro",
-    contenedor: pon(l2, 30, 350, 750, 113)
+    contenedor: pon(l2, 30, 370, 750, 112)
+  });
+
+  // ── Lista con viñetas · mide 660×108 px ──
+  crearLista({
+    items: [
+      "**C**: Concentracion de gas disuelto en el iliquido (mol/L)",
+      "**k**: Constante de proporcionalidad que depende de la naturaleza del gas",
+      "**P**: Presion del gas parcial sobre la solucion"
+    ],
+    tipo: "vineta",
+    contenedor: pon(l2, 80, 500, 660, 108)
   });
 
     // ════ Sección 3 — espacio de 820×487 px ════
     const l3 = lamina(487, 820);
 
-  // ── cuadriculaVocabulario — Cuadrícula de vocabulario · mide 740×277 px ──
+  // ── cuadriculaVocabulario — Cuadrícula de vocabulario · mide 740×275 px ──
   cuadriculaVocabulario({
     titulo: "Agitación y Tamaño de Partícula",
     columnas: 2,
@@ -276,10 +288,10 @@ async function montar(perfil, contenedor, clase) {
         descripcion: "Mientras más pequeño sea el soluto (mayor superficie de contacto), más rápido se disuelve."
       }
     ],
-    contenedor: pon(l3, 40, 210, 740, 277)
+    contenedor: pon(l3, 40, 210, 740, 275)
   });
 
-  // ── cuadriculaVocabulario — Cuadrícula de vocabulario · mide 750×236 px ──
+  // ── cuadriculaVocabulario — Cuadrícula de vocabulario · mide 750×234 px ──
   cuadriculaVocabulario({
     titulo: "Naturaleza del Soluto y del Solvente",
     columnas: 2,
@@ -298,7 +310,7 @@ async function montar(perfil, contenedor, clase) {
         descripcion: "Disuelven a otras sustancias no polares"
       }
     ],
-    contenedor: pon(l3, 30, 0, 750, 236)
+    contenedor: pon(l3, 30, 0, 750, 234)
   });
 
   // ── Documento final: CORRIDO con 1 sección; con 2 o más, una a la vez ──
