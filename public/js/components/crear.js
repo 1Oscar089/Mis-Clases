@@ -7553,3 +7553,563 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═══════════ fin BLOQUE 46 · «constructorOraciones» ═══════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 47 · «ruleta» — Ruleta de palabras   [visuales]
+   Visual: recursos/js/visuales/ruleta.js
+   RULETA personalizada estilo feria, de CERO dependencias (canvas 2D
+   + estilos propios, nada de librerías): el docente da la lista de
+   palabras — MÁXIMO 25 — y, si quiere, el COLOR de la parte de cada
+   una; las que no llevan color reciben UNO AL AZAR, siempre DIFERENTE
+   del de las demás (ángulo áureo: matices repartidos, lejos de los
+   colores elegidos a mano y con luminosidad alternada para que dos
+   porciones vecinas jamás se confundan).
+   EL GIRO JUEGA SUS FÍSICAS: al pulsar GIRAR la ruleta recibe un
+   impulso al azar y frena sola con rozamiento exponencial — ni el
+   punto donde para ni la DURACIÓN se repiten (velocidad y frenado se
+   sortean en cada vuelta y cada clavija del aro le roba un poco de
+   giro al pasar; el puntero REBOTA con las clavijas y, si frenó
+   pegado a una, la ruleta se asienta hacia atrás un pelín: jamás
+   queda «clavada» en la raya). DONDE PARA, VUELVE A GIRAR: el ángulo
+   es acumulativo, la próxima vuelta sigue desde el punto exacto.
+   Al frenar: la parte ganadora se RESALTA, cae un confeti con los
+   colores de la propia ruleta y aparece el banner «Resultado» con la
+   palabra en una pastilla de SU color. Se puede volver a girar
+   cuantas veces se quiera.
+   Es un VISUAL: no califica, no guarda ni pide nada.
+   REGLA DEL PROYECTO (aclarada): el color de la tarjeta es
+   PREDEFINIDO y FIJO (#dc2626 rojo feria) — NO cambia en cada
+   montaje; el docente lo ELIGE con el SELECTOR DE COLOR RGB del
+   formulario (un input de color: se hace clic, se escoge y listo,
+   sin escribir nada a mano; botón «Defecto» para volver).
+   NADA de JSON: cada palabra tiene SU fila en el repetidor con su
+   columna de color propia (selector RGB; vacío = al azar).
+   Obligatorio: al menos 1 palabra. Opcional: título, color por
+   palabra, tamaño (220–680 px, defecto 420) y colorTarjeta.
+   Si ya pegaste este BLOQUE 47 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* Une las filas del repetidor en la lista que espera el visual:
+     [{ palabra, color }] — se CONSERVAN las líneas vacías de la
+     columna de color para que los datos NO se corran de fila
+     (lineas() las filtraría y desalinearía los colores). */
+  function armarPalabras(v) {
+    const sueltas = (s) =>
+      String(s == null ? "" : s).split(/\r?\n/).map((x) => x.trim());
+    const palabras = sueltas(v.palabras);
+    const colores = sueltas(v.colores);
+    return palabras
+      .map((p, i) => ({ palabra: p, color: colores[i] || "" }))
+      .filter((it) => it.palabra);   // las filas sin palabra no son porciones
+  }
+
+  const tamanoDe = (v) =>
+    Math.min(680, Math.max(220, Math.round(num(v.tamano) || 420)));
+
+  /* ── A PRUEBA DE ERRORES: espejo del visual ── */
+  function validarRuleta(v) {
+    const errs = [];
+    const color = limpia(v.colorTarjeta);
+    if (color && !/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i.test(color)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El COLOR de la tarjeta debe ser un valor HEX o rgb() válido, ej: #dc2626 o #0ea5e9 (o vacío = defecto #dc2626).",
+      });
+    }
+    const tam = num(v.tamano);
+    if (tam != null && (tam < 220 || tam > 680)) {
+      errs.push({ k: "tamano", msg: "El TAMAÑO de la ruleta debe ser un número entre 220 y 680 px (defecto 420)." });
+    }
+    // colores por fila: si se escriben, deben ser HEX o rgb()
+    const filas = armarPalabras(v);
+    const malas = filas
+      .map((it, i) => ({ i, malo: it.color && !/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i.test(it.color) }))
+      .filter((f) => f.malo);
+    if (malas.length) {
+      const nums = malas.map((f) => "#" + (f.i + 1)).join(", ");
+      errs.push({
+        k: "colores",
+        msg: `El color de la(s) palabra(s) ${nums} debe ser un valor HEX o rgb() válido — usa el selector de color de la fila — o déjalo VACÍO para que salga al azar.`,
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "ruleta",
+    nombre: "ruleta — Ruleta de palabras",
+    cat: "visuales",
+    archivo: "recursos/js/visuales/ruleta.js",
+    imports: ["ruleta"],
+    funcion: "ruleta",
+    descripcion:
+      "Ruleta de feria con tus palabras (máximo 25): cada una puede llevar SU color (vacío = al azar, siempre distinto entre todas). GIRAR con físicas de verdad: impulso y frenado sorteados en cada vuelta, clavijas que roban giro y puntero que rebota — ni el punto final ni la duración se repiten — y la próxima vuelta sigue desde donde paró. Al frenar se resalta la parte ganadora, cae confeti y aparece el banner «Resultado». Color de la tarjeta PREDEFINIDO #dc2626 si no se elige otro (elegible con el selector RGB).",
+    params: [
+      { k: "titulo", et: "Título de la tarjeta", tipo: "texto", def: "Ruleta", ej: "Vocabulario de hoy · Repaso de la unidad" },
+      { k: "palabras", et: "Palabras de la ruleta", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas palabras?", def: 8, min: 1, max: 25 },
+        columnas: [
+          { clave: "palabras", et: "Palabra", req: true, formato: "f", ej: "Fotosíntesis" },
+          { clave: "colores", et: "Color de su parte (opcional; vacío = al azar)", tipo: "color", ej: "#dc2626" },
+        ],
+        ayuda: "Cada fila es UNA porción de la ruleta. La palabra es obligatoria; su color es OPCIONAL (selector de la fila): el que quede vacío recibe uno al azar, siempre distinto del de las demás. Máximo 25.",
+      },
+      { k: "tamano", et: "Tamaño de la ruleta (px, 220–680)", tipo: "num", def: "420", ej: "420" },
+      { k: "colorTarjeta", et: "Color de la tarjeta (selector RGB; opcional — defecto #dc2626)", tipo: "color", def: "#dc2626", ej: "#dc2626 · #0ea5e9" },
+      { k: "id", et: "id estable (opcional)", tipo: "texto" },
+    ],
+    aOpciones: (v) => ({
+      titulo: limpia(v.titulo) || "Ruleta",
+      palabras: armarPalabras(v),
+      tamano: tamanoDe(v),
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      id: v.id || undefined,
+    }),
+    aCodigo: (v) => ({
+      titulo: limpia(v.titulo) || "Ruleta",
+      palabras: armarPalabras(v),
+      tamano: tamanoDe(v),
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      id: v.id || undefined,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del visual ── */
+    validar: validarRuleta,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 47, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const k = REGISTRO.findIndex((r) => r.id === "ruleta");
+  if (k >= 0) REGISTRO[k] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 47 · «ruleta» ═══════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 48 · «flashcard» — Flashcards imagen ↔ palabra   [visuales]
+   Visual: recursos/js/visuales/flashcard.js
+   TARJETAS DE ESTUDIO de CERO dependencias (HTML+CSS propios, nada de
+   librerías): el docente da la LISTA de tarjetas — cada fila es UNA
+   tarjeta con su RUTA DE IMAGEN (URL, enlace, código SVG en línea,
+   data URI, «img:archivo.png» o nombre suelto que se resuelve en
+   recursos/img/), su PALABRA asociada y, si quiere, el COLOR DEL
+   BORDE de esa tarjeta; el que quede vacío usa el borde PREDEFINIDO
+   y FIJO (#f59e0b ámbar), NO cambia en cada montaje.
+   EL ANCHO SE MODIFICA Y MANTIENE LA RELACIÓN DE ASPECTO: el ancho
+   de cada flashcard es un parámetro (140–520 px, defecto 260) y la
+   altura sale sola de la proporción fija 3:4 — la tarjeta NUNCA se
+   deforma (en pantallas chicas se achica sola, guardando también la
+   proporción).
+   AL DARLE CLIC SE MUESTRA LA OTRA CARA: un giro 3D de verdad — si
+   está la IMAGEN aparece la PALABRA y VICEVERSA (imagen ↔ palabra
+   siempre); la cara inicial se elige («imagen» por defecto o
+   «palabra» para empezar adivinando). También gira con
+   Enter/Espacio. La palabra sale en el COLOR DE LETRA elegido, con
+   ajuste automático del tamaño para que SIEMPRE quepa.
+   COLORES (regla del proyecto, aclarada): los tres son
+   PREDEFINIDOS y FIJOS — colorTarjeta #ea580c (naranja, tarjeta
+   grande), colorBorde #f59e0b (ámbar, bordes sin color propio) y
+   colorLetra #1f2937 (letra de la palabra) — NO cambian en cada
+   montaje; el docente los ELIGE con el SELECTOR DE COLOR RGB del
+   formulario (un input de color: se hace clic, se escoge y listo,
+   sin escribir nada a mano; botón «Defecto» para volver).
+   NADA de JSON: cada tarjeta tiene SU fila en el repetidor con su
+   columna de imagen, palabra y color de borde propio (selector RGB).
+   Obligatorio: al menos 1 tarjeta (con palabra). Opcional: título,
+   color de borde por tarjeta, ancho (140–520 px, defecto 260),
+   caraInicial (imagen/palabra), colorTarjeta, colorBorde general y
+   colorLetra. Es un VISUAL: no califica, no guarda ni pide nada.
+   Si ya pegaste este BLOQUE 48 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* Une las filas del repetidor en la lista que espera el visual:
+     [{ imagen, palabra, color }]. La clave principal guarda cada fila
+     como «palabra | imagen» (mecanismo «resto» del repetidor: la
+     imagen viaja en SU misma línea, así una tarjeta SIN imagen no
+     corre los datos de las demás), y los bordes van en SU columna
+     alineada. */
+  function armarTarjetas(v) {
+    const sueltas = (s) =>
+      String(s == null ? "" : s).split(/\r?\n/).map((x) => x.trim());
+    const principal = sueltas(v.tarjetas);   // «palabra | imagen»
+    const bordes = sueltas(v.bordes);
+    return principal
+      .map((l, i) => {
+        const corte = l.indexOf("|");
+        const palabra = (corte >= 0 ? l.slice(0, corte) : l).trim();
+        const imagen = corte >= 0 ? l.slice(corte + 1).trim() : "";
+        return { imagen, palabra, color: bordes[i] || "" };
+      })
+      .filter((it) => it.palabra);   // las filas sin palabra no son tarjetas
+  }
+
+  const anchoDe = (v) =>
+    Math.min(520, Math.max(140, Math.round(num(v.ancho) || 260)));
+
+  /* ── A PRUEBA DE ERRORES: espejo del visual ── */
+  function validarFlashcard(v) {
+    const errs = [];
+    const HEX_RGB = /^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i;
+    const malColor = (s) => limpia(s) && !HEX_RGB.test(limpia(s));
+    if (malColor(v.colorTarjeta)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El COLOR de la tarjeta debe ser un valor HEX o rgb() válido, ej: #ea580c o #0ea5e9 (o vacío = defecto #ea580c).",
+      });
+    }
+    if (malColor(v.colorBorde)) {
+      errs.push({
+        k: "colorBorde",
+        msg: "El COLOR DEL BORDE debe ser un valor HEX o rgb() válido, ej: #f59e0b o #16a34a (o vacío = defecto #f59e0b).",
+      });
+    }
+    if (malColor(v.colorLetra)) {
+      errs.push({
+        k: "colorLetra",
+        msg: "El COLOR DE LA LETRA debe ser un valor HEX o rgb() válido, ej: #1f2937 o #7c2d12 (o vacío = defecto #1f2937).",
+      });
+    }
+    const ancho = num(v.ancho);
+    if (ancho != null && (ancho < 140 || ancho > 520)) {
+      errs.push({ k: "ancho", msg: "El ANCHO de las tarjetas debe ser un número entre 140 y 520 px (defecto 260). La altura mantiene la proporción 3:4." });
+    }
+    const cara = limpia(v.caraInicial).toLowerCase();
+    if (cara && cara !== "imagen" && cara !== "palabra") {
+      errs.push({ k: "caraInicial", msg: "La CARA INICIAL debe ser «imagen» o «palabra» (defecto: imagen)." });
+    }
+    // colores de borde por fila: si se escriben, deben ser HEX o rgb()
+    const filas = armarTarjetas(v);
+    const malas = filas
+      .map((it, i) => ({ i, malo: malColor(it.color) }))
+      .filter((f) => f.malo);
+    if (malas.length) {
+      const nums = malas.map((f) => "#" + (f.i + 1)).join(", ");
+      errs.push({
+        k: "bordes",
+        msg: `El color del borde de la(s) tarjeta(s) ${nums} debe ser un valor HEX o rgb() válido — usa el selector de color de la fila — o déjalo VACÍO para usar el borde predefinido (#f59e0b).`,
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "flashcard",
+    nombre: "flashcard — Flashcards imagen ↔ palabra",
+    cat: "visuales",
+    archivo: "recursos/js/visuales/flashcard.js",
+    imports: ["flashcard"],
+    funcion: "flashcard",
+    descripcion:
+      "Tarjetas de estudio: cada una con SU imagen (URL, enlace, código SVG, data URI o ruta en recursos/img) y SU palabra. El ANCHO se modifica y la altura mantiene la proporción 3:4 (nunca se deforman). AL DARLE CLIC se muestra LA OTRA CARA — si está la imagen aparece la palabra y viceversa — con giro 3D; la cara inicial se elige (imagen o palabra) y la palabra sale en el COLOR DE LETRA elegido, siempre ajustada para caber. Borde a color POR TARJETA (vacío = borde predefinido #f59e0b). Colores de tarjeta/borde/letra PREDEFINIDOS y fijos, elegibles con el selector RGB.",
+    params: [
+      { k: "titulo", et: "Título de la tarjeta grande", tipo: "texto", def: "Flashcards", ej: "Animales de la granja · Vocabulario" },
+      { k: "tarjetas", et: "Tarjetas (imagen + palabra)", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas tarjetas?", def: 6, min: 1, max: 40 },
+        columnas: [
+          { clave: "tarjetas", et: "Palabra", req: true, formato: "f", ej: "La vaca" },
+          { clave: "tarjetas", resto: true, et: "Imagen (URL, enlace, código SVG o archivo; opcional)", formato: "f", ej: "vaca.png · https://… · <svg…>…" },
+          { clave: "bordes", et: "Color de su borde (opcional; vacío = predefinido)", tipo: "color", ej: "#f59e0b" },
+        ],
+        ayuda: "Cada fila es UNA tarjeta: su PALABRA y, opcionalmente, su IMAGEN (URL, enlace, código SVG en línea, data URI, «img:archivo.png» o nombre suelto — se busca en recursos/img). La palabra es obligatoria. El color del borde es OPCIONAL (selector de la fila): el que quede vacío usa el borde predefinido #f59e0b.",
+      },
+      { k: "ancho", et: "Ancho de cada tarjeta (px, 140–520) — la altura mantiene la proporción 3:4", tipo: "num", def: "260", ej: "260 · 320" },
+      { k: "caraInicial", et: "Cara que se ve primero", tipo: "opcion", ops: ["imagen", "palabra"], def: "imagen" },
+      { k: "colorTarjeta", et: "Color de la tarjeta grande (selector RGB; opcional — defecto #ea580c)", tipo: "color", def: "#ea580c", ej: "#ea580c · #0ea5e9" },
+      { k: "colorBorde", et: "Borde de las tarjetas sin color propio (selector RGB; opcional — defecto #f59e0b)", tipo: "color", def: "#f59e0b", ej: "#f59e0b · #16a34a" },
+      { k: "colorLetra", et: "Color de la letra de la palabra (selector RGB; opcional — defecto #1f2937)", tipo: "color", def: "#1f2937", ej: "#1f2937 · #7c2d12" },
+      { k: "id", et: "id estable (opcional)", tipo: "texto" },
+    ],
+    aOpciones: (v) => ({
+      titulo: limpia(v.titulo) || "Flashcards",
+      tarjetas: armarTarjetas(v),
+      ancho: anchoDe(v),
+      caraInicial: (limpia(v.caraInicial).toLowerCase() === "palabra" ? "palabra" : "imagen"),
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      colorBorde: limpia(v.colorBorde) || undefined,
+      colorLetra: limpia(v.colorLetra) || undefined,
+      id: v.id || undefined,
+    }),
+    aCodigo: (v) => ({
+      titulo: limpia(v.titulo) || "Flashcards",
+      tarjetas: armarTarjetas(v),
+      ancho: anchoDe(v),
+      caraInicial: (limpia(v.caraInicial).toLowerCase() === "palabra" ? "palabra" : "imagen"),
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      colorBorde: limpia(v.colorBorde) || undefined,
+      colorLetra: limpia(v.colorLetra) || undefined,
+      id: v.id || undefined,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del visual ── */
+    validar: validarFlashcard,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 48, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const k = REGISTRO.findIndex((r) => r.id === "flashcard");
+  if (k >= 0) REGISTRO[k] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 48 · «flashcard» ═══════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 49 · «board» — Pizarra: marcador o tiza   [utils]
+   Util: js/utils/board.js
+   PIZARRA DE VERDAD con escritura y borrador: el docente elige
+   PIZARRA BLANCA DE MARCADOR (superficie blanca brillante + bandeja
+   con marcadores y borrador) o PIZARRA VERDE DE TIZA (superficie
+   verde con polvo de tiza + marco de madera + bandeja con tizas y
+   borrador de fieltro) — cada una con SU FORMA EXACTA. El tipo se
+   elige en el formulario Y TAMBIÉN desde la propia pizarra (botones
+   Marcador / Tiza: cambia al instante sin perder lo dibujado).
+   PARA ESCRIBIR SÍ O SÍ HAY QUE ESTAR EN PANTALLA COMPLETA (botón
+   ⛶): fuera de ella la pizarra se ve pero NO se puede escribir ni
+   borrar (el aviso se sacude si lo intentas). Dentro aparecen las
+   herramientas Escribir y Borrador, se dibuja con el mouse o el
+   dedo (canvas con trazos en coordenadas normalizadas: al entrar y
+   salir de pantalla completa los trazos se redibujan escalados, no
+   se pierden ni se deforman) y se sale con el mismo botón o Esc.
+   ANCHO Y ALTO (LARGO) EN EL DOCUMENTO: ancho (320–1200 px, defecto
+   800) y alto (240–900 px, defecto 500); la bandeja añade unos
+   30 px por debajo; en pantalla completa la pizarra se adapta a
+   TODA la pantalla (ancho y alto del documento no aplican ahí).
+   COLORES (regla del proyecto, aclarada): PREDEFINIDOS y FIJOS —
+   colorBorde #8b5e3c (marrón madera: marco y bandeja) y colorTrazo
+   #1d4ed8 (azul: el marcador o la tiza, se ve bien sobre blanco y
+   sobre verde) — NO cambian en cada montaje; el docente los ELIGE
+   con el SELECTOR DE COLOR RGB del formulario (un input de color:
+   se hace clic, se escoge y listo, sin escribir nada a mano; botón
+   «Defecto» para volver).
+   NADA de JSON: no lleva listas, es la pizarra sola.
+   Sin campos obligatorios: con los defectos ya queda lista.
+   Si ya pegaste este BLOQUE 49 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  const tipoDe = (v) =>
+    (limpia(v.tipo).toLowerCase() === "tiza" ? "tiza" : "marcador");
+  const anchoDe = (v) =>
+    Math.min(1200, Math.max(320, Math.round(num(v.ancho) || 800)));
+  const altoDe = (v) =>
+    Math.min(900, Math.max(240, Math.round(num(v.alto) || 500)));
+
+  /* ── A PRUEBA DE ERRORES: espejo del util ── */
+  function validarBoard(v) {
+    const errs = [];
+    const HEX_RGB = /^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i;
+    const malColor = (s) => limpia(s) && !HEX_RGB.test(limpia(s));
+    if (malColor(v.colorBorde)) {
+      errs.push({
+        k: "colorBorde",
+        msg: "El COLOR DEL BORDE (marco) debe ser un valor HEX o rgb() válido, ej: #8b5e3c o #334155 (o vacío = defecto #8b5e3c).",
+      });
+    }
+    if (malColor(v.colorTrazo)) {
+      errs.push({
+        k: "colorTrazo",
+        msg: "El COLOR DEL MARCADOR O LA TIZA debe ser un valor HEX o rgb() válido, ej: #1d4ed8 o #dc2626 (o vacío = defecto #1d4ed8).",
+      });
+    }
+    const ancho = num(v.ancho);
+    if (ancho != null && (ancho < 320 || ancho > 1200)) {
+      errs.push({ k: "ancho", msg: "El ANCHO de la pizarra debe ser un número entre 320 y 1200 px (defecto 800)." });
+    }
+    const alto = num(v.alto);
+    if (alto != null && (alto < 240 || alto > 900)) {
+      errs.push({ k: "alto", msg: "El ALTO (largo) de la pizarra debe ser un número entre 240 y 900 px (defecto 500)." });
+    }
+    const tipo = limpia(v.tipo).toLowerCase();
+    if (tipo && tipo !== "marcador" && tipo !== "tiza") {
+      errs.push({ k: "tipo", msg: "El TIPO debe ser «marcador» (pizarra blanca) o «tiza» (pizarra verde)." });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "board",
+    nombre: "board — Pizarra (marcador o tiza)",
+    cat: "utils",
+    archivo: "utils/board.js",
+    imports: ["board"],
+    funcion: "board",
+    descripcion:
+      "Pizarra con escritura y borrador: elige pizarra BLANCA de marcador o pizarra VERDE de tiza (cada una con su forma exacta: marco, bandeja y útiles; también se cambia desde la propia pizarra sin perder lo dibujado). Para escribir SÍ o SÍ hay que entrar en PANTALLA COMPLETA (botón ⛶): dentro aparecen Escribir y Borrador y se dibuja con el mouse o el dedo. Ancho y alto configurables en el documento; color del marco y del marcador/tiza con selector RGB (defectos fijos #8b5e3c y #1d4ed8).",
+    params: [
+      { k: "tipo", et: "Tipo de pizarra", tipo: "opcion", ops: ["marcador", "tiza"], def: "marcador" },
+      { k: "ancho", et: "Ancho de la pizarra en el documento (px, 320–1200)", tipo: "num", def: "800", ej: "800 · 1000" },
+      { k: "alto", et: "Alto (largo) de la pizarra en el documento (px, 240–900)", tipo: "num", def: "500", ej: "500 · 600" },
+      { k: "colorBorde", et: "Color del borde (marco) de la pizarra (selector RGB; opcional — defecto #8b5e3c)", tipo: "color", def: "#8b5e3c", ej: "#8b5e3c · #334155" },
+      { k: "colorTrazo", et: "Color del marcador o la tiza (selector RGB; opcional — defecto #1d4ed8)", tipo: "color", def: "#1d4ed8", ej: "#1d4ed8 · #dc2626" },
+      { k: "id", et: "id estable (opcional)", tipo: "texto" },
+    ],
+    aOpciones: (v) => ({
+      tipo: tipoDe(v),
+      ancho: anchoDe(v),
+      alto: altoDe(v),
+      colorBorde: limpia(v.colorBorde) || undefined,
+      colorTrazo: limpia(v.colorTrazo) || undefined,
+      id: v.id || undefined,
+    }),
+    aCodigo: (v) => ({
+      tipo: tipoDe(v),
+      ancho: anchoDe(v),
+      alto: altoDe(v),
+      colorBorde: limpia(v.colorBorde) || undefined,
+      colorTrazo: limpia(v.colorTrazo) || undefined,
+      id: v.id || undefined,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarBoard,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 49, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const k = REGISTRO.findIndex((r) => r.id === "board");
+  if (k >= 0) REGISTRO[k] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 49 · «board» ═══════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 50 · «simulador» — Caja de frases al azar   [utils]
+   Util: js/utils/simulador.js
+   SIMULADOR DE SORTEO: una CAJA de cartón llena de PAPELES con frases
+   o palabras. Cada fila del repetidor es UN papel: la misma frase se
+   puede escribir en VARIAS filas y así lleva MÁS PAPELES dentro, o sea
+   MÁS PROBABILIDAD de salir (peso a mano por duplicado).
+   COMPLETAMENTE ALEATORIO: el papel que sale se sortea con
+   crypto.getRandomValues (uniforme SIN sesgo de módulo: el sobrante
+   se descarta y se vuelve a sortear) — ninguna posición «pesa» más
+   que otra y todas las salidas son equiprobables.
+   CON O SIN REPETICIÓN (se elige): con repetición el papel extraído
+   VUELVE a la caja (siempre hay la misma cantidad y una frase puede
+   salir más de una vez); sin repetición el papel que sale NO vuelve,
+   se puede «Reiniciar» a medio camino y cuando la caja queda vacía el
+   botón pasa a «Volver a llenar la caja».
+   AL PULSAR «Extraer papel» la caja se SACUDE, un papel sale VOLANDO
+   de la boca y la frase cae escrita en UN PAPEL GRANDE (con su
+   doblez y su chip «Papel N de M») sobre la TARJETA del resultado;
+   la etiqueta de la caja lleva el conteo de papeles y debajo queda
+   el estado («Con repetición · N papeles · salieron K» / «Sin
+   repetición · quedan Q de N»).
+   COLORES (regla del proyecto, aclarada): TRES, PREDEFINIDOS y
+   FIJOS — colorCaja #b45309 (marrón cartón de la caja),
+   colorTarjeta #eff6ff (fondo de la tarjeta del resultado) y
+   colorPapel #fefce8 (crema: fondo de los papeles de adentro, del
+   papel que vuela, del papel grande con la frase y de la etiqueta)
+   — NO cambian en cada montaje; la LETRA se adapta sola (oscura en
+   fondos claros, clara en oscuros) para que SIEMPRE se lea. El
+   docente los ELIGE con el SELECTOR DE COLOR RGB del formulario
+   (un input de color: clic, escoges y listo, sin escribir nada a
+   mano; botón «Defecto» para volver).
+   NADA de JSON: cada frase tiene SU fila en el repetidor.
+   Obligatorio: al menos 1 frase. Opcional: repeticion (sí/no,
+   defecto sí), los tres colores e id. Es una HERRAMIENTA: no
+   califica, no guarda ni pide nada.
+   Si ya pegaste este BLOQUE 50 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* Une las filas del repetidor en la lista de textos que espera el
+     util: UNA frase por papel, CON los duplicados intactos (dos filas
+     iguales = dos papeles = más probabilidad para esa frase). */
+  function armarFrases(v) {
+    return String(v.frases == null ? "" : v.frases)
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter((s) => s !== "");
+  }
+
+  /* ¿El papel vuelve a la caja? Defecto SÍ (con repetición). */
+  const repDe = (v) =>
+    !(limpia(v.repeticion).toLowerCase() === "no");
+
+  /* ── A PRUEBA DE ERRORES: espejo del util ── */
+  function validarSimulador(v) {
+    const errs = [];
+    const HEX_RGB = /^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i;
+    const malColor = (s) => limpia(s) && !HEX_RGB.test(limpia(s));
+    if (malColor(v.colorCaja)) {
+      errs.push({
+        k: "colorCaja",
+        msg: "El COLOR DE LA CAJA debe ser un valor HEX o rgb() válido, ej: #b45309 o #64748b (o vacío = defecto #b45309).",
+      });
+    }
+    if (malColor(v.colorTarjeta)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El FONDO DE LA TARJETA debe ser un valor HEX o rgb() válido, ej: #eff6ff o #fef2f2 (o vacío = defecto #eff6ff).",
+      });
+    }
+    if (malColor(v.colorPapel)) {
+      errs.push({
+        k: "colorPapel",
+        msg: "El FONDO DE LOS PAPELES debe ser un valor HEX o rgb() válido, ej: #fefce8 o #ffffff (o vacío = defecto #fefce8).",
+      });
+    }
+    const rep = limpia(v.repeticion).toLowerCase();
+    if (rep && rep !== "si" && rep !== "sí" && rep !== "no") {
+      errs.push({ k: "repeticion", msg: "La REPETICIÓN debe ser «si» (el papel vuelve a la caja) o «no» (sin repetición)." });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "simulador",
+    nombre: "simulador — Caja de frases al azar",
+    cat: "utils",
+    archivo: "utils/simulador.js",
+    imports: ["simulador"],
+    funcion: "simulador",
+    descripcion:
+      "Caja de cartón llena de papeles con frases o palabras: al pulsar «Extraer papel» la caja se sacude, un papel sale volando y la frase aparece escrita en un papel grande sobre la tarjeta. COMPLETAMENTE ALEATORIO (crypto uniforme, sin sesgo). Con o SIN repetición (el papel vuelve a la caja o no; al vaciarse, «Volver a llenar la caja»). La misma frase en varias filas lleva MÁS papeles: más probabilidad. Tres colores PREDEFINIDOS y fijos (caja #b45309, tarjeta #eff6ff, papeles #fefce8) elegibles con el selector RGB.",
+    params: [
+      { k: "frases", et: "Papeles de la caja (frases o palabras)", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántos papeles?", def: 8, min: 1, max: 100 },
+        columnas: [
+          { clave: "frases", et: "Frase o palabra", req: true, formato: "f", ej: "La fotosíntesis" },
+        ],
+        ayuda: "Cada fila es UN papel dentro de la caja. La MISMA frase puede ir en VARIAS filas: entre más filas tenga, MÁS probabilidad tiene de salir (peso a mano). Con «Con repetición» el papel vuelve y puede volver a salir; con «Sin repetición» cada papel sale una sola vez.",
+      },
+      { k: "repeticion", et: "¿El papel vuelve a la caja después de salir?", tipo: "opcion", ops: ["si", "no"], def: "si" },
+      { k: "colorCaja", et: "Color de la caja (cartón) (selector RGB; opcional — defecto #b45309)", tipo: "color", def: "#b45309", ej: "#b45309 · #64748b" },
+      { k: "colorTarjeta", et: "Fondo de la tarjeta del resultado (selector RGB; opcional — defecto #eff6ff)", tipo: "color", def: "#eff6ff", ej: "#eff6ff · #fef2f2" },
+      { k: "colorPapel", et: "Fondo de los papeles a sacar (selector RGB; opcional — defecto #fefce8)", tipo: "color", def: "#fefce8", ej: "#fefce8 · #ffffff" },
+      { k: "id", et: "id estable (opcional)", tipo: "texto" },
+    ],
+    aOpciones: (v) => ({
+      frases: armarFrases(v),
+      repeticion: repDe(v),
+      colorCaja: limpia(v.colorCaja) || undefined,
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      colorPapel: limpia(v.colorPapel) || undefined,
+      id: v.id || undefined,
+    }),
+    aCodigo: (v) => ({
+      frases: armarFrases(v),
+      repeticion: repDe(v),
+      colorCaja: limpia(v.colorCaja) || undefined,
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      colorPapel: limpia(v.colorPapel) || undefined,
+      id: v.id || undefined,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarSimulador,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 50, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const k = REGISTRO.findIndex((r) => r.id === "simulador");
+  if (k >= 0) REGISTRO[k] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 50 · «simulador» ═══════════════════ */
