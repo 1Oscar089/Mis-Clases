@@ -258,7 +258,7 @@ async function montar(perfil, contenedor, clase) {
   // ── Lista con viñetas · mide 660×108 px ──
   crearLista({
     items: [
-      "**C**: Concentracion de gas disuelto en el iliquido (mol/L)",
+      "**C**: Concentracion de gas disuelto en el liquido (mol/L)",
       "**k**: Constante de proporcionalidad que depende de la naturaleza del gas",
       "**P**: Presion del gas parcial sobre la solucion"
     ],
@@ -310,7 +310,7 @@ async function montar(perfil, contenedor, clase) {
         descripcion: "Disuelven a otras sustancias no polares"
       }
     ],
-    contenedor: pon(l3, 30, 0, 750, 234)
+    contenedor: pon(l3, 40, 0, 740, 275)
   });
 
   // ── Documento final: CORRIDO con 1 sección; con 2 o más, una a la vez ──
