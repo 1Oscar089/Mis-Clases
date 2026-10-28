@@ -7196,3 +7196,360 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═══════════════════ fin BLOQUE 43 · «timer» ═══════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 44 · «traductorEnEs» — Traductor inglés → español   [utils]
+   Util: js/utils/ingles/traductorEnEs.js
+   Tarjeta de TRADUCCIÓN AUTOMÁTICA para las clases de inglés (y de
+   español): el estudiante escribe o pega un texto (hasta 5000
+   caracteres) y presiona «Traducir» (o Ctrl+Enter). La tarjeta
+   llama en CADENA a servicios de traducción GRATUITOS de internet
+   — Google Translate, Bing Microsoft Translator, MyMemory y Lingva,
+   sin llaves ni cuentas — y el primero que responde gana: si uno
+   falla, el siguiente intenta; si TODOS fallan, avisa con un
+   mensaje claro y queda lista para reintentar (nada se rompe).
+   El resultado se muestra con la nota del servicio que respondió
+   («Traducido con Google Translate»…) y botón COPIAR al
+   portapapeles. Los textos largos se parten por oraciones/palabras
+   y se unen completos (cada servicio tiene su propio tiempo límite,
+   uno lento no congela el botón). Dirección configurable con
+   «direccion»: «en-es» (defecto) o «es-en».
+   Es una HERRAMIENTA de apoyo: no califica ni guarda nada (en un
+   examen funciona como diccionario; no participa del puntaje).
+   REGLA DEL PROYECTO: colorTarjeta opcional en HEX/rgb con defecto
+   #2563eb (azul traductor); todos los utils/visuales lo aceptan.
+   Obligatorio: nada (todo tiene defecto). Opcional: titulo,
+   indicacion, direccion y colorTarjeta (se valida el formato).
+   Si ya pegaste este BLOQUE 44 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplicada).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* ── A PRUEBA DE ERRORES: espejo del util ── */
+  function validarTraductor(v) {
+    const errs = [];
+    const color = limpia(v.colorTarjeta);
+    if (color && !/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i.test(color)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El COLOR de la tarjeta debe ser un valor HEX o rgb() válido, ej: #2563eb o #0ea5e9.",
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "traductorEnEs",
+    nombre: "traductorEnEs — Traductor inglés → español",
+    cat: "utils",
+    archivo: "utils/ingles/traductorEnEs.js",
+    imports: ["traductorEnEs"],
+    funcion: "traductorEnEs",
+    descripcion:
+      "Tarjeta de TRADUCCIÓN AUTOMÁTICA (inglés ↔ español) con servicios gratuitos de internet en CADENA — Google Translate, Bing Microsoft Translator, MyMemory y Lingva, sin llaves: el primero que responde gana y se anota («Traducido con Google Translate»); si todos fallan, avisa y permite reintentar. Hasta 5000 caracteres con contador, textos largos troceados por oraciones y botón COPIAR. Herramienta de apoyo: no califica ni guarda nada. Dirección «en-es» (defecto) o «es-en». Color configurable (colorTarjeta, defecto #2563eb).",
+    params: [
+      { k: "titulo", et: "Título de la tarjeta", tipo: "texto", def: "Traductor inglés → español" },
+      { k: "indicacion", et: "Indicación del docente (franja de color; opcional)", tipo: "area", ej: "Traduce el párrafo de la lectura antes de la próxima clase." },
+      { k: "direccion", et: "Dirección de la traducción", tipo: "opcion", ops: ["en-es", "es-en"], def: "en-es" },
+      { k: "colorTarjeta", et: "Color de la tarjeta en HEX o rgb() (opcional; defecto #2563eb)", tipo: "texto", def: "#2563eb", ej: "#2563eb · #7c3aed" },
+    ],
+    aOpciones: (v) => ({
+      titulo: limpia(v.titulo) || "Traductor inglés → español",
+      indicacion: limpia(v.indicacion),
+      direccion: limpia(v.direccion) === "es-en" ? "es-en" : "en-es",
+      colorTarjeta: limpia(v.colorTarjeta) || "#2563eb",
+    }),
+    aCodigo: (v) => ({
+      titulo: limpia(v.titulo) || "Traductor inglés → español",
+      indicacion: limpia(v.indicacion),
+      direccion: limpia(v.direccion) === "es-en" ? "es-en" : "en-es",
+      colorTarjeta: limpia(v.colorTarjeta) || "#2563eb",
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarTraductor,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 44, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const k = REGISTRO.findIndex((r) => r.id === "traductorEnEs");
+  if (k >= 0) REGISTRO[k] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 44 · «traductorEnEs» ═══════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 45 · «cuadriculaVocabulario» — Cuadrícula de vocabulario  [utils]
+   Visual: js/utils/cuadriculaVocabulario.js
+   CUADRÍCULA de vocabulario que respeta EXACTAMENTE la cantidad de
+   columnas elegida (1 a 5). Título principal decorado con el color
+   temático y contador de tarjetas. Cada palabra es UNA tarjeta con
+   término principal OBLIGATORIO y, OPCIONALES, imagen, traducción y
+   descripción. Dos diseños según las columnas: con 1–2 las tarjetas
+   son ANCHAS (imagen cuadrada a la izquierda; término y traducción en
+   la MISMA línea separados por una flecha del color; descripción
+   debajo); con 3–5 son COMPACTAS apiladas en vertical (imagen arriba,
+   término, traducción y descripción al fondo). Las imágenes aceptan
+   link/URL, PNG/JPG/WebP o data:base64 y CÓDIGO SVG pegado tal cual;
+   SIEMPRE se escalan de forma CUADRADA adaptándose a la cuadrícula y,
+   si fallan, muestran la inicial del término. El texto admite el
+   formato del proyecto (**negrita**, *cursiva*, $fórmulas$…).
+   REGLA DEL PROYECTO (aclarada): el color por defecto es
+   PREDEFINIDO y FIJO (#7c3aed violeta para este visual) — NO cambia
+   en cada montaje; el docente lo ELIGE con el SELECTOR DE COLOR RGB
+   del formulario (un input de color: se hace clic, se escoge y
+   listo, sin escribir nada a mano; botón «Defecto» para volver).
+   Es un VISUAL: no califica, no guarda ni pide nada.
+   Obligatorio: al menos 1 palabra (el término). Opcional: título,
+   columnas (1–5), colorTarjeta y por palabra: imagen, traducción y
+   descripción. NADA de JSON: cada dato tiene SU campo para escribir.
+   Si ya pegaste este BLOQUE 45 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* Une las 4 columnas del repetidor en la lista de palabras que
+     espera el visual: [{ termino, imagen, traduccion, descripcion }].
+     OJO: se conservan las líneas VACÍAS de cada columna — si una
+     palabra no lleva imagen/traducción/descripción, los datos de las
+     filas siguientes NO se corren de sitio (lineas() las filtraría
+     y desalinearía las tarjetas). */
+  function armarPalabras(v) {
+    const sueltas = (s) =>
+      String(s == null ? "" : s).split(/\r?\n/).map((x) => x.trim());
+    const terminos = sueltas(v.palabras);
+    const imagenes = sueltas(v.imagenes);
+    const traducciones = sueltas(v.traducciones);
+    const descripciones = sueltas(v.descripciones);
+    return terminos
+      .map((t, i) => ({
+        termino: t,
+        imagen: imagenes[i] || "",
+        traduccion: traducciones[i] || "",
+        descripcion: descripciones[i] || "",
+      }))
+      .filter((p) => p.termino);   // las filas sin término no son tarjetas
+  }
+
+  const columnasDe = (v) =>
+    Math.min(5, Math.max(1, Math.round(num(v.columnas) || 3)));
+
+  /* ── A PRUEBA DE ERRORES: espejo del visual ── */
+  function validarCuadricula(v) {
+    const errs = [];
+    const color = limpia(v.colorTarjeta);
+    if (color && !/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i.test(color)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El COLOR debe ser un valor HEX o rgb() válido, ej: #7c3aed o #0ea5e9 (o vacío = defecto #7c3aed).",
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "cuadriculaVocabulario",
+    nombre: "cuadriculaVocabulario — Cuadrícula de vocabulario",
+    cat: "utils",
+    archivo: "utils/cuadriculaVocabulario.js",
+    imports: ["cuadriculaVocabulario"],
+    funcion: "cuadriculaVocabulario",
+    descripcion:
+      "Cuadrícula de vocabulario de 1 a 5 columnas EXACTAS con título decorado y contador. Cada palabra es una tarjeta: término (obligatorio) + imagen, traducción y descripción opcionales. Con 1–2 columnas la tarjeta es ancha (término → traducción en la misma línea); con 3–5 es compacta (todo apilado). Imágenes por URL, PNG o SVG, siempre cuadradas. Texto con formato. Color PREDEFINIDO #7c3aed si no se elige otro (elegible con el selector RGB).",
+    params: [
+      { k: "titulo", et: "Título principal", tipo: "texto", def: "Vocabulario", ej: "Animales de la granja · Rutina diaria" },
+      { k: "columnas", et: "Columnas de la cuadrícula (1–5)", tipo: "opcion", ops: ["1", "2", "3", "4", "5"], def: "3" },
+      { k: "colorTarjeta", et: "Color temático (selector RGB; opcional — defecto #7c3aed)", tipo: "color", def: "#7c3aed", ej: "#7c3aed · #0ea5e9" },
+      { k: "palabras", et: "Palabras de la cuadrícula", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas palabras?", def: 6, min: 1, max: 40 },
+        columnas: [
+          { clave: "palabras", et: "Término principal", req: true, formato: "f", ej: "dog" },
+          { clave: "imagenes", et: "Imagen (URL · PNG · data: · SVG)", ej: "https://…/perro.png" },
+          { clave: "traducciones", et: "Traducción (opcional)", formato: "f", ej: "perro" },
+          { clave: "descripciones", et: "Descripción (opcional)", formato: true, ej: "El mejor amigo del hogar" },
+        ],
+        ayuda: "Cada fila es UNA tarjeta: el término es obligatorio; imagen, traducción y descripción son opcionales. Con 1–2 columnas: término → traducción en la misma línea; con 3–5: todo apilado. La imagen puede ser un link, PNG o código SVG pegado tal cual (se ve cuadrada).",
+      },
+      { k: "id", et: "id estable (opcional)", tipo: "texto" },
+    ],
+    aOpciones: (v) => ({
+      titulo: limpia(v.titulo) || "Vocabulario",
+      columnas: columnasDe(v),
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      palabras: armarPalabras(v),
+      id: v.id || undefined,
+    }),
+    aCodigo: (v) => ({
+      titulo: limpia(v.titulo) || "Vocabulario",
+      columnas: columnasDe(v),
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      palabras: armarPalabras(v),
+      id: v.id || undefined,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del visual ── */
+    validar: validarCuadricula,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 45, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const k = REGISTRO.findIndex((r) => r.id === "cuadriculaVocabulario");
+  if (k >= 0) REGISTRO[k] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════ fin BLOQUE 45 · «cuadriculaVocabulario» ═══════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 46 · «constructorOraciones» — Construye la oración  [utils]
+   Util: js/utils/constructorOraciones.js
+   Juego de armar oraciones: cada oración llega con sus BLOQUES
+   separados por un símbolo (defecto «/», p. ej. «El perro / corre /
+   en el parque»). La página parte cada oración por el símbolo,
+   MEZCLA los bloques y los muestra numerados: banco desordenado
+   (izquierda/abajo) y área «Tu oración» vacía (derecha/arriba) donde
+   el estudiante ARRASTRA y SUELTA los bloques (o los toca) para
+   recomponerla. Botón EVALUAR: al 1.er intento cada oración correcta
+   gana su parte COMPLETA (el puntaje TOTAL se reparte entre las
+   oraciones) y queda FIJA (verde); las incorrectas se RESALTAN y hay
+   un SEGUNDO y ÚLTIMO intento SOLO para corregir esas; al 2.º las
+   corregidas valen EXACTAMENTE LA MITAD; después el juego TERMINA,
+   las piezas se BLOQUEAN, las falladas muestran la solución y
+   aparece el MENSAJE con la NOTA FINAL del bloque.
+   LÓGICA DE TIPOS (la de siempre): clase → el juego de 2 intentos ·
+   tarea → 2 envíos neutros, el 2.º cuenta (a la mitad, como
+   ordenar.js) · examen → SIN botón propio, el examen califica con
+   .enviar() a valor completo y lo ya enviado aparece BLOQUEADO ·
+   docente → intentos libres, nada se guarda.
+   REGLA DEL PROYECTO (aclarada): el color por defecto es PREDEFINIDO
+   y FIJO (#0f766e verde azulado) — NO cambia en cada montaje; el
+   docente lo ELIGE con el SELECTOR DE COLOR RGB del formulario (un
+   input de color: se hace clic, se escoge y listo, sin escribir nada
+   a mano; botón «Defecto» para volver).
+   NADA de JSON: cada oración tiene SU fila en el repetidor.
+   Obligatorio: indicación + al menos 1 oración con 2+ bloques.
+   Si una oración no trae el símbolo, se parte por palabras.
+   Si ya pegaste este BLOQUE 46 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* Une las filas del repetidor en la lista de oraciones que espera el
+     util: ["El perro / corre / en el parque", …] — UNA oración por fila. */
+  function armarOraciones(v) {
+    return String(v.oraciones == null ? "" : v.oraciones)
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  const separadorDe = (v) => limpia(v.separador) || "/";
+
+  /* Parte una oración IGUAL que lo hace el util (espejo): con el
+     símbolo separador; si la oración no lo trae, por palabras. */
+  function partirComoElUtil(texto, separador) {
+    const sep = String(separador || "/").trim() || "/";
+    const escapado = sep.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    let partes = String(texto ?? "")
+      .split(new RegExp(escapado))
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (partes.length < 2) {
+      partes = String(texto ?? "").split(/\s+/).map((s) => s.trim()).filter(Boolean);
+    }
+    return partes;
+  }
+
+  /* ── A PRUEBA DE ERRORES: espejo del util ── */
+  function validarConstructor(v) {
+    const errs = [];
+    errs.push(...obligatorioTexto(v, "indicacion", "Indicación", "Arrastra los bloques y arma cada oración"));
+    const color = limpia(v.colorTarjeta);
+    if (color && !/^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i.test(color)) {
+      errs.push({
+        k: "colorTarjeta",
+        msg: "El COLOR debe ser un valor HEX o rgb() válido, ej: #0f766e o #0ea5e9 (o vacío = defecto #0f766e).",
+      });
+    }
+    const sep = separadorDe(v);
+    if (sep.length > 6) {
+      errs.push({ k: "separador", msg: "El SÍMBOLO separador debe ser corto (máximo 6 caracteres), ej: / · | · #" });
+    }
+    const malas = armarOraciones(v)
+      .map((o, i) => ({ i, n: partirComoElUtil(o, sep).length }))
+      .filter((o) => o.n < 2);
+    if (malas.length) {
+      const nums = malas.map((o) => "#" + (o.i + 1)).join(", ");
+      errs.push({
+        k: "oraciones",
+        msg: `La(s) oración(es) ${nums} necesitan AL MENOS 2 bloques: sepáralos con «${sep}» (o escríbela con varias palabras).`,
+      });
+    }
+    const punt = num(v.puntaje);
+    if (punt != null && (punt < 0 || punt > 10)) {
+      errs.push({ k: "puntaje", msg: "El PUNTAJE debe ser un número entre 0 y 10 (se reparte entre las oraciones)." });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "constructorOraciones",
+    nombre: "constructorOraciones — Construye la oración",
+    cat: "utils",
+    archivo: "utils/constructorOraciones.js",
+    imports: ["constructorOraciones"],
+    funcion: "constructorOraciones",
+    descripcion:
+      "Juego de armar oraciones: bloques desordenados que se arrastran al área «Tu oración». Evaluar: 1.er intento a valor completo (correctas fijas en verde), 2.º y último intento SOLO para las incorrectas (valen la mitad); al final se bloquea todo y se muestra la NOTA FINAL. Lógica de clase/tarea/examen. Color PREDEFINIDO #0f766e si no se elige otro (elegible con el selector RGB).",
+    params: [
+      { k: "indicacion", et: "Indicación", tipo: "area", req: true, formato: "f", ej: "Arrastra los bloques y arma cada oración." },
+      { k: "oraciones", et: "Oraciones", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas oraciones?", def: 4, min: 1, max: 20 },
+        columnas: [
+          { clave: "oraciones", et: "Oración (bloques separados por /)", req: true, formato: "f", ej: "El perro / corre / en el parque" },
+        ],
+        ayuda: "Cada fila es UNA oración. Escribe sus bloques separados por el símbolo (defecto «/») en su ORDEN CORRECTO: la página los muestra mezclados y el estudiante los recompone arrastrando. Una oración sin el símbolo se parte por palabras.",
+      },
+      { k: "separador", et: "Símbolo separador de bloques", tipo: "texto", def: "/", ej: "/ · | · #" },
+      { k: "colorTarjeta", et: "Color temático (selector RGB; opcional — defecto #0f766e)", tipo: "color", def: "#0f766e", ej: "#0f766e · #0ea5e9" },
+      { k: "puntaje", et: "Puntaje TOTAL del bloque (0–10) — se reparte entre las oraciones", tipo: "num", def: 1 },
+      { k: "mostrarCorrectas", et: "Revelar solución al enviar (solo examen)", tipo: "sino" },
+      paramColumnas(),
+      { k: "id", et: "id estable (opcional)", tipo: "texto" },
+    ],
+    aOpciones: (v, ctx) => ({
+      indicacion: v.indicacion || "",
+      oraciones: armarOraciones(v),
+      separador: separadorDe(v),
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      puntaje: num(v.puntaje) ?? 1,
+      mostrarCorrectas: bool(v.mostrarCorrectas) || undefined,
+      columnas: num(v.columnas),
+      id: v.id || undefined,
+      tipo: ctx.tipo,
+      perfil: ctx.perfil,
+      clase: ctx.clase,
+    }),
+    aCodigo: (v, ctx) => ({
+      indicacion: v.indicacion || "",
+      oraciones: armarOraciones(v),
+      separador: separadorDe(v),
+      colorTarjeta: limpia(v.colorTarjeta) || undefined,
+      puntaje: num(v.puntaje) ?? 1,
+      mostrarCorrectas: bool(v.mostrarCorrectas) || undefined,
+      columnas: num(v.columnas),
+      id: v.id || undefined,
+      tipo: ctx.tipo,
+      perfil: PERFIL_RAW,
+      clase: CLASE_RAW,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarConstructor,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 46, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const k = REGISTRO.findIndex((r) => r.id === "constructorOraciones");
+  if (k >= 0) REGISTRO[k] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════ fin BLOQUE 46 · «constructorOraciones» ═══════════ */
