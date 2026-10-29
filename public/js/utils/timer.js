@@ -1,5 +1,15 @@
 // ============================================================
 // timer.js — TEMPORIZADOR DEL EXAMEN (js/utils/timer.js)
+// v1.1 (REPARA «les envía el examen solo»):
+//   · La fecha límite recordada en localStorage (mco_timer_*) ya NO
+//     envía sola al reabrir un examen cuyo plazo venció estando
+//     CERRADO: si la nota NO está enviada (no hubo envío ni salida
+//     forzada), se considera intento NUEVO y el reloj arranca
+//     fresco. El envío automático solo ocurre con el examen ABIERTO
+//     y el tiempo corriendo (o si la nota ya quedó enviada).
+//   · agotar() limpiaba clearInterval(temporizador._intervalo), una
+//     variable que NUNCA existía: el intervalo seguía corriendo
+//     tras enviar. Ahora limpia el intervalo propio del cierre.
 // v1: cuenta regresiva ENLAZADA con botonEnviar.js: el docente pasa
 // el tiempo que tienen los estudiantes para el examen y, cuando llega
 // a 0, el examen SE ENVÍA SOLO (el mismo flujo del botón Enviar, sin
@@ -433,6 +443,16 @@ export function temporizador(config = {}) {
         const guardado = Number(localStorage.getItem(clave));
         if (Number.isFinite(guardado) && guardado > 0) limite = guardado;
       } catch (e) { /* nada */ }
+      // v1.1 — FECHA VENCIDA sin envío real NO envía sola: si la nota
+      // no está enviada (ya se comprobó arriba: nota.enviado →
+      // mostrarYaEnviado), el plazo venció con la pestaña CERRADA y el
+      // estudiante nunca llegó a enviar (ni hubo salida forzada: esa
+      // marca pone nota.enviado = true y ya habría caído arriba).
+      // Se descarta la fecha vieja: intento FRESCO (nuevo plazo).
+      if (limite && limite <= Date.now()) {
+        limite = 0;
+        try { localStorage.removeItem(clave); } catch (e) { /* nada */ }
+      }
       if (!limite) {
         limite = Date.now() + segundos * 1000;
         try { localStorage.setItem(clave, String(limite)); } catch (e) { /* nada */ }
@@ -443,8 +463,11 @@ export function temporizador(config = {}) {
       const agotar = async () => {
         if (enviado) return;
         enviado = true;
-        clearInterval(temporizador._intervalo);
-        temporizador._intervalo = null;
+        // v1.1 — antes: clearInterval(temporizador._intervalo) (una
+        // variable que NUNCA se asignaba): el intervalo seguía vivo
+        // tras enviar. Ahora se limpia el intervalo PROPIO del reloj.
+        clearInterval(intervalo);
+        intervalo = null;
         relojEl.textContent = "0:00";
         barraEl.style.width = "0%";
         caja.classList.remove("tm-aviso", "tm-critico");

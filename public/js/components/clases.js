@@ -1,6 +1,20 @@
 // ============================================================
 // clases.js — VISTA de piezas: Clases · Exámenes · Tareas ·
-//             Recursos (js/components/clases.js) · v7.2
+//             Recursos (js/components/clases.js) · v7.3
+//
+// NUEVO EN v7.3 (REPARA «saca los estudiantes» / «les envía el
+// examen solo»):
+//   · El VIGÍA ya NO expulsa al estudiante cuando el bloqueo que
+//     llega es el AUTOMÁTICO de SU PROPIO envío: se detecta con la
+//     nota local (mco_nota_*) o con el registro compartido del
+//     examen (window.__mcoEnvioExamen.claseId + enviado/enviando,
+//     lo escribe finalizarExamen de opcionMultiple.js v6.2). El
+//     estudiante se queda dentro viendo «Examen enviado»; el
+//     bloqueo del DOCENTE sigue expulsando al toque.
+//   · El candado (abrirBloqueo) NO guarda nada mientras la lista de
+//     estudiantes no haya cargado: antes, guardar con la lista sin
+//     cargar borraba bloqueadas:{} y limpiaba candados y bloqueos
+//     automáticos.
 //
 // NUEVO EN v7.2 (BLOQUEO AUTOMÁTICO POR ENVÍO de exámenes):
 //   · Cuando el estudiante ENVÍA su examen (botón, timer o el envío
@@ -1490,6 +1504,15 @@ function abrirBloqueo(c) {
   d.querySelector("#bl-buscar").addEventListener("input", pintarLista);
   d.querySelector("#bl-cancelar").addEventListener("click", () => d.hide());
 
+  // v7.3 — Guardar INHABILITADO mientras la lista de estudiantes no
+  // haya cargado: si se guardaba con la lista vacía (sin cargar o con
+  // error), el cálculo «nadie seleccionado» escribía bloqueada:false
+  // + bloqueadas:{} y BORRABA todos los candados y los bloqueos
+  // automáticos de los que ya enviaron.
+  const btnGuardar = d.querySelector("#bl-guardar");
+  btnGuardar.disabled = true;
+  btnGuardar.loading = true;
+
   // Guardar: TODOS → boolean global · parte → mapa · nadie → abierta
   d.querySelector("#bl-guardar").addEventListener("click", async () => {
     const guardar = d.querySelector("#bl-guardar");
@@ -1572,8 +1595,14 @@ function abrirBloqueo(c) {
 
       d.querySelector("#bl-cargando").hidden = true;
       pintarLista();
+      // v7.3 — con la lista lista (éxito) YA se puede guardar
+      const g = d.querySelector("#bl-guardar");
+      g.disabled = false;
+      g.loading = false;
     } catch (e) {
       d.querySelector("#bl-cargando").hidden = true;
+      // v7.3 — en error Guardar SIGUE inhabilitado (Reintentar vuelve
+      // a cargar; sin lista real no se puede guardar sin borrar)
       const zona = d.querySelector("#bl-lista");
       zona.hidden = false;
       zona.innerHTML = `
@@ -1737,14 +1766,28 @@ function piezaCerradaRemota(materiaId, id, motivo, datos) {
   // ¿Sigue DENTRO? (la raíz de la pieza sigue conectada al DOM)
   if (!p || !p.raiz || !p.raiz.isConnected) return;
   if (p.clase.materiaId !== materiaId || p.clase.id !== id) return;
-  // NUEVO v7.2 — BLOQUEO POR ENVÍO PROPIO: si el bloqueo que acaba de
-  // llegar es el AUTOMÁTICO de SU envío (la nota local ya dice
-  // enviado: finalizarExamen guardó la nota ANTES de escribir el
-  // bloqueo), NO se expulsa: la página del examen ya está en estado
-  // «Examen enviado» (todo bloqueado) y lo natural es que termine de
-  // ver su nota y salga él mismo. El bloqueo del DOCENTE (sin envío
+  // NUEVO v7.3 — BLOQUEO POR ENVÍO PROPIO (reparado): si el bloqueo
+  // que acaba de llegar es el AUTOMÁTICO de SU envío, NO se expulsa.
+  // Se detecta por DOS vías (cualquiera basta):
+  //   1) la nota local ya dice enviado (finalizarExamen la guarda
+  //      ANTES de escribir el bloqueo), o
+  //   2) el registro compartido del examen (window.__mcoEnvioExamen)
+  //      marca este MISMO examen como enviado/enviando — cubre el
+  //      caso en que localStorage falló o la nota local aún no se
+  //      vio (por eso antes se «sacaba» a estudiantes al enviar).
+  // La página del examen ya está en estado «Examen enviado»: termina
+  // de ver su nota y sale él mismo. El bloqueo del DOCENTE (sin envío
   // propio) sigue expulsando al toque como siempre.
-  if (motivo === "bloqueada" && notaLocalEnviada(id)) return;
+  if (motivo === "bloqueada") {
+    let propio = notaLocalEnviada(id);
+    if (!propio) {
+      try {
+        const reg = window.__mcoEnvioExamen;
+        propio = !!(reg && reg.claseId === id && (reg.enviado === true || reg.enviando === true));
+      } catch (e) { /* sin registro: queda la nota local */ }
+    }
+    if (propio) return;
+  }
   cerrarPorDocente(p.clase, motivo);
 }
 
@@ -2468,3 +2511,4 @@ async function abrirMiPuntaje(clase) {
       </div>`;
   }
 }
+
