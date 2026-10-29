@@ -8113,3 +8113,179 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═══════════════════ fin BLOQUE 50 · «simulador» ═══════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLOQUE 51 · «clasificar» — Tabla de clasificación   [utils]
+   Util: js/utils/clasificar.js
+   ACTIVIDAD DE CLASIFICACIÓN: el docente da las CATEGORÍAS y, para
+   cada una, las PALABRAS o IMÁGENES que van dentro; el js hace el
+   trabajo: arma una TABLA (una columna con su casilla por categoría)
+   y un BANCO con TODAS las tarjetas MEZCLADAS (azar persistente
+   anti-copia de aleatorio.js). El estudiante ARRASTRA cada tarjeta
+   (ratón o dedo) hasta la casilla de su categoría — o la TOCA y
+   luego TOCA la casilla — y al final pulsa Evaluar.
+   PALABRAS E IMÁGENES: cada elemento es texto y el util decide solo:
+   "img:foto.png" o un nombre con extensión → recursos/img/, enlaces
+   http/https, /, ./, ../, data:image y blob: tal cual, código
+   <svg>…</svg> en línea como imagen SEGURA (nunca ejecuta scripts) y
+   cualquier otra cosa es tarjeta de PALABRA. Los elementos se
+   separan por COMA y el corte respeta el SVG (las comas dentro de
+   <svg>…</svg> no parten). La misma palabra en dos categorías son
+   dos tarjetas distintas, cada una con SU casilla correcta.
+   PUNTAJE POR CANTIDAD: el puntaje TOTAL (0–10) se reparte en partes
+   IGUALES entre TODAS las tarjetas (palabras o imágenes cuentan
+   igual). LÓGICA DE TIPOS (la de siempre): clase → 2 intentos (1.º
+   completo y fijo en verde; 2.º y último SOLO corrige las rojas a la
+   MITAD; al final se bloquea, se muestra la solución y la NOTA
+   FINAL) · tarea → 2 envíos neutros, el 2.º cuenta (a la mitad,
+   como ordenar.js), nunca revela · examen → SIN botón propio, el
+   examen califica con .enviar() a valor completo, guarda SIEMPRE (0
+   incluido), lo ya enviado aparece BLOQUEADO y el botón final del
+   examen califica lo no enviado con el REGISTRO GLOBAL
+   (window.__mcoEnvioExamen) · docente → intentos libres, head local
+   y CERO guardado (las malas vuelven al banco).
+   COLOR DE LA SECCIÓN (regla del proyecto, aclarada): PREDEFINIDO y
+   FIJO #4f46e5 (índigo) si no se elige otro — NO cambia en cada
+   montaje; el docente lo ELIGE con el SELECTOR DE COLOR RGB del
+   formulario (un input de color: clic, escoges y listo, sin
+   escribir nada a mano; botón «Defecto» para volver).
+   NADA de JSON: cada categoría tiene SU fila en el repetidor
+   (nombre | elementos separados por coma).
+   Obligatorio: 2 o más categorías (2–8), cada una con al menos 1
+   elemento. Opcional: puntaje (defecto 1), colorSección e id. Si
+   dos filas repiten el nombre de categoría (aunque cambien
+   mayúsculas o tildes) no se guarda: se avisa citando las filas.
+   Si ya pegaste este BLOQUE 51 antes, este lo REEMPLAZA solo (mismo
+   id: la entrada del REGISTRO se actualiza, no se duplica).
+   ══════════════════════════════════════════════════════════════════════ */
+(() => {
+  const limpia = (s) => String(s == null ? "" : s).trim();
+
+  /* Parte los elementos IGUAL que lo hace el util (espejo): por coma
+     SIN romper el código SVG (las comas dentro de <svg>…</svg> no
+     parten el elemento). */
+  function partirComoElUtil(texto) {
+    const svgs = [];
+    const protegido = String(texto ?? "").replace(/<svg[\s\S]*?<\/svg\s*>/gi, (m) => {
+      svgs.push(m.trim());
+      return "\u0001svg" + (svgs.length - 1) + "\u0001";
+    });
+    return protegido
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p !== "")
+      .map((p) => p.replace(/\u0001svg(\d+)\u0001/g, (_, i) => svgs[Number(i)] ?? ""));
+  }
+
+  /* Une las filas del repetidor en la lista de categorías que espera
+     el util: [{ nombre, elementos: ["Perro", …] }, …] — UNA categoría
+     por fila; sus elementos viajan en la MISMA línea tras el «|»,
+     separados por coma (sin JSON). */
+  function armarCategorias(v) {
+    const fuera = [];
+    for (const linea of String(v.categorias == null ? "" : v.categorias).split(/\r?\n/)) {
+      if (!linea.trim()) continue;
+      const corte = linea.indexOf("|");
+      const nombre = (corte >= 0 ? linea.slice(0, corte) : linea).trim();
+      const elementos = corte >= 0 ? partirComoElUtil(linea.slice(corte + 1)) : [];
+      if (nombre && elementos.length) fuera.push({ nombre, elementos });
+    }
+    return fuera;
+  }
+
+  /* ── A PRUEBA DE ERRORES: espejo del util ── */
+  function validarClasificar(v) {
+    const errs = [];
+    const HEX_RGB = /^(#([0-9a-f]{3}|[0-9a-f]{6})|rgba?\(\s*\d{1,3}\s*[, ]\s*\d{1,3}\s*[, ]\s*\d{1,3})/i;
+    const color = limpia(v.colorSeccion);
+    if (color && !HEX_RGB.test(color)) {
+      errs.push({
+        k: "colorSeccion",
+        msg: "El COLOR DE LA SECCIÓN debe ser un valor HEX o rgb() válido, ej: #4f46e5 o #0ea5e9 (o vacío = defecto #4f46e5).",
+      });
+    }
+    const punt = num(v.puntaje);
+    if (punt != null && (punt < 0 || punt > 10)) {
+      errs.push({ k: "puntaje", msg: "El PUNTAJE debe ser un número entre 0 y 10 (se reparte entre las tarjetas)." });
+    }
+    const cats = armarCategorias(v);
+    if (cats.length && cats.length < 2) {
+      errs.push({
+        k: "categorias",
+        msg: "Se necesitan AL MENOS 2 categorías: la actividad clasifica ENTRE categorías (usa el «+» del contador).",
+      });
+    }
+    const vistas = new Map();
+    cats.forEach((c, i) => {
+      const clave = c.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (vistas.has(clave)) {
+        errs.push({
+          k: "categorias",
+          msg: `Las filas ${vistas.get(clave) + 1} y ${i + 1} repiten la categoría «${c.nombre}»: cada categoría va UNA sola vez (más elementos en su misma fila, separados por coma).`,
+        });
+      } else vistas.set(clave, i);
+    });
+    const total = cats.reduce((s, c) => s + c.elementos.length, 0);
+    if (total > 100) {
+      errs.push({
+        k: "categorias",
+        msg: `Demasiadas tarjetas (${total}): el máximo es 100 en total (suma las palabras e imágenes de todas las categorías).`,
+      });
+    }
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "clasificar",
+    nombre: "clasificar — Tabla de clasificación",
+    cat: "utils",
+    archivo: "utils/clasificar.js",
+    imports: ["clasificar"],
+    funcion: "clasificar",
+    descripcion:
+      "Actividad de CLASIFICAR: tabla con una casilla por categoría y un banco con TODAS las tarjetas mezcladas; el estudiante arrastra cada una (o la toca y luego toca la casilla) a su categoría correcta. Las tarjetas son palabras o IMÁGENES (enlace http/https, img:archivo.png, nombre con extensión → recursos/img/, data: o código <svg> en línea seguro); el js las mezcla y decide solo. Puntaje TOTAL (0–10) repartido en partes iguales entre todas las tarjetas; 2 intentos en clase (el 2.º corrige las rojas a la mitad), 2 envíos en tarea y envío único en examen. Color de la sección PREDEFINIDO #4f46e5 si no se elige otro (elegible con el selector RGB).",
+    params: [
+      { k: "categorias", et: "Categorías y sus tarjetas", tipo: "repetidor", req: true,
+        cuantas: { et: "¿Cuántas categorías?", def: 3, min: 2, max: 8 },
+        columnas: [
+          { clave: "categorias", et: "Categoría", req: true, ej: "Animales" },
+          { clave: "categorias", et: "Palabras o imágenes (separadas por coma)", req: true, resto: true, ej: "Perro, Gato, img:vaca.png, https://…/pez.png" },
+        ],
+        ayuda: "Cada fila es UNA categoría: su nombre y, separadas por COMA, las palabras o imágenes que van dentro. Un enlace http/https, «img:archivo.png», un nombre con extensión de imagen, data: o código <svg> se convierte en tarjeta de IMAGEN; cualquier otra cosa es tarjeta de PALABRA. Si una palabra va en dos categorías, escríbela en ambas: serán dos tarjetas distintas.",
+      },
+      { k: "puntaje", et: "Puntaje TOTAL del bloque (0–10) — se reparte entre las tarjetas", tipo: "num", def: 1 },
+      { k: "colorSeccion", et: "Color de la sección (selector RGB; opcional — defecto #4f46e5)", tipo: "color", def: "#4f46e5", ej: "#4f46e5 · #0ea5e9" },
+      paramColumnas(),
+      { k: "id", et: "id estable (opcional)", tipo: "texto" },
+    ],
+    aOpciones: (v, ctx) => ({
+      categorias: armarCategorias(v),
+      puntaje: num(v.puntaje) ?? 1,
+      colorSeccion: limpia(v.colorSeccion) || undefined,
+      columnas: num(v.columnas),
+      id: v.id || undefined,
+      tipo: ctx.tipo,
+      perfil: ctx.perfil,
+      clase: ctx.clase,
+    }),
+    aCodigo: (v, ctx) => ({
+      categorias: armarCategorias(v),
+      puntaje: num(v.puntaje) ?? 1,
+      colorSeccion: limpia(v.colorSeccion) || undefined,
+      columnas: num(v.columnas),
+      id: v.id || undefined,
+      tipo: ctx.tipo,
+      perfil: PERFIL_RAW,
+      clase: CLASE_RAW,
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del util ── */
+    validar: validarClasificar,
+  };
+  /* Reemplaza o agrega: si ya está pegado este BLOQUE 51, esta versión
+     ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const k = REGISTRO.findIndex((r) => r.id === "clasificar");
+  if (k >= 0) REGISTRO[k] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════════ fin BLOQUE 51 · «clasificar» ═══════════════════ */
