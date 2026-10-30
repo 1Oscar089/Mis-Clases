@@ -1,6 +1,8 @@
 // ============================================================
 // clasificar.js — CLASIFICAR: tabla de categorías con arrastre
-// (js/utils/clasificar.js) · v1
+// (js/utils/clasificar.js) · v2: enviar EN TAREA guarda el 2.º envío
+// SIEMPRE (0 incluido: Firebase registra la tarea respondida) y la
+// reentrada de examen con valor guardado ya NO lo re-califica
 //
 // Actividad de CLASIFICACIÓN para el contenido de clases, tareas
 // y exámenes: el docente da las CATEGORÍAS y, para cada una, las
@@ -60,9 +62,9 @@
 // COLOR (REGLA DEL PROYECTO, aclarada): el COLOR DE LA SECCIÓN
 // llega en config.colorSeccion (HEX o rgb()); si falta o es
 // inválido se usa el PREDEFINIDO de esta utilidad — FIJO (#4f46e5
-// índigo, adaptado y legible); NO cambia en cada montaje. En
-// «Crear» se elige con el SELECTOR RGB (input de color) sin
-// escribir nada a mano; botón «Defecto» para volver.
+// índigo,adaptado y legible); NO cambia en cada montaje. En «Crear»
+// se elige con el SELECTOR RGB (input de color) sin escribir nada
+// a mano; botón «Defecto» para volver.
 //
 // USO (desde el archivo de contenido, p. ej.
 // public/clases/8/ciencia/mi-clase.js):
@@ -78,7 +80,7 @@
 //       { nombre: "Animales",
 //         elementos: ["Perro", "Gato", "img:vaca.png", "https://…/pez.png"] },
 //       { nombre: "Plantas",
-//         elementos: ["Rosa", "<svg …>…</svg>", "Helecho"] },
+//         elementos: ["Ros", "<svg …>…</svg>", "Helecho"] },
 //     ],
 //     puntaje: 2,            // valor TOTAL del bloque (0 a 10), repartido
 //     colorSeccion: "#4f46e5", // color de la sección (defecto FIJO #4f46e5)
@@ -1121,7 +1123,9 @@ export function clasificar(config = {}) {
       chip(chipTxt, chipTipo);
       feedback(fbTxt, fbTipo);
       if (!esDoc && (esTipoClase || esTarea)) mostrarNotaFinal(total);
-      if (total > 0) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
+      // v2 — CLASE: total 0 no se guarda (reintentable en otra sesión).
+      // TAREA: el 2.º envío es EL que cuenta → se guarda SIEMPRE (0 incluido).
+      if (total > 0 || esTarea) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
       resolverUnaVez(total); // ← la nota solo la recibe el archivo de la clase
     }
 
@@ -1358,6 +1362,12 @@ export function clasificar(config = {}) {
           if (btnEvaluar) btnEvaluar.textContent = "Respondida";
           chip("Respondida", "bien");
           feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste este bloque.", "ok");
+          // v2 — en examen con el valor ya guardado (sin examen cerrado),
+          // el recorrido del envío final NO re-califica ni pisa el valor.
+          if (esExamen) {
+            yaEnviada = true;
+            ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje };
+          }
           resolverUnaVez(0); // no vuelve a sumar
         }
       });
@@ -1397,3 +1407,4 @@ export function clasificar(config = {}) {
   if (esExamen) promesa.enviar = () => enviarExamen();
   return promesa;
 }
+
