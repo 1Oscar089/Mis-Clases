@@ -1,6 +1,10 @@
 // ============================================================
 // multipleOpcion.js — Bloque de selección múltiple (1 o MÁS correctas)
-// (js/utils/multipleOpcion.js) · v7: OPCIONES EN ORDEN ALEATORIO
+// (js/utils/multipleOpcion.js) · v7.1: enviar EN TAREA guarda el 2.º
+// envío SIEMPRE (0 incluido: Firebase registra la tarea respondida) y
+// la reentrada de examen con valor guardado ya NO lo re-califica
+// (reg.mapa devuelve el valor guardado sin pisaarlo); antes v7:
+// OPCIONES EN ORDEN ALEATORIO
 // (anti-copia) PERSISTENTE por navegador hasta responder (js/utils/
 // aleatorio.js); antes v6: TAMAÑO en pantalla — 'columnas'
 // (2 = mitad del ancho, 3 = tercio, 4 = cuarto → bloques LADO A LADO)
@@ -695,6 +699,12 @@ export function multipleOpcion(config = {}) {
           if (btnEnviar) btnEnviar.textContent = "Respondida";
           chip("Respondida", "bien");
           feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste este bloque.", "ok");
+          // v7.1 — en examen con el valor ya guardado (sin examen cerrado),
+          // el recorrido del envío final NO re-califica ni pisa el valor.
+          if (esExamen) {
+            yaEnviada = true;
+            ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje };
+          }
           resolverUnaVez(0); // no vuelve a sumar
         }
       });
@@ -822,7 +832,10 @@ export function multipleOpcion(config = {}) {
         bloquearTodo();
         chip("Enviada", "");
         feedback("Respuesta enviada. No hay más envíos.", "");
-        if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+        // v7.1 — el 2.º envío es EL que cuenta: se guarda SIEMPRE (0
+        // incluido) para que Firebase registre la tarea respondida y no
+        // se pueda repetir al volver a entrar.
+        sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
         resolverUnaVez(ganado);
         return ganado;
       }
@@ -906,6 +919,18 @@ export function multipleOpcion(config = {}) {
       resolverUnaVez(ganado);
       return ultimoResultado;
     };
+
+    // REGISTRO GLOBAL DE ENVÍO (window.__mcoEnvioExamen): el botón
+    // final del examen (utils/botonEnviar.js) o el «Enviar examen» de
+    // siempre califican aquí las respuestas que el estudiante NO envió
+    // una a una. Clave = qid: si el bloque se remonta, la última
+    // instancia reemplaza a la vieja (nunca se califica dos veces).
+    try {
+      const reg = (window.__mcoEnvioExamen = window.__mcoEnvioExamen || { mapa: {} });
+      if (reg.mapa && typeof reg.mapa === "object") {
+        reg.mapa[qid] = () => Promise.resolve(enviarExamen()).catch(() => null);
+      }
+    } catch (e) { /* sin window: el flujo manual sigue igual */ }
 
     contenedor.append(caja);
     aplicarTamano(caja, config); // v6: columnas / ancho (tras el montaje)

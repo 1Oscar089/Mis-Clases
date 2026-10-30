@@ -1,6 +1,20 @@
 // ============================================================
 // opcionMultiple.js — Pregunta de opción múltiple reutilizable
-// (js/utils/opcionMultiple.js) · v6.1: finalizarExamen() BLOQUEA la
+// (js/utils/opcionMultiple.js) · v6.3: guardarPreguntaExamen() YA NO
+// marca nota.enviado — la marca de «enviado» la pone SOLO
+// finalizarExamen(): así el envío INDIVIDUAL de UNA respuesta
+// (respuestaSimple/video con su botón propio en el examen) guarda su
+// valor sin CERRAR el examen entero (antes bastaba enviar una sola
+// respuesta para que al reabrir el examen apareciera «enviado» con
+// UNA sola pregunta: los demás bloques ya no podían enviar la
+// suya). Además sumarPuntos() acepta SUBIR el valor de una pregunta
+// ya guardada (total mayor en el 2.º intento): actualiza localStorage
+// + Firestore + Sheets con el nuevo total · antes v6.2:
+// finalizarExamen() marca el registro compartido
+// window.__mcoEnvioExamen (claseId + enviando/enviado) ANTES de
+// escribir el bloqueo automático, para que el vigía (clases.js v7.3)
+// NO expulse al estudiante por SU propio envío
+// («saca los estudiantes») · antes v6.1: finalizarExamen() BLOQUEA la
 // pieza para el estudiante en cuanto envía su examen (db.clases.
 // bloquearEstudiante → bloqueadas.{uid}: solo puede revisar su
 // puntaje con «Mi puntaje») · v6: OPCIONES EN ORDEN ALEATORIO
@@ -618,15 +632,19 @@ function reportarEspejo(perfil, clase, tipo, puntos) {
     .catch(() => {});
 }
 
-/** Suma puntos de UNA pregunta (solo la primera vez que se responde).
- *  El docente NO guarda nada (devuelve la nota en ceros). */
+/** Suma puntos de UNA pregunta. v6.3 — si la pregunta ya tenía valor,
+ *  el NUEVO solo entra cuando es MAYOR (el 2.º intento de una clase
+ *  que reúne más aciertos actualiza localStorage + Firestore + Sheets
+ *  con el total real); igual o menor no toca nada (no baja jamás y no
+ *  re-espeja). El docente NO guarda nada (devuelve la nota en ceros). */
 export async function sumarPuntos(perfil, clase, preguntaId, puntos, opciones = {}) {
   if (!perfil?.uid || !clase?.id || esDocente(perfil)) {
     return { puntos: 0, preguntas: {}, enviado: false };
   }
   const tipo = String(opciones.tipo || clase.tipo || "clase").toLowerCase();
   const nota = await obtenerNota(perfil, clase);
-  if (nota.preguntas[preguntaId] != null) return nota; // ya sumó antes
+  const previo = nota.preguntas[preguntaId];
+  if (previo != null && Number(previo) >= Number(puntos)) return nota; // ya sumó igual o más
 
   nota.preguntas[preguntaId] = Number(puntos) || 0;
   nota.tipo = tipo;
@@ -671,12 +689,25 @@ export async function finalizarExamen(perfil, clase, opciones = {}) {
   const titulo = String(
     opciones.titulo ?? clase.titulo ?? clase.clase ?? ""
   ).trim();
+
+  // ── NUEVO v6.2 · REGISTRO COMPARTIDO DEL ENVÍO ──
+  // Antes de tocar Firestore, marca en window.__mcoEnvioExamen que
+  // ESTE examen (claseId) está ENVIANDO. El vigía de clases.js v7.3
+  // lee esta marca cuando llega el bloqueo automático
+  // (bloqueadas.{uid}) y así NO expulsa al estudiante por SU PROPIO
+  // envío aunque la nota local de localStorage falte o falle.
+  try {
+    const reg = (window.__mcoEnvioExamen = window.__mcoEnvioExamen || {});
+    reg.claseId = clase.id;
+    reg.enviando = true;
+  } catch (e) { /* sin window: queda la nota local */ }
+
   const nota = await obtenerNota(perfil, clase);
   const yaEnviado = !!nota.enviado;
   nota.enviado = true;
   nota.tipo = "examen";
   recalcular(nota);
-  guardarNotaLocal(perfil.uid, clase.id, nota);
+  guardarNotaLocal(perfil.uid, clase.id, nota); // SIEMPRE antes de bloquear
 
   try {
     await db.notas.guardar(perfil.uid, clase.id, nota, {
@@ -706,6 +737,16 @@ export async function finalizarExamen(perfil, clase, opciones = {}) {
     }
   } catch (e) {
     console.warn("[finalizarExamen] bloqueo automático no guardó:", e?.code || e);
+  } finally {
+    // v6.2 — el envío terminó (con o sin bloqueo): queda ENVIADO en
+    // el registro compartido; el vigía ya no lo expulsa por esto.
+    try {
+      const reg2 = window.__mcoEnvioExamen;
+      if (reg2 && reg2.claseId === clase.id) {
+        reg2.enviando = false;
+        reg2.enviado = true;
+      }
+    } catch (e) { /* nada */ }
   }
 
   const espejo = await db.notas
@@ -725,17 +766,26 @@ export async function finalizarExamen(perfil, clase, opciones = {}) {
 }
 
 /** GUARDADO DE UNA PREGUNTA/BLOQUE DE EXAMEN (estudiante): fija el
- *  valor (0 incluido), marca la nota como examen enviado y la guarda
- *  en localStorage + Firestore vía db.js. El ESPEJO en Sheets NO va
- *  aquí: lo reporta finalizarExamen() UNA sola vez con el TOTAL.
- *  Compartida por opcionMultiple.js y multipleOpcion.js. Docente: no
- *  hace nada. */
+ *  valor (0 incluido) y lo guarda en localStorage + Firestore vía
+ *  db.js. v6.3 — YA NO marca nota.enviado: la marca de «enviado» la
+ *  fija SOLO finalizarExamen(), que corre SIEMPRE justo después del
+ *  recorrido del registro (botón Enviar, timer, volver-insistente,
+ *  auto-envío de reentrada). Con esto el guardado INDIVIDUAL de una
+ *  respuesta (respuestaSimple/video con botón propio en el examen)
+ *  no cierra el examen entero: los demás bloques siguen disponibles
+ *  y sus respuestas SÍ llegan a Firebase en el envío final. El ESPEJO
+ *  en Sheets NO va aquí: lo reporta finalizarExamen() UNA sola vez
+ *  con el TOTAL. Compartida por opcionMultiple.js, multipleOpcion.js,
+ *  relacionar.js, blank.js, ordenar.js, constructorOraciones.js,
+ *  clasificar.js, sopaLetras.js, crucigrama.js y respuestaSimple.js.
+ *  Docente: no hace nada. */
 export async function guardarPreguntaExamen(perfil, clase, preguntaId, ganado) {
   if (!perfil?.uid || !clase?.id || esDocente(perfil)) return null;
   const nota = await obtenerNota(perfil, clase);
   nota.preguntas[preguntaId] = Number(ganado) || 0; // el examen guarda SIEMPRE (0 incluido)
-  nota.enviado = true;
   nota.tipo = "examen";
+  // v6.3 — SIN nota.enviado aquí: el examen sigue ABIERTO hasta que
+  // finalizarExamen() lo cierre (marcado + bloqueo + Sheets).
   recalcular(nota);
   guardarNotaLocal(perfil.uid, clase.id, nota);
   try {
@@ -1001,6 +1051,12 @@ export function opcionMultiple(config = {}) {
           if (btnEnviar) btnEnviar.textContent = "Respondida";
           chip("Respondida", "bien");
           feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste esta pregunta.", "ok");
+          // v6.3 — en examen con el valor ya guardado (sin examen cerrado),
+          // el recorrido del envío final NO re-califica ni pisa el valor.
+          if (esExamen) {
+            yaEnviada = true;
+            ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje };
+          }
           resolverUnaVez(0); // no vuelve a sumar
         }
       });
@@ -1101,7 +1157,10 @@ export function opcionMultiple(config = {}) {
         bloquearTodo();
         chip("Enviada", "");
         feedback("Respuesta enviada. No hay más envíos.", "");
-        if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+        // v6.3 — el 2.º envío es EL que cuenta: se guarda SIEMPRE (0
+        // incluido) para que Firebase registre la tarea respondida y no
+        // se pueda repetir al volver a entrar.
+        sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
         resolverUnaVez(ganado);
         return ganado;
       }

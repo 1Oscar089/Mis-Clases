@@ -1,6 +1,9 @@
 // ============================================================
 // relacionar.js — Bloque de RELACIONAR columnas (parejas)
-// (js/utils/relacionar.js) · v5: COLUMNAS EN ORDEN ALEATORIO
+// (js/utils/relacionar.js) · v5.1: enviar EN TAREA guarda el 2.º envío
+// SIEMPRE (0 incluido: Firebase registra la tarea respondida) y la
+// reentrada de examen con valor guardado ya NO lo re-califica; antes
+// v5: COLUMNAS EN ORDEN ALEATORIO
 // (anti-copia) PERSISTENTE por navegador hasta responder (js/utils/
 // aleatorio.js); antes v4: TAMAÑO en pantalla — 'columnas'
 // (2 = mitad del ancho, 3 = tercio, 4 = cuarto → bloques LADO A LADO)
@@ -926,7 +929,11 @@ export function relacionar(config = {}) {
       if (btnEnviar) btnEnviar.textContent = btnTxt;
       chip(chipTxt, chipTipo);
       feedback(fbTxt, fbTipo);
-      if (total > 0) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
+      // v5.1 — CLASE: total 0 no se guarda (el bloque vuelve a estar
+      // disponible en otra sesión, como siempre). TAREA: el 2.º envío es
+      // EL que cuenta → se guarda SIEMPRE (0 incluido) para que Firebase
+      // registre la respuesta y la tarea no se pueda repetir.
+      if (total > 0 || esTarea) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
       resolverUnaVez(total); // ← la nota solo la recibe el archivo de la clase
     }
 
@@ -1168,10 +1175,28 @@ export function relacionar(config = {}) {
           if (btnEnviar) btnEnviar.textContent = "Respondida";
           chip("Respondida", "bien");
           feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste este bloque.", "ok");
+          // v5.1 — en examen con el valor ya guardado (sin examen cerrado),
+          // el recorrido del envío final NO re-califica ni pisa el valor.
+          if (esExamen) {
+            yaEnviada = true;
+            ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje };
+          }
           resolverUnaVez(0); // no vuelve a sumar
         }
       });
     }
+
+    // REGISTRO GLOBAL DE ENVÍO (window.__mcoEnvioExamen): el botón
+    // final del examen (utils/botonEnviar.js) o el «Enviar examen» de
+    // siempre califican aquí las respuestas que el estudiante NO envió
+    // una a una. Clave = qid: si el bloque se remonta, la última
+    // instancia reemplaza a la vieja (nunca se califica dos veces).
+    try {
+      const reg = (window.__mcoEnvioExamen = window.__mcoEnvioExamen || { mapa: {} });
+      if (reg.mapa && typeof reg.mapa === "object") {
+        reg.mapa[qid] = () => Promise.resolve(enviarExamen()).catch(() => null);
+      }
+    } catch (e) { /* sin window: el flujo manual sigue igual */ }
 
     contenedor.append(caja);
     aplicarTamano(caja, config); // v4: columnas / ancho (tras el montaje)
