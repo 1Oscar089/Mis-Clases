@@ -244,12 +244,13 @@ async function montar(perfil, contenedor, clase) {
   // ── Módulos usados (con reintento y aviso claro si falta uno) ──
   const { crearParrafo } = await cargar("../../../js/componentes/parrafo.js", ["crearParrafo"]);
   const { crearSecciones } = await cargar("../../../js/componentes/section.js", ["crearSecciones"]);
+  const { crearSubtitulo } = await cargar("../../../js/componentes/subtitulo.js", ["crearSubtitulo"]);
   const { crearTitulo } = await cargar("../../../js/componentes/titulo.js", ["crearTitulo"]);
   const { renderInicio } = await cargar("../../../js/components/inicio.js", ["renderInicio"]);
   const { renderUserbar } = await cargar("../../../js/components/userbar.js", ["renderUserbar"]);
+  const { blank } = await cargar("../../../js/utils/blank.js", ["blank"]);
   const { clasificar } = await cargar("../../../js/utils/clasificar.js", ["clasificar"]);
   const { constructorOraciones } = await cargar("../../../js/utils/constructorOraciones.js", ["constructorOraciones"]);
-  const { generarRevisorOraciones } = await cargar("../../../js/utils/ingles/oracionesIngles.js", ["generarRevisorOraciones"]);
   const { finalizarExamen, marcarEnvioPendiente, obtenerNota, opcionMultiple } = await cargar("../../../js/utils/opcionMultiple.js", ["finalizarExamen", "marcarEnvioPendiente", "obtenerNota", "opcionMultiple"]);
   const { relacionar } = await cargar("../../../js/utils/relacionar.js", ["relacionar"]);
 
@@ -369,63 +370,91 @@ async function montar(perfil, contenedor, clase) {
     renderInicio(perfil, contenedor);
   });
 
-    // ════ Sección 1 — espacio de 820×644 px ════
-    const l1 = lamina(644, 820);
+    // ════ Sección 1 — espacio de 820×1351 px ════
+    const l1 = lamina(1351, 820);
 
-  // ── Título · mide 810×60 px ──
+  // ── Título · mide 770×60 px ──
   crearTitulo({
-    texto: "QUARTERLY ENGLISH EXAMINATION (A1+)",
+    texto: "**QUARTERLY ENGLISH EXAMINATION (A1)**",
     tamano: 35,
     alineacion: "centro",
-    contenedor: pon(l1, 0, 0, 810, 60)
+    contenedor: pon(l1, 20, 0, 770, 60)
   });
 
-  // ── opcionMultiple — Opción múltiple · mide 760×261 px ──
+  // ── Subtítulo · mide 770×65 px ──
+  crearSubtitulo({
+    texto: "Part I",
+    orden: 1,
+    tamano: 30,
+    contenedor: pon(l1, 20, 60, 770, 65)
+  });
+
+  // ── opcionMultiple — Opción múltiple · mide 380×410 px ──
   opcionMultiple({
-    indicacion: "1. Choose the correct negative sentence in the Simple Past:",
+    indicacion: "1. Carlos works at an office. Choose the correct form of the verb Be: He __________ a doctor.",
     respuestas: [
-      "My best friend didn't danced a lot in her teens.",
-      "My best friend didn't dance a lot in her teens.",
-      "My best friend not danced a lot in her teens."
+      "am",
+      "is",
+      "are"
     ],
     respuestaCorrecta: 2,
     puntaje: 1,
     tipo: "examen",
     perfil: perfil,
     clase: clase,
-    contenedor: pon(l1, 30, 90, 760, 261)
+    contenedor: pon(l1, 20, 150, 380, 410)
   });
 
-  // ── opcionMultiple — Opción múltiple · mide 760×227 px ──
+  // ── opcionMultiple — Opción múltiple · mide 380×386 px ──
   opcionMultiple({
-    indicacion: "2. Unscramble the letters to find the correct month of the year: \"NUJYAAR\"",
+    indicacion: "2. Sakura is from Osaka, Japan. What is her nationality?",
     respuestas: [
-      "July",
-      "June",
-      "January"
+      "Japanese",
+      "Spanish",
+      "Australian"
     ],
-    respuestaCorrecta: 3,
+    respuestaCorrecta: 1,
     puntaje: 1,
     tipo: "examen",
     perfil: perfil,
     clase: clase,
-    contenedor: pon(l1, 30, 360, 760, 227)
+    contenedor: pon(l1, 410, 150, 380, 386)
   });
 
-    // ════ Sección 2 — espacio de 820×756 px ════
-    const l2 = lamina(756, 820);
+  // ── Subtítulo · mide 770×65 px ──
+  crearSubtitulo({
+    texto: "Part II",
+    orden: 1,
+    tamano: 30,
+    contenedor: pon(l1, 20, 590, 770, 65)
+  });
 
-  // ── Párrafo · mide 820×184 px ──
+  // ── Párrafo · mide 770×82 px ──
   crearParrafo({
-    texto: "Luis Salvador Efraín Salazar Arrué, known as Salarrué, was born on October 22nd, 1899, in Sonzacate, Sonsonate. He studied at the Corcoran School of Art in Washington, D.C. In 1922, he married Zélie Lardé, with whom he had three daughters. He worked as an editor for the newspaper Patria and wrote famous books like 'Cuentos de Cipotes' and 'Cuentos de Barro'.",
+    texto: "\"Juayúa is a small and beautiful town. I love the church. It is not modern but traditional. It is red and big.\"",
     tamano: 20,
     alineacion: "justificado",
-    contenedor: pon(l2, 0, 0, 820, 184)
+    contenedor: pon(l1, 20, 680, 770, 82)
   });
 
-  // ── opcionMultiple — Opción múltiple · mide 820×221 px ──
+  // ── opcionMultiple — Opción múltiple · mide 770×225 px ──
   opcionMultiple({
-    indicacion: "3. Salarrué was born in Sonzacate, Sonsonate, on October 22nd, 1899.",
+    indicacion: "3. Juayúa Church is modern and small",
+    respuestas: [
+      "True",
+      "False"
+    ],
+    respuestaCorrecta: 2,
+    puntaje: 1,
+    tipo: "examen",
+    perfil: perfil,
+    clase: clase,
+    contenedor: pon(l1, 20, 760, 770, 225)
+  });
+
+  // ── opcionMultiple — Opción múltiple · mide 770×225 px ──
+  opcionMultiple({
+    indicacion: "4. Kathy fixes cars with her father on Tuesday afternoons",
     respuestas: [
       "True",
       "False"
@@ -435,89 +464,101 @@ async function montar(perfil, contenedor, clase) {
     tipo: "examen",
     perfil: perfil,
     clase: clase,
-    contenedor: pon(l2, 0, 220, 820, 221)
+    contenedor: pon(l1, 20, 1080, 770, 225)
   });
 
-  // ── opcionMultiple — Opción múltiple · mide 820×221 px ──
-  opcionMultiple({
-    indicacion: "4. Salarrué had five daughters with his wife Zélie Lardé.",
-    respuestas: [
-      "True",
-      "False"
-    ],
-    respuestaCorrecta: 2,
-    puntaje: 1,
-    tipo: "examen",
-    perfil: perfil,
-    clase: clase,
-    contenedor: pon(l2, 0, 470, 820, 221)
+  // ── Párrafo · mide 770×82 px ──
+  crearParrafo({
+    texto: "\"Kathy is 14 years old and she lives in La Libertad. On Tuesday afternoons, she fixes cars with her dad.\"",
+    tamano: 20,
+    alineacion: "justificado",
+    contenedor: pon(l1, 20, 990, 770, 82)
   });
 
-    // ════ Sección 3 — espacio de 820×991 px ════
-    const l3 = lamina(991, 820);
+    // ════ Sección 2 — espacio de 820×1855 px ════
+    const l2 = lamina(1855, 820);
 
-  // ── relacionar — Relacionar columnas · mide 820×486 px ──
+  // ── Subtítulo · mide 770×65 px ──
+  crearSubtitulo({
+    texto: "Part III",
+    orden: 1,
+    tamano: 30,
+    contenedor: pon(l2, 20, 0, 770, 65)
+  });
+
+  // ── relacionar — Relacionar columnas · mide 770×377 px ──
   relacionar({
-    indicacion: "5. Match the food description on the Left with the correct word on the Right:",
+    indicacion: "5. Match the singular noun on the Left with its correct irregular plural form on the Right",
     izquierda: [
-      "A milk-derived product used in pupusas and pizza.",
-      "A firm, round fruit with juicy flesh and red skin.",
-      "An orange vegetable commonly used in salads or soups.",
-      "A popular breakfast food served in a bowl with milk."
+      "Child",
+      "Foot",
+      "Tooth"
     ],
     derecha: [
-      "Cheese",
-      "Apple",
-      "Carrot",
-      "Cereal"
+      "Children",
+      "Feet",
+      "Teeth"
     ],
     puntaje: 1,
     tipo: "examen",
     perfil: perfil,
     clase: clase,
-    contenedor: pon(l3, 0, 0, 820, 486)
+    contenedor: pon(l2, 20, 90, 770, 377)
   });
 
-  // ── relacionar — Relacionar columnas · mide 820×432 px ──
+  // ── relacionar — Relacionar columnas · mide 770×377 px ──
   relacionar({
-    indicacion: "6. Match the base form of the verb on the Left with its Simple Past on the Right:",
+    indicacion: "6. Match the adjective on the Left with its opposite on the Right",
     izquierda: [
-      "Write",
-      "Eat",
-      "Go",
-      "Take"
+      "Cheap",
+      "Big",
+      "Friend"
     ],
     derecha: [
-      "Wrote",
-      "Ate",
-      "Went",
-      "Took"
+      "Expensive",
+      "Small",
+      "Enemy"
     ],
     puntaje: 1,
     tipo: "examen",
     perfil: perfil,
     clase: clase,
-    contenedor: pon(l3, 0, 500, 820, 432)
+    contenedor: pon(l2, 20, 480, 770, 377)
   });
 
-    // ════ Sección 4 — espacio de 820×587 px ════
-    const l4 = lamina(587, 820);
+  // ── Subtítulo · mide 340×65 px ──
+  crearSubtitulo({
+    texto: "Part IV",
+    orden: 1,
+    tamano: 30,
+    contenedor: pon(l2, 20, 870, 340, 65)
+  });
 
-  // ── clasificar — Tabla de clasificación · mide 820×468 px ──
+  // ── clasificar — Tabla de clasificación · mide 770×462 px ──
   clasificar({
     categorias: [
       {
-        nombre: "Countable",
+        nombre: "-s",
         elementos: [
-          "Apple",
-          "Sandwish"
+          "Pen"
         ]
       },
       {
-        nombre: "Uncountable",
+        nombre: "-es",
         elementos: [
-          "Water",
-          "Fluor"
+          "Fox"
+        ]
+      },
+      {
+        nombre: "-ies",
+        elementos: [
+          "City"
+        ]
+      },
+      {
+        nombre: "-ves",
+        elementos: [
+          "Leaf"
         ]
       }
     ],
@@ -526,44 +567,65 @@ async function montar(perfil, contenedor, clase) {
     tipo: "examen",
     perfil: perfil,
     clase: clase,
-    contenedor: pon(l4, 0, 0, 820, 468)
+    contenedor: pon(l2, 20, 1040, 770, 462)
   });
 
-    // ════ Sección 5 — espacio de 820×822 px ════
-    const l5 = lamina(822, 820);
-
-  // ── oracionesIngles — Revisor de oraciones (inglés/español) · mide 810×326 px ──
-  generarRevisorOraciones({
-    indicacion: "8. Answer the questions in the affirmative short form:\nDid the kids visit the museum?",
-    cantidadInputs: 1,
-    puntajeTotal: 1,
-    estructuraEsperada: "",
-    idioma: "en",
-    usarApiExterna: true,
-    colorTarjeta: "#7c3aed",
-    contenedor: pon(l5, 0, 0, 810, 326)
+  // ── Párrafo · mide 770×48 px ──
+  crearParrafo({
+    texto: "7. Write each word under its corresponding **plural form ending**",
+    tamano: 20,
+    contenedor: pon(l2, 20, 960, 770, 48)
   });
 
-  // ── oracionesIngles — Revisor de oraciones (inglés/español) · mide 810×353 px ──
-  generarRevisorOraciones({
-    indicacion: "9. Read the answer and write the corresponding Wh- Question in Simple Past:\nI lived in San Salvador City when I studied at university.",
-    cantidadInputs: 1,
-    puntajeTotal: 1,
-    estructuraEsperada: "",
-    idioma: "en",
-    usarApiExterna: true,
-    colorTarjeta: "#7c3aed",
-    contenedor: pon(l5, 0, 350, 810, 353)
+    // ════ Sección 3 — espacio de 820×883 px ════
+    const l3 = lamina(883, 820);
+
+  // ── Subtítulo · mide 340×65 px ──
+  crearSubtitulo({
+    texto: "Part V",
+    orden: 1,
+    tamano: 30,
+    contenedor: pon(l3, 30, 0, 340, 65)
   });
 
-    // ════ Sección 6 — espacio de 820×448 px ════
-    const l6 = lamina(448, 820);
+  // ── blank — Completar espacios · mide 360×217 px ──
+  blank({
+    texto: "Clara [[watches]] (watch) TV with her family in the evening",
+    puntaje: 1,
+    tipo: "examen",
+    perfil: perfil,
+    clase: clase,
+    contenedor: pon(l3, 20, 180, 360, 217)
+  });
 
-  // ── constructorOraciones — Construye la oración · mide 820×361 px ──
+  // ── blank — Completar espacios · mide 390×183 px ──
+  blank({
+    texto: "We [[aren't]] (not / be) police officers",
+    puntaje: 1,
+    tipo: "examen",
+    perfil: perfil,
+    clase: clase,
+    contenedor: pon(l3, 400, 180, 390, 183)
+  });
+
+  // ── Párrafo · mide 360×68 px ──
+  crearParrafo({
+    texto: "8. Complete the sentence with the correct third-person form of the verb in parentheses",
+    contenedor: pon(l3, 20, 120, 360, 68)
+  });
+
+  // ── Párrafo · mide 410×82 px ──
+  crearParrafo({
+    texto: "9. Complete the sentence using the negative form of the verb BE",
+    tamano: 20,
+    contenedor: pon(l3, 380, 120, 410, 82)
+  });
+
+  // ── constructorOraciones — Construye la oración · mide 770×403 px ──
   constructorOraciones({
-    indicacion: "10. Unscramble the words to make a correct Simple Past sentence:",
+    indicacion: "10. Unscramble the words to make a correct sentence",
     oraciones: [
-      "She / played / for the / national team"
+      "I / surf / the Internet / to do / homework"
     ],
     separador: "/",
     colorTarjeta: "#0f766e",
@@ -571,14 +633,14 @@ async function montar(perfil, contenedor, clase) {
     tipo: "examen",
     perfil: perfil,
     clase: clase,
-    contenedor: pon(l6, 0, 0, 820, 361)
+    contenedor: pon(l3, 20, 460, 770, 403)
   });
 
   // ════════════════════════════════════════════════════════════
   //  TUS SECCIONES — la lista que llena el editor. A mano: crea
   //  láminas (const lN = lamina(alto, 820);) y añádelas aquí.
   // ════════════════════════════════════════════════════════════
-  const SECCIONES = [l1, l2, l3, l4, l5, l6];
+  const SECCIONES = [l1, l2, l3];
 
   // ── BOTÓN «Enviar examen»: AL FINAL DE LA ÚLTIMA SECCIÓN nada más ──
   // (con UNA sección: final de esa sección; con NINGUNA todavía:
