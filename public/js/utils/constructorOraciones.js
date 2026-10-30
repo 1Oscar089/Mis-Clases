@@ -1,6 +1,8 @@
 // ============================================================
 // constructorOraciones.js — CONSTRUYE LA ORACIÓN (arrastra bloques)
-// (js/utils/constructorOraciones.js) · v1
+// (js/utils/constructorOraciones.js) · v2: enviar EN TAREA guarda el
+// 2.º envío SIEMPRE (0 incluido: Firebase registra la tarea respondida)
+// y la reentrada de examen con valor guardado ya NO lo re-califica
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: cada
 // ORACIÓN llega escrita con sus BLOQUES separados por un símbolo
@@ -1013,7 +1015,9 @@ export function constructorOraciones(config = {}) {
       chip(chipTxt, chipTipo);
       feedback(fbTxt, fbTipo);
       if (!esDoc && (esTipoClase || esTarea)) mostrarNotaFinal(total);
-      if (total > 0) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
+      // v2 — CLASE: total 0 no se guarda (reintentable en otra sesión).
+      // TAREA: el 2.º envío es EL que cuenta → se guarda SIEMPRE (0 incluido).
+      if (total > 0 || esTarea) sumarPuntos(perfil, clase, qid, total, { tipo }).catch(() => {});
       resolverUnaVez(total); // ← la nota solo la recibe el archivo de la clase
     }
 
@@ -1261,6 +1265,12 @@ export function constructorOraciones(config = {}) {
           if (btnEvaluar) btnEvaluar.textContent = "Respondida";
           chip("Respondida", "bien");
           feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste este bloque.", "ok");
+          // v2 — en examen con el valor ya guardado (sin examen cerrado),
+          // el recorrido del envío final NO re-califica ni pisa el valor.
+          if (esExamen) {
+            yaEnviada = true;
+            ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje };
+          }
           resolverUnaVez(0); // no vuelve a sumar
         }
       });

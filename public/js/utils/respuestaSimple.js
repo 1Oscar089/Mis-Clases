@@ -1,12 +1,24 @@
 // ============================================================
 // respuestaSimple.js — Pregunta de respuesta simple (texto o FÓRMULA)
-// (js/utils/respuestaSimple.js) · v5: MULTI-CAMPO — 'respuestas' como
-// LISTA (un campo por respuesta, validados EN ESE ORDEN) o NÚMERO
-// (N campos iguales), con 'etiquetas' opcionales + TAMAÑO en pantalla
-// ('columnas' / 'ancho'); antes v4: modo esFormula con MathLive (campo
-// <math-field> + SU teclado virtual completo); antes v3: teclado propio
-// de formatearFormulas.js · antes v2: TIPOS clase/tarea/examen, docente
-// con intentos libres, espejo Sheets
+// (js/utils/respuestaSimple.js) · v5.3: enviar UNA respuesta en examen
+// YA NO CIERRA el examen entero (guardarPreguntaExamen v6.3 dejó de
+// marcar nota.enviado): la respuesta queda fijada y guardada en
+// Firebase y el examen sigue ABIERTO para los demás bloques hasta el
+// envío final (botón «Enviar examen» / timer). Al reabrir, la pregunta
+// ya respondida aparece «Enviada» (no «Examen enviado» si el examen
+// sigue abierto). También v5.3 — TAREA: el 2.º envío ES el que cuenta
+// y se guarda SIEMPRE (0 incluido) para que Firebase registre la
+// respuesta. Antes v5.2: el EXAMEN ya MUESTRA su botón «Enviar
+// respuesta» (lo pedía el docente): enviar una respuesta en examen la
+// FIJA (una sola oportunidad) y queda guardada; lo pendiente lo
+// califica el envío final (botón botonEnviar o el de siempre) vía el
+// registro window.__mcoEnvioExamen. Antes v5: MULTI-CAMPO —
+// 'respuestas' como LISTA (un campo por respuesta, validados EN ESE
+// ORDEN) o NÚMERO (N campos iguales), con 'etiquetas' opcionales +
+// TAMAÑO en pantalla ('columnas' / 'ancho'); antes v4: modo esFormula
+// con MathLive (campo <math-field> + SU teclado virtual completo);
+// antes v3: teclado propio de formatearFormulas.js · antes v2: TIPOS
+// clase/tarea/examen, docente con intentos libres, espejo Sheets
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: inserta una
 // pregunta con un campo de respuesta y valida lo que escriba el estudiante.
@@ -114,19 +126,21 @@
 //   Tras el 2.º envío se bloquea.
 //
 // ─── TIPO "examen" ───
-//   SIN botón propio: el archivo del examen pone SU botón "Enviar"
-//   al final y envía todos los bloques de una vez:
+//   Con botón propio (v5.2) + el botón final del examen:
 //
 //     const p = respuestaSimple({ ..., tipo: "examen" });
-//     // ... el estudiante responde ...
-//     const r = await p.enviar();  // → { puntos, maxPuntaje } del bloque
+//     // el estudiante responde y PRESIONA «Enviar respuesta»: la
+//     // pregunta se califica UNA sola vez (correcto → puntaje
+//     // completo, vacío/incorrecto → 0), se guarda y queda fija.
+//     // También puede programarse: r = await p.enviar();
 //     // ... tras todos los bloques:
 //     const resumen = await finalizarExamen(perfil, clase, { titulo });
 //     // resumen.puntos = nota del examen (mostrarla en pantalla)
 //
-//   · enviar() califica el bloque (una sola oportunidad: correcto →
-//     puntaje completo, vacío/incorrecto → 0), lo guarda con la marca
-//     de examen enviado y devuelve el resultado al examen.
+//   · Las respuestas que el estudiante NO envió una a una quedan
+//     registradas en window.__mcoEnvioExamen: el botón final del
+//     examen (utils/botonEnviar.js) o el «Enviar examen» de siempre
+//     las califica TODAS justo antes de cerrar (lo vacío → 0).
 //   · finalizarExamen() fija nota.enviado = true y reporta el TOTAL
 //     al Sheet UNA sola vez (fila del examen × columna del NIE):
 //     el examen queda bloqueado aunque cierre y abra sesión.
@@ -777,7 +791,7 @@ export function respuestaSimple(config = {}) {
           ' autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">'}
       <div class="re-pie">
         <span class="re-feedback" aria-live="polite"></span>
-        ${esExamen ? "" : '<button type="button" class="re-enviar" disabled>Enviar respuesta</button>'}
+        <button type="button" class="re-enviar" disabled>Enviar respuesta</button>
       </div>`;
     caja.querySelector(".re-pregunta").innerHTML = textoConFormulas(texto);
 
@@ -1029,10 +1043,10 @@ export function respuestaSimple(config = {}) {
     // Estado inicial por tipo y rol
     if (esDoc) {
       chip("Vista docente", "");
-      //feedback("Intentos libres, puntaje local arriba y nada se guarda.", "");
+      feedback("Intentos libres, puntaje local arriba y nada se guarda.", "");
     } else if (esExamen) {
       chip("Sin enviar", "");
-      feedback("El examen enviará todas tus respuestas al final.", "");
+      feedback("Envíala cuando la termines: se fija y no se puede cambiar. Al final, el botón Enviar del examen cierra todo.", "");
     } else if (esTarea) {
       chip("Envío 1 de 2", "");
       feedback("Escribe tu respuesta y envíala. Tienes hasta dos envíos.", "");
@@ -1049,7 +1063,9 @@ export function respuestaSimple(config = {}) {
         const guardado = nota.preguntas ? nota.preguntas[qid] : undefined;
         const hecha = guardado != null;
 
-        if (esExamen && (nota.enviado || hecha)) {
+        if (esExamen && nota.enviado) {
+          // v5.3 — examen YA CERRADO (envío real/timer/salida forzada):
+          // todo aparece enviado con la nota final.
           yaEnviada = true;
           ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje, yaEnviado: true };
           bloquear();
@@ -1066,13 +1082,23 @@ export function respuestaSimple(config = {}) {
         if (hecha) {
           bloquear();
           if (revelar) {
-            if (esMulti) decirSolucionesMulti("Ya respondiste esta pregunta.", "ok");
-            else { marcar("bien"); decirSolucion("Ya respondiste esta pregunta.", "ok"); }
+            if (esMulti) decirSolucionesMulti(esExamen ? "Ya enviaste esta respuesta." : "Ya respondiste esta pregunta.", "ok");
+            else { marcar("bien"); decirSolucion(esExamen ? "Ya enviaste esta respuesta." : "Ya respondiste esta pregunta.", "ok"); }
           } else {
-            feedback(esTarea ? "Ya enviaste esta tarea." : "Ya respondiste esta pregunta.", "ok");
+            feedback(esExamen
+              ? "Ya enviaste esta respuesta. El examen se cierra con el botón «Enviar examen»."
+              : esTarea ? "Ya enviaste esta tarea." : "Ya respondiste esta pregunta.", "ok");
           }
-          btnEnviar.textContent = "Respondida";
-          chip("Respondida", "bien");
+          // v5.3 — en examen con la respuesta fijada PERO sin envío final,
+          // el chip NO dice «Examen enviado»: el examen sigue abierto. Y
+          // queda marcada como ya enviada AQUÍ: el recorrido del envío
+          // final NO re-califica el campo (vacío) ni pisa el valor guardado.
+          if (esExamen) {
+            yaEnviada = true;
+            ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje };
+          }
+          chip(esExamen ? "Enviada" : "Respondida", "bien");
+          if (btnEnviar && !esExamen) btnEnviar.textContent = "Respondida";
           resolverUnaVez(0); // no vuelve a sumar
         }
       });
@@ -1087,10 +1113,15 @@ export function respuestaSimple(config = {}) {
       ultimoResultado = { puntos: ganado, maxPuntaje: puntaje };
     }
 
-    // --- Envío de clase y tarea (botón) ---
+    // --- Envío de clase, tarea y EXAMEN (botón) ---
     async function procesarEnvio() {
       if (bloqueada || !hayTexto()) return null;
-      if (esExamen) return null; // el examen pasa por enviar()
+      // v5.2 — examen: el botón califica ESTA respuesta (una sola
+      // oportunidad) con el MISMO flujo de enviar(): guardar + fijar.
+      if (esExamen) {
+        const r = await enviarExamen();
+        return r && typeof r.puntos === "number" ? r.puntos : null;
+      }
 
       /* ─── MULTI-CAMPO (v5): N campos, validación EN ESE ORDEN ───
          Puntaje repartido: cada campo vale puntaje ÷ N. Los correctos
@@ -1214,7 +1245,9 @@ export function respuestaSimple(config = {}) {
           bloquear();
           chip("Enviada", "");
           feedback("Respuesta enviada. No hay más envíos.", "");
-          if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+          // v5.3 — el 2.º envío es EL que cuenta: se guarda SIEMPRE (0
+          // incluido) para que Firebase registre la tarea respondida.
+          sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
           resolverUnaVez(ganado);
           return ganado;
         }
@@ -1236,10 +1269,10 @@ export function respuestaSimple(config = {}) {
           registrarPuntoDocente(perfil, clase, qid, ganado);
           if (revelar) {
             chip(envios === 1 ? "Resuelta" : "Resuelta (intento " + envios + ")", "bien");
-            feedback("¡Correcta! Vista docente.", "ok");
+            feedback("¡Correcta! Vista docente: el puntaje está arriba y nada se guarda.", "ok");
           } else {
             chip("Enviada", "");
-            feedback("Respuesta enviada.", "");
+            feedback("Respuesta enviada. Vista docente: el puntaje está arriba y nada se guarda.", "");
           }
           resolverUnaVez(ganado);
           return ganado;
@@ -1288,7 +1321,7 @@ export function respuestaSimple(config = {}) {
           bloquear();
           btnEnviar.textContent = "Sin más intentos";
           chip("Intentos agotados", "mal");
-          decirSolucion("Incorrecta otra vez. Se agotaron tus intentos.", "mal");
+          decirSolucion("Incorrecta otra vez. Se agotaron tus intentos: podrás volver a intentarlo en otra sesión.", "mal");
           resolverUnaVez(0);
         }
         return null;
@@ -1308,7 +1341,9 @@ export function respuestaSimple(config = {}) {
         bloquear();
         chip("Enviada", "");
         feedback("Respuesta enviada. No hay más envíos.", "");
-        if (ganado > 0) sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
+        // v5.3 — el 2.º envío es EL que cuenta: se guarda SIEMPRE (0
+        // incluido) para que Firebase registre la tarea respondida.
+        sumarPuntos(perfil, clase, qid, ganado, { tipo }).catch(() => {});
         resolverUnaVez(ganado);
         return ganado;
       }
@@ -1377,6 +1412,7 @@ export function respuestaSimple(config = {}) {
         }
         bloquear();
         chip("Enviada", "");
+        if (btnEnviar) btnEnviar.textContent = "Respondida";
         await guardarExamen(ganado);
         resolverUnaVez(ganado);
         return { puntos: ganado, maxPuntaje: puntaje };
@@ -1393,10 +1429,24 @@ export function respuestaSimple(config = {}) {
       }
       bloquear();
       chip("Enviada", "");
+      if (btnEnviar) btnEnviar.textContent = "Respondida";
       await guardarExamen(ganado);
       resolverUnaVez(ganado);
       return { puntos: ganado, maxPuntaje: puntaje };
     };
+
+    // v5.2 — REGISTRO GLOBAL DE ENVÍO: el botón final del examen
+    // (botonEnviar.js) o el «Enviar examen» de siempre leen esta
+    // lista para calificar las respuestas que el estudiante NO envió
+    // una a una. Clave = qid: si el bloque se remonta, la última
+    // instancia reemplaza a la vieja (nunca se califica dos veces).
+    // Docente: registrar es inofensivo (enviarExamen no guarda nada).
+    try {
+      const reg = (window.__mcoEnvioExamen = window.__mcoEnvioExamen || { mapa: {} });
+      if (reg.mapa && typeof reg.mapa === "object") {
+        reg.mapa[qid] = () => Promise.resolve(enviarExamen()).catch(() => null);
+      }
+    } catch (e) { /* sin window: el flujo manual sigue igual */ }
 
     contenedor.append(caja);
     aplicarTamano(caja, config); // v5: columnas / ancho (tras el montaje)

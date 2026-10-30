@@ -1407,4 +1407,3 @@ export function clasificar(config = {}) {
   if (esExamen) promesa.enviar = () => enviarExamen();
   return promesa;
 }
-

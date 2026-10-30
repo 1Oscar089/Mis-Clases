@@ -1,6 +1,7 @@
 // ============================================================
 // crucigrama.js — CRUCIGRAMA jugable con nota al completarlo
-// (js/utils/crucigrama.js) · v1
+// (js/utils/crucigrama.js) · v2: la reentrada de examen con valor
+// guardado ya NO lo re-califica (reg.mapa devuelve el valor guardado)
 // ============================================================
 //
 // Utilidad para el CONTENIDO de clases, tareas y exámenes: recibe una
@@ -896,7 +897,8 @@ export function crucigrama(config = {}) {
       pref.textContent = `${p.num}.`;
       const tex = document.createElement("span");
       tex.className = "cr-texto";
-      tex.innerHTML = textoConFormulas(pistaDe.get(p.palabra) || ""); // admite $fórmulas$       li.append(pref, tex);
+      tex.innerHTML = textoConFormulas(pistaDe.get(p.palabra) || ""); // admite $fórmulas$
+      li.append(pref, tex);
       li.addEventListener("click", () => {
         if (bloqueada) return;
         dirSel = p.dir;
@@ -1274,10 +1276,28 @@ export function crucigrama(config = {}) {
           bloquearTodo();
           chip("Respondida", "bien");
           feedback(esTarea ? "Ya enviaste esta tarea." : "Ya completaste este crucigrama.", "ok");
+          // v2 — en examen con el valor ya guardado (sin examen cerrado),
+          // el recorrido del envío final NO re-califica ni pisa el valor.
+          if (esExamen) {
+            yaEnviada = true;
+            ultimoResultado = { puntos: Number(guardado) || 0, maxPuntaje: puntaje };
+          }
           resolverUnaVez(0); // no vuelve a sumar
         }
       });
     }
+
+    // REGISTRO GLOBAL DE ENVÍO (window.__mcoEnvioExamen): el botón
+    // final del examen (utils/botonEnviar.js) o el «Enviar examen» de
+    // siempre califican aquí las respuestas que el estudiante NO envió
+    // una a una. Clave = qid: si el bloque se remonta, la última
+    // instancia reemplaza a la vieja (nunca se califica dos veces).
+    try {
+      const reg = (window.__mcoEnvioExamen = window.__mcoEnvioExamen || { mapa: {} });
+      if (reg.mapa && typeof reg.mapa === "object") {
+        reg.mapa[qid] = () => Promise.resolve(enviarExamen()).catch(() => null);
+      }
+    } catch (e) { /* sin window: el flujo manual sigue igual */ }
 
     contenedor.append(caja);
 
