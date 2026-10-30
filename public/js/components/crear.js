@@ -1,5 +1,5 @@
 // ============================================================
-// crear.js — EDITOR VISUAL «Crear» (js/components/crear.js) · v6
+// crear.js — EDITOR VISUAL «Crear» (js/components/crear.js) · v7.4
 //
 // La vista del DOCENTE para armar clases, tareas y exámenes sin
 // escribir código. Se abre desde la tarjeta «Crear» del inicio y
@@ -81,7 +81,24 @@
 //   · documento corrido (1 sección) o con Siguiente/Anterior (2+);
 //   · cada bloque nuevo es UNA línea —
 //       crearTitulo({ texto: "…", contenedor: pon(l1, 0, 0, 820, 48) });
-//     con las ayudas lamina() / pon() / fondo() ya incluidas.
+//     con las ayudas lamina() / pon() / fondo() / zona() ya incluidas.
+//
+// NOVEDADES v7.4 — ESQUELETO POR DEFECTO (clase, tarea y examen):
+//   · El código generado SIEMPRE ES EL ESQUELETO ESTÁNDAR (el mismo
+//     de examen-esqueleto.js v2): cargar() a prueba de rutas,
+//     lamina/pon/fondo/zona, crearSecciones (corrido con 1 sección,
+//     Siguiente/Anterior con 2 o más), Volver y data-mco-listo.
+//     TÚ SOLO te ocupas de las SECCIONES y los COMPONENTES (en el
+//     editor o a mano en la lista SECCIONES del archivo).
+//   · El EXAMEN generado trae TODA la reparación v7.3: el registro
+//     window.__mcoEnvioExamen se REINICIA al montar (sin fuga entre
+//     piezas), el auto-envío SOLO ocurre si la nota quedó ENVIADO
+//     (respuestas sueltas NO se envían solas nunca más) y el botón
+//     «Enviar examen» va DENTRO DE LA ÚLTIMA SECCIÓN nada más
+//     (con una sola sección: final de esa sección).
+//   · «Descargar código» ya NO exige bloques guardados: con 0
+//     secciones baja el esqueleto vacío, esperando secciones y
+//     componentes.
 //
 // EXTENDER (futuras actualizaciones): cada recurso vive en SU BLOQUE
 // numerado (marca de inicio/fin + REGISTRO.push + validar con sus
@@ -255,7 +272,9 @@ function urlDeRecurso(r) {
                    k    clave del valor
                    et   etiqueta visible
                    tipo "texto"|"area"|"num"|"sino"|"opcion"|
-                        "lineas"|"json"|"repetidor"
+                        "lineas"|"json"|"repetidor"|"color"
+                        ("color" = selector RGB + campo HEX/rgb();
+                        vacío → el util toma su color por defecto)
                    req  true = obligatorio (se marca con ●)
                    ops  opciones (para tipo "opcion")
                    def  valor por defecto
@@ -2511,6 +2530,28 @@ function inyectarEstilosCrear() {
     .cr-form .fch { display: flex; align-items: center; gap: .4rem; }
     .cr-form .fch input[type="checkbox"] { width: auto; }
     .cr-form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+    /* v7.3: selector de color RGB (tipo "color") */
+    .cr-color { display: flex; align-items: center; gap: .4rem; }
+    .cr-color input[type="color"] {
+      width: 2.5rem; height: 2.15rem; padding: 2px; flex: none;
+      border: 1px solid #e5e7eb; border-radius: .45rem;
+      background: #fff; cursor: pointer;
+    }
+    .cr-color input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    .cr-color input[type="color"]::-webkit-color-swatch { border: none; border-radius: .3rem; }
+    .cr-color input[type="text"] { flex: 1; min-width: 0; }
+    /* columna de COLOR DENTRO de un repetidor (más compacta;
+       sin-color = fila sin color elegido → el util pone el suyo) */
+    .cr-color.mini { gap: .3rem; }
+    .cr-color.mini input[type="color"] { width: 2.1rem; height: 1.85rem; }
+    .cr-color.mini.sin-color input[type="color"] { opacity: .45; }
+    .cr-color.mini input[type="text"] { flex: 1; min-width: 0; font-size: .92em; }
+    .cr-color-defecto {
+      flex: none; border: 1px solid #e5e7eb; background: #fff;
+      border-radius: .45rem; font-size: .7rem; font-weight: 700;
+      padding: .32rem .55rem; cursor: pointer; color: #6d28d9;
+    }
+    .cr-color-defecto:hover { background: #f5f3ff; border-color: #c4b5fd; }
     .cr-bguardar {
       justify-self: start;
       display: inline-flex;
@@ -3685,6 +3726,21 @@ function repClaveCuantas(p) {
   return "_" + p.k + "_n";
 }
 
+// «#7c3aed» / «rgb(124, 58, 237)» → «#7c3aed» · null si no es color
+// HEX/rgb() (lo usan las columnas de COLOR de los repetidores)
+function alHexColor(v) {
+  const s = String(v || "").trim().toLowerCase();
+  let m = s.match(/^#([0-9a-f]{3})$/);
+  if (m) return "#" + m[1].split("").map((c) => c + c).join("");
+  m = s.match(/^#([0-9a-f]{6})$/);
+  if (m) return "#" + m[1];
+  m = s.match(/^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})/);
+  if (m) return "#" + [+m[1], +m[2], +m[3]]
+    .map((c) => Math.min(255, Math.max(0, c)).toString(16).padStart(2, "0"))
+    .join("");
+  return null;
+}
+
 // Lee las filas del repetidor desde b.valores (entiende borradores
 // viejos escritos a mano: son las mismas líneas de siempre).
 function repFilas(b, p) {
@@ -3909,6 +3965,44 @@ function campoRepetidor(b, p) {
         const etC = document.createElement("label");
         etC.innerHTML = esc(c.et) + (c.req ? ' <span class="req">●</span>' : "");
         envC.appendChild(etC);
+        if (c.tipo === "color") {
+          // columna COLOR del repetidor: selector RGB (swatch) + texto.
+          // VACÍO = la fila va sin color (el util pone el suyo: en la
+          // ruleta, uno al azar). El dato se guarda igual: el TEXTO.
+          const combo = document.createElement("div");
+          combo.className = "cr-color mini";
+          const swC = document.createElement("input");
+          swC.type = "color";
+          swC.title = "Elige el color de esta fila; vacío = color por defecto/al azar";
+          const inTxt = document.createElement("input");
+          inTxt.type = "text";
+          inTxt.value = valorCampo(fila.celdas[idx] ?? "");
+          inTxt.placeholder = c.ej || "";
+          const pintarSwC = () => {
+            const hex = alHexColor(inTxt.value);
+            combo.classList.toggle("sin-color", !hex);
+            swC.value = hex || "#ffffff";
+          };
+          inTxt.addEventListener("input", () => {
+            fila.celdas[idx] = inTxt.value;
+            filaEl.classList.remove("error");
+            env.classList.remove("cr-rep-error");
+            sincronizar();
+            pintarSwC();
+          });
+          swC.addEventListener("input", () => {
+            inTxt.value = swC.value;
+            fila.celdas[idx] = swC.value;
+            env.classList.remove("cr-rep-error");
+            sincronizar();
+            pintarSwC();
+          });
+          pintarSwC();
+          combo.append(swC, inTxt);
+          envC.appendChild(combo);
+          celdas.appendChild(envC);
+          return;
+        }
         const inC = document.createElement("input");
         inC.type = "text";
         inC.value = valorCampo(fila.celdas[idx] ?? "");
@@ -4046,6 +4140,66 @@ function formularioEl(b, r, medida) {
       nota.style.cssText = "font-size:.72rem;color:#9ca3af;";
       nota.textContent = chk.checked ? "sí" : "no";
       chk.addEventListener("change", () => { nota.textContent = chk.checked ? "sí" : "no"; });
+      envoltura.appendChild(campo);
+      form.appendChild(envoltura);
+      return;
+    }
+
+    if (p.tipo === "color") {   // v7.4: SELECTOR RGB (input de color) + color PREDEFINIDO fijo
+      campo = document.createElement("div");
+      campo.className = "cr-color";
+      // Color PREDEFINIDO de este util (fijo, no cambia cada vez):
+      // viene en p.def y el campo ya lo trae puesto, para no tener
+      // que escribir ni elegir nada a mano si no se quiere cambiar.
+      const DEF = p.def || "#7c3aed";
+      const sw = document.createElement("input");
+      sw.type = "color";
+      sw.title = "Selector de color: haz clic y elige (no hay que escribir nada)";
+      const txt = document.createElement("input");
+      txt.type = "text";
+      txt.dataset.k = p.k;   // el validador/marca de error busca [data-k]
+      txt.placeholder = DEF;
+      const alHex = (v) => {
+        const s = String(v || "").trim().toLowerCase();
+        let m = s.match(/^#([0-9a-f]{3})$/);
+        if (m) return "#" + m[1].split("").map((c) => c + c).join("");
+        m = s.match(/^#([0-9a-f]{6})$/);
+        if (m) return "#" + m[1];
+        m = s.match(/^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})/);
+        if (m) return "#" + [+m[1], +m[2], +m[3]]
+          .map((c) => Math.min(255, Math.max(0, c)).toString(16).padStart(2, "0"))
+          .join("");
+        return null;
+      };
+      const inicial = valorCampo(valor).trim();
+      if (!inicial) b.valores[p.k] = DEF;   // el PREDEFINIDO queda guardado
+      txt.value = inicial || DEF;
+      const pintarSw = () => {
+        sw.value = alHex(txt.value) || DEF;   // vacío/inválido → predefinido
+      };
+      txt.addEventListener("input", () => {
+        b.valores[p.k] = txt.value;
+        txt.classList.remove("error");
+        guardarBorrador();
+        pintarSw();
+      });
+      sw.addEventListener("input", () => {
+        txt.value = sw.value;
+        b.valores[p.k] = sw.value;
+        txt.classList.remove("error");
+        guardarBorrador();
+      });
+      const defecto = document.createElement("button");
+      defecto.type = "button";
+      defecto.className = "cr-color-defecto";
+      defecto.title = "Volver al color predefinido (" + DEF + ")";
+      defecto.textContent = "Defecto";
+      defecto.addEventListener("click", () => {
+        txt.value = DEF;
+        txt.dispatchEvent(new Event("input"));
+      });
+      pintarSw();
+      campo.append(sw, txt, defecto);
       envoltura.appendChild(campo);
       form.appendChild(envoltura);
       return;
@@ -4717,8 +4871,9 @@ function lineaDeBloque(r, b, varLamina, anchoSeccion) {
 }
 
 function generarCodigoFuente() {
+  // v7.4: SIN bloques guardados TAMBIÉN se genera — sale el esqueleto
+  // vacío esperando secciones y componentes (nada de bloquear).
   const enDoc = estado.secciones.filter((s) => s.bloques.some((b) => b.guardado));
-  if (!enDoc.length) return null;
 
   const esExamen = estado.tipo === "examen";
   const etiquetaTipo = { clase: "CLASE", tarea: "TAREA", examen: "EXAMEN" }[estado.tipo] || "CLASE";
@@ -4785,7 +4940,7 @@ function generarCodigoFuente() {
   const o = estado.opciones || {};
   const opciones = [
     "    contenedor: lienzo,",
-    "    secciones: [" + varsLamina.join(", ") + "],",
+    "    secciones: SECCIONES,",
   ];
   if (o.avance && o.avance !== "estandar") opciones.push('    avance: "' + o.avance + '",');
   if (o.tarjeta) opciones.push("    tarjeta: true,");
@@ -4794,12 +4949,29 @@ function generarCodigoFuente() {
 
   const fecha = new Date().toLocaleDateString("es", { year: "numeric", month: "long", day: "numeric" });
 
-  /* ---- código de la PÁGINA COMPLETA ---- */
+  /* ---- código de la PÁGINA COMPLETA (EL ESQUELETO por defecto) ---- */
   const salida = [
     "// ============================================================",
-    "// " + etiquetaTipo + " generada con el editor «Crear» — Mis Clases Online",
+    "// ESQUELETO · " + etiquetaTipo + " — Mis Clases Online (editor «Crear»)",
     "// Tipo: " + estado.tipo + " · ID: " + (estado.id || "—") + " · Título: " + tituloPagina,
     "// Fecha: " + fecha,
+    "//",
+    "// ══ QUÉ ES ESTE ARCHIVO ══",
+    "//   EL ESQUELETO ESTÁNDAR de la pieza, listo por defecto: carga de",
+    "//   módulos a prueba de rutas (cargar() con reintento), láminas",
+    "//   (lamina/pon/fondo/zona), paginación con crearSecciones (corrido",
+    "//   con 1 sección · Siguiente/Anterior con 2 o más), flecha Volver",
+    "//   al inicio y la marca data-mco-listo.",
+    ...(esExamen
+      ? [
+          "//   Con tipo \"examen\" trae ADEMÁS el cierre resuelto: no se puede",
+          "//   salir sin ENVIAR, auto-envío SOLO si la nota quedó ENVIADO",
+          "//   (nunca se envía solo), bloqueo SOLO para el estudiante que",
+          "//   envió y el botón «Enviar examen» AL FINAL DE LA ÚLTIMA",
+          "//   SECCIÓN nada más.",
+        ]
+      : []),
+    "//   TÚ SOLO te ocupas de las SECCIONES y los COMPONENTES.",
     "//",
     "// CÓMO USARLO",
     "//   1. Guarda este archivo (con el nombre del ID) 3 carpetas",
@@ -4810,17 +4982,18 @@ function generarCodigoFuente() {
     "//   2. Se abre desde «" + (esExamen ? "Exámenes" : estado.tipo === "tarea" ? "Tareas" : "Clases") +
       "» con render(perfil, contenedor, clase).",
     "//",
-    "// CARGA A PRUEBA DE RUTAS: los módulos NO se importan arriba",
-    "// (un archivo faltante mataba la página entera con «Failed to",
-    "// fetch…»). Se cargan con cargar(), que reintenta sin caché,",
-    "// verifica las exportaciones y avisa el motivo exacto.",
-    "//",
-    "// PARA AGREGAR UN BLOQUE NUEVO (dentro de montar()):",
-    "//   1. si su fábrica aún no está, UNA línea cargar() más —",
-    '//        const { crearParrafo } = await cargar("../../../js/componentes/parrafo.js", ["crearParrafo"]);',
-    "//   2. UNA línea del bloque, dentro de su lámina —",
-    '//        crearParrafo({ texto: "…", contenedor: pon(l1, 0, 240, 820) });',
-    "// (las posiciones y medidas en px salieron del editor al guardar).",
+    "// SECCIONES Y COMPONENTES (las DOS maneras):",
+    "//   · EN EL EDITOR: arma secciones y suelta bloques; al descargar,",
+    "//     este mismo esqueleto sale con tu contenido ya dentro (una",
+    "//     lámina por sección, una línea por bloque).",
+    "//   · A MANO: la lista SECCIONES (abajo) espera tus láminas y cada",
+    "//     bloque nuevo son DOS líneas dentro de montar():",
+    "//       1. si su fábrica aún no está, UNA línea cargar() más —",
+    '//          const { crearParrafo } = await cargar("../../../js/componentes/parrafo.js", ["crearParrafo"]);',
+    "//       2. UNA línea del bloque, dentro de su lámina —",
+    '//          crearParrafo({ texto: "…", contenedor: pon(l1, 0, 240, 820) });',
+    "//     (las posiciones y medidas en px salieron del editor al guardar;",
+    "//      zona(l1) te da una caja en FLUJO para actividades que crecen).",
     "// ============================================================",
     "",
     "let estilosListos = false;",
@@ -4862,6 +5035,7 @@ function generarCodigoFuente() {
     "    .cg-lamina { position: relative; }",
     "    .cg-bloque { position: absolute; z-index: 1; }",
     "    .cg-fondo { position: absolute; z-index: 0; }",
+    "    .ex-zona { margin: 0; }",
     ...(esExamen
       ? [
           "    .cg-envio { margin-top: 1.6rem; text-align: center; }",
@@ -4945,6 +5119,15 @@ function generarCodigoFuente() {
     "  return caja;",
     "}",
     "",
+    "// Zona en FLUJO dentro de la lámina (altura natural): útil para",
+    "// actividades que crecen solas (preguntas, listas, arrastrar…).",
+    "function zona(laminaDestino) {",
+    "  const caja = document.createElement(\"div\");",
+    '  caja.className = "ex-zona";',
+    "  laminaDestino.appendChild(caja);",
+    "  return caja;",
+    "}",
+    "",
   ];
 
   if (esExamen) {
@@ -4998,12 +5181,8 @@ function generarCodigoFuente() {
     '      <div class="cg-lienzo" id="cg-lienzo"></div>',
     ...(esExamen
       ? [
-          '      <div class="cg-envio" id="cg-envio">',
-          '        <button class="cg-enviar" id="cg-enviar" type="button">',
-          '          <sl-icon name="send"></sl-icon> Enviar examen',
-          "        </button>",
-          '        <p class="cg-envio-nota">Al enviar se cierra la prueba y se habilita la flecha Volver.</p>',
-          "      </div>",
+          "      <!-- SIN caja de envío aquí: el botón «Enviar examen» lo coloca",
+          "           montar() DENTRO de la última sección -->",
         ]
       : []),
     "    </div>`;",
@@ -5026,6 +5205,20 @@ function generarCodigoFuente() {
     "  const lienzo = contenedor.querySelector(\"#cg-lienzo\");",
     "  const volver = contenedor.querySelector(\"#cg-volver\");",
     "",
+    "  // ── REGISTRO COMPARTIDO DEL ENVÍO: REINICIO POR PIEZA ──",
+    "  // SIEMPRE antes de montar utilidades (botonEnviar, timer, bloques):",
+    "  // una pieza anterior ya enviada no debe contar para ESTA (sin este",
+    "  // reinicio, un " + estado.tipo + " anterior ya enviado hacía que este",
+    "  // nunca se enviara de verdad o creyera ya enviado).",
+    "  window.__mcoEnvioExamen = {",
+    "    claseId: clase && clase.id ? clase.id : null,",
+    "    mapa: {},        // qid → enviar() de cada bloque de actividad",
+    "    alEnviado: [],   // botones/timers suscritos",
+    "    enviado: false,",
+    "    enviando: false,",
+    "    puntos: null,",
+    "  };",
+    "",
     "  // ── Módulos usados (con reintento y aviso claro si falta uno) ──",
     ...lineasCargar,
     "",
@@ -5036,23 +5229,37 @@ function generarCodigoFuente() {
   if (esExamen) {
     salida.push(
       "  const aviso = contenedor.querySelector(\"#cg-aviso\");",
-      "  const enviar = contenedor.querySelector(\"#cg-enviar\");",
       "  const bloqueEnviado = contenedor.querySelector(\"#cg-enviado\");",
       "  const bloqueEnviadoTxt = contenedor.querySelector(\"#cg-enviado-txt\");",
-      "  const bloqueEnvio = contenedor.querySelector(\"#cg-envio\");",
       "  const esDocente = perfil.rol === \"docente\";",
       "  const tituloExamen = " + JSON.stringify(tituloPagina) + ";",
       "",
+      "  // ── CAJA DE ENVÍO: se crea aquí y va DENTRO DE LA ÚLTIMA SECCIÓN ──",
+      "  // (al final de la última sección nada más; con UNA sección, al",
+      "  //  final de esa sección; con NINGUNA todavía, en el lienzo).",
+      "  const cajaEnvio = document.createElement(\"div\");",
+      "  cajaEnvio.className = \"cg-envio\";",
+      "  cajaEnvio.id = \"cg-envio\";",
+      "  cajaEnvio.innerHTML = `",
+      "    <button class=\"cg-enviar\" id=\"cg-enviar\" type=\"button\">",
+      "      <sl-icon name=\"send\"></sl-icon> Enviar examen",
+      "    </button>",
+      "    <p class=\"cg-envio-nota\">Al enviar se cierra la prueba, se bloquea para ti (solo revisas tu puntaje) y se habilita la flecha Volver.</p>`;",
+      "  const enviar = cajaEnvio.querySelector(\"#cg-enviar\");",
+      "",
       "  // ── Estado del examen en cuanto carga (estudiante) ──",
+      "  // AUTO-ENVÍO SOLO CON LA MARCA ENVIADO (envío real, timer o",
+      "  // salida forzada ya enviada). Respuestas sueltas SIN enviar →",
+      "  // el examen se RETOMA: NUNCA se envía solo.",
       "  if (!esDocente && clase && clase.id && perfil.uid) {",
       "    try {",
       "      const nota = await obtenerNota(perfil, clase);",
-      "      const respondio = !!(nota && nota.preguntas && Object.keys(nota.preguntas).length);",
-      "      if ((nota && nota.enviado) || respondio) {",
-      "        // Ya enviado — o salió a la fuerza la vez pasada: se cierra",
-      "        // ahora (auto-envío). Lo no respondido quedó sin puntos.",
+      "      if (nota && nota.enviado) {",
+      "        // Ya enviado (envío real, timer o salida forzada ya enviada):",
+      "        // se muestra cerrado. Lo no respondido quedó sin puntos.",
       "        examenEnviado = true;",
-      "        notaFinal = nota ? nota.puntos : null;",
+      "        try { window.__mcoEnvioExamen = window.__mcoEnvioExamen || {}; window.__mcoEnvioExamen.enviado = true; } catch (e) {}",
+      "        notaFinal = typeof nota.puntos === \"number\" ? nota.puntos : null;",
       "        await finalizarExamen(perfil, clase, { titulo: tituloExamen }).catch(() => {});",
       "      } else {",
       "        // Sin enviar: cierre/recarga queda marcado para auto-envío",
@@ -5073,7 +5280,7 @@ function generarCodigoFuente() {
       "",
       "  if (examenEnviado) {",
       "    aviso.hidden = true;",
-      "    if (bloqueEnvio) bloqueEnvio.hidden = true;",
+      "    if (cajaEnvio) cajaEnvio.hidden = true;",
       "    if (bloqueEnviado) {",
       "      bloqueEnviado.hidden = false;",
       "      bloqueEnviadoTxt.textContent =",
@@ -5089,11 +5296,19 @@ function generarCodigoFuente() {
       "      enviar.disabled = true;",
       "      enviar.innerHTML = '<sl-icon name=\"check-lg\"></sl-icon> Examen enviado';",
       "      try {",
+      "        // ENVIAR califica TAMBIÉN lo que el estudiante no envió una a",
+      "        // una: los utils de actividad se registran en",
+      "        // window.__mcoEnvioExamen (v7: botonEnviar/timer los usan).",
+      "        try {",
+      "          const reg = window.__mcoEnvioExamen;",
+      "          if (reg && reg.mapa) { for (const fn of Object.values(reg.mapa)) { try { await fn(); } catch (e) {} } }",
+      "        } catch (e) {}",
       "        const res = await finalizarExamen(perfil, clase, { titulo: tituloExamen });",
       "        notaFinal = res && typeof res.puntos === \"number\" ? res.puntos : null;",
       "      } catch (e) { /* igual queda enviado en local */ }",
+      "      try { window.__mcoEnvioExamen = window.__mcoEnvioExamen || {}; window.__mcoEnvioExamen.enviado = true; } catch (e) {}",
       "      aviso.hidden = true;",
-      "      if (bloqueEnvio) bloqueEnvio.hidden = true;",
+      "      if (cajaEnvio) cajaEnvio.hidden = true;",
       "      if (bloqueEnviado) {",
       "        bloqueEnviado.hidden = false;",
       "        bloqueEnviadoTxt.textContent =",
@@ -5105,7 +5320,7 @@ function generarCodigoFuente() {
       "",
       "  // ── VOLVER: sin enviar NO se sale; si insiste, se envía lo que hay ──",
       "  volver.addEventListener(\"click\", async () => {",
-      "    if (!examenEnviado && !esDocente) {",
+      "    if (!examenEnviado && !esDocente && !(window.__mcoEnvioExamen && window.__mcoEnvioExamen.enviado)) {",
       "      aviso.hidden = false;",
       '      aviso.scrollIntoView({ behavior: "smooth", block: "center" });',
       "      const salir = window.confirm(",
@@ -5116,7 +5331,12 @@ function generarCodigoFuente() {
       "      );",
       "      if (!salir) return;   // se queda a terminar",
       "      examenEnviado = true;",
+      "      try {",
+      "        const reg = window.__mcoEnvioExamen;",
+      "        if (reg && reg.mapa) { for (const fn of Object.values(reg.mapa)) { try { await fn(); } catch (e) {} } }",
+      "      } catch (e) {}",
       "      try { await finalizarExamen(perfil, clase, { titulo: tituloExamen }); } catch (e) {}",
+      "      try { window.__mcoEnvioExamen = window.__mcoEnvioExamen || {}; window.__mcoEnvioExamen.enviado = true; } catch (e) {}",
       "    }",
       "    renderUserbar(perfil);",
       "    renderInicio(perfil, contenedor);",
@@ -5136,6 +5356,21 @@ function generarCodigoFuente() {
 
   salida.push(
     ...cuerpo,
+    "  // ════════════════════════════════════════════════════════════",
+    "  //  TUS SECCIONES — la lista que llena el editor. A mano: crea",
+    "  //  láminas (const lN = lamina(alto, 820);) y añádelas aquí.",
+    "  // ════════════════════════════════════════════════════════════",
+    "  const SECCIONES = [" + varsLamina.join(", ") + "];",
+    "",
+    ...(esExamen
+      ? [
+          "  // ── BOTÓN «Enviar examen»: AL FINAL DE LA ÚLTIMA SECCIÓN nada más ──",
+          "  // (con UNA sección: final de esa sección; con NINGUNA todavía:",
+          "  //  queda en el lienzo hasta que agregues la primera).",
+          "  (SECCIONES.length ? SECCIONES[SECCIONES.length - 1] : lienzo).append(cajaEnvio);",
+          "",
+        ]
+      : []),
     "  // ── Documento final: CORRIDO con 1 sección; con 2 o más, una a la vez ──",
     "  crearSecciones({",
     ...opciones,
@@ -5161,11 +5396,11 @@ function descargarArchivo(nombre, texto) {
 }
 
 function abrirModalCodigo() {
+  // v7.4: NADA de «primero guarda un bloque» — el ESQUELETO sale POR
+  // DEFECTO para clase, tarea y examen, con o sin contenido: sin
+  // secciones/bloques guardados baja el esqueleto vacío, esperando
+  // secciones y componentes.
   const hayGuardados = estado.secciones.some((s) => s.bloques.some((b) => b.guardado));
-  if (!hayGuardados) {
-    notify("Primero GUARDA al menos un bloque dentro de una sección: el código se genera con los bloques guardados.", "warning");
-    return;
-  }
 
   let fuente;
   try {
@@ -5196,6 +5431,17 @@ function abrirModalCodigo() {
   document.body.appendChild(fondoM);
 
   fondoM.querySelector("#cr-codigo").textContent = fuente;
+
+  if (!hayGuardados) {
+    const notaVacio = document.createElement("div");
+    notaVacio.style.cssText =
+      "padding:.6rem 1rem; background:#1e293b; color:#e2e8f0; font-size:.8rem;" +
+      "border-bottom:1px solid #334155; font-family:system-ui, sans-serif;";
+    notaVacio.textContent =
+      "Esqueleto SIN secciones/bloques guardados todavía: descárgalo así y llénalo a mano " +
+      "(lista SECCIONES), o arma secciones y componentes en el editor y vuelve a descargar.";
+    fondoM.querySelector(".cr-modal-cuerpo").prepend(notaVacio);
+  }
 
   const cerrar = () => fondoM.remove();
   fondoM.addEventListener("click", (e) => { if (e.target === fondoM) cerrar(); });
@@ -5524,6 +5770,7 @@ function abrirModalCodigo() {
 /* ▼ Para agregar OTRO recurso: pega aquí abajo el siguiente BLOQUE
    numerado — (() => { REGISTRO.push({ …, validar: … }); })() — con su
    marca de inicio/fin y su validar. La puerta ya lo cubre. ▼ */
+
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 35 · «graficador-funciones-cartesianas» — Plano cartesiano
    de funciones   [visuales]   · v2 con RECORTES de porción
@@ -5546,519 +5793,519 @@ function abrirModalCodigo() {
    Si ya pegaste el BLOQUE 35 ANTERIOR, este lo REEMPLAZA solo
    (mismo id: la entrada del REGISTRO se actualiza, no se duplica).
    ══════════════════════════════════════════════════════════════════════ */
-   (() => {
-    /* ── Ayudantes SOLO de este bloque (no tocan nada del crear.js base) ── */
-    const limpia = (v) => String(v ?? "").trim();
-    const lineasDe = (v) => limpia(v).split("\n").map((s) => s.trim()).filter(Boolean);
-    const listaCuadrantes = (v) => {
-      const nums = limpia(v).split(",").map((s) => Number(s.trim()))
-        .filter((n) => n >= 1 && n <= 4);
-      return nums.length ? nums : undefined;
-    };
-  
-    /* ══ Revisor de sintaxis COMPACTO — ESPEJO del motor del visual.
-       Tokeniza y parsea SOLO para detectar errores ANTES de guardar;
-       no evalúa nada. Mismas reglas: ²→^2, √→sqrt, π→pi, sen→sin,
-       multiplicación implícita (2x, 2(x+1), xy), |abs|, x^-2… ══ */
-    const FN = ["sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh",
-      "sqrt", "cbrt", "abs", "ln", "log", "log10", "exp", "floor", "ceil", "round", "sign"];
-    const ALIAS = { sen: "sin", senh: "sinh", tg: "tan", arcsen: "asin", arccos: "acos", arctg: "atan", raiz: "sqrt" };
-    const CTE = ["pi", "e", "tau"];
-    const PALABRAS = [...new Set([...FN, ...Object.keys(ALIAS), ...CTE])].sort((a, b) => b.length - a.length);
-  
-    /* Devuelve la lista de símbolos o LANZA con el motivo exacto. */
-    function tokenizarCompacto(texto) {
-      let t = String(texto ?? "").toLowerCase().trim();
-      t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      for (const [re, s] of [[/²/g, "^2"], [/³/g, "^3"], [/⁴/g, "^4"], [/⁵/g, "^5"],
-        [/√/g, "sqrt"], [/π/g, "pi"], [/×|·/g, "*"], [/÷/g, "/"],
-        [/−|–|—/g, "-"], [/≥/g, ">="], [/≤/g, "<="]]) t = t.replace(re, s);
-      t = t.replace(/(\d)\s*,\s*(\d)/g, "$1.$2");
-      const toks = [];
-      const esDig = (c) => c >= "0" && c <= "9";
-      let i = 0;
-      while (i < t.length) {
-        const c = t[i];
-        if (c === " ") { i++; continue; }
-        if (esDig(c) || (c === "." && esDig(t[i + 1] ?? ""))) {
-          let j = i;
-          while (j < t.length && (esDig(t[j]) || t[j] === ".")) j++;
-          if (t[j] === "e" && (esDig(t[j + 1] ?? "") || ((t[j + 1] === "+" || t[j + 1] === "-") && esDig(t[j + 2] ?? "")))) {
-            j += 2;
-            while (j < t.length && esDig(t[j])) j++;
-          }
-          if (!Number.isFinite(Number(t.slice(i, j)))) throw new Error("«" + t.slice(i, j) + "» no es un número válido");
-          toks.push({ t: "num", v: 0 });
-          i = j;
-          continue;
+(() => {
+  /* ── Ayudantes SOLO de este bloque (no tocan nada del crear.js base) ── */
+  const limpia = (v) => String(v ?? "").trim();
+  const lineasDe = (v) => limpia(v).split("\n").map((s) => s.trim()).filter(Boolean);
+  const listaCuadrantes = (v) => {
+    const nums = limpia(v).split(",").map((s) => Number(s.trim()))
+      .filter((n) => n >= 1 && n <= 4);
+    return nums.length ? nums : undefined;
+  };
+
+  /* ══ Revisor de sintaxis COMPACTO — ESPEJO del motor del visual.
+     Tokeniza y parsea SOLO para detectar errores ANTES de guardar;
+     no evalúa nada. Mismas reglas: ²→^2, √→sqrt, π→pi, sen→sin,
+     multiplicación implícita (2x, 2(x+1), xy), |abs|, x^-2… ══ */
+  const FN = ["sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh",
+    "sqrt", "cbrt", "abs", "ln", "log", "log10", "exp", "floor", "ceil", "round", "sign"];
+  const ALIAS = { sen: "sin", senh: "sinh", tg: "tan", arcsen: "asin", arccos: "acos", arctg: "atan", raiz: "sqrt" };
+  const CTE = ["pi", "e", "tau"];
+  const PALABRAS = [...new Set([...FN, ...Object.keys(ALIAS), ...CTE])].sort((a, b) => b.length - a.length);
+
+  /* Devuelve la lista de símbolos o LANZA con el motivo exacto. */
+  function tokenizarCompacto(texto) {
+    let t = String(texto ?? "").toLowerCase().trim();
+    t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    for (const [re, s] of [[/²/g, "^2"], [/³/g, "^3"], [/⁴/g, "^4"], [/⁵/g, "^5"],
+      [/√/g, "sqrt"], [/π/g, "pi"], [/×|·/g, "*"], [/÷/g, "/"],
+      [/−|–|—/g, "-"], [/≥/g, ">="], [/≤/g, "<="]]) t = t.replace(re, s);
+    t = t.replace(/(\d)\s*,\s*(\d)/g, "$1.$2");
+    const toks = [];
+    const esDig = (c) => c >= "0" && c <= "9";
+    let i = 0;
+    while (i < t.length) {
+      const c = t[i];
+      if (c === " ") { i++; continue; }
+      if (esDig(c) || (c === "." && esDig(t[i + 1] ?? ""))) {
+        let j = i;
+        while (j < t.length && (esDig(t[j]) || t[j] === ".")) j++;
+        if (t[j] === "e" && (esDig(t[j + 1] ?? "") || ((t[j + 1] === "+" || t[j + 1] === "-") && esDig(t[j + 2] ?? "")))) {
+          j += 2;
+          while (j < t.length && esDig(t[j])) j++;
         }
-        if (c === "x" || c === "y") { toks.push({ t: "var", v: c }); i++; continue; }
-        if (c >= "a" && c <= "z") {
-          const resto = t.slice(i);
-          const palabra = PALABRAS.find((p) => resto.startsWith(p));
-          if (palabra) {
-            const canon = ALIAS[palabra] || palabra;
-            toks.push(FN.includes(canon) ? { t: "fn", v: canon } : { t: "cte", v: canon });
-            i += palabra.length;
-            continue;
-          }
-          throw new Error("no reconozco «" + ((resto.match(/^[a-z]+/) || ["?"])[0]) + "»: las variables son x y y; funciones como sin, cos, tan, sqrt, abs, ln, log, exp (también sen, tg, raiz)");
-        }
-        if (c === "(" || c === ")") { toks.push({ t: "pa", v: c }); i++; continue; }
-        if (c === "|") { toks.push({ t: "barra" }); i++; continue; }
-        if ("^*/+-".includes(c)) { toks.push({ t: "op", v: c }); i++; continue; }
-        if (c === ">") { toks.push({ t: "comp", v: t[i + 1] === "=" ? ">=" : ">" }); i += t[i + 1] === "=" ? 2 : 1; continue; }
-        if (c === "<") { toks.push({ t: "comp", v: t[i + 1] === "=" ? "<=" : "<" }); i += t[i + 1] === "=" ? 2 : 1; continue; }
-        if (c === "=") { toks.push({ t: "igual" }); i++; continue; }
-        throw new Error("no acepto el símbolo «" + c + "»");
+        if (!Number.isFinite(Number(t.slice(i, j)))) throw new Error("«" + t.slice(i, j) + "» no es un número válido");
+        toks.push({ t: "num", v: 0 });
+        i = j;
+        continue;
       }
-      /* multiplicación implícita (misma regla que el visual, con estado
-         de barras para que y=|x| no se rompa) */
-      const conMult = [];
-      let barraAbierta = false;
-      for (const tk of toks) {
-        const prev = conMult[conMult.length - 1];
-        const prevCierra = prev && (prev.t === "num" || prev.t === "var" || prev.t === "cte" ||
-          (prev.t === "pa" && prev.v === ")") ||
-          (prev.t === "barra" && !barraAbierta));
-        const tkAbre = tk && (tk.t === "num" || tk.t === "var" || tk.t === "cte" ||
-          tk.t === "fn" || (tk.t === "pa" && tk.v === "(") ||
-          (tk.t === "barra" && !barraAbierta));
-        if (tk.t === "barra") {
-          if (prevCierra && tkAbre) conMult.push({ t: "op", v: "*" });
-          barraAbierta = !barraAbierta;
-          conMult.push(tk);
+      if (c === "x" || c === "y") { toks.push({ t: "var", v: c }); i++; continue; }
+      if (c >= "a" && c <= "z") {
+        const resto = t.slice(i);
+        const palabra = PALABRAS.find((p) => resto.startsWith(p));
+        if (palabra) {
+          const canon = ALIAS[palabra] || palabra;
+          toks.push(FN.includes(canon) ? { t: "fn", v: canon } : { t: "cte", v: canon });
+          i += palabra.length;
           continue;
         }
-        if (prev && prevCierra && tkAbre) conMult.push({ t: "op", v: "*" });
+        throw new Error("no reconozco «" + ((resto.match(/^[a-z]+/) || ["?"])[0]) + "»: las variables son x y y; funciones como sin, cos, tan, sqrt, abs, ln, log, exp (también sen, tg, raiz)");
+      }
+      if (c === "(" || c === ")") { toks.push({ t: "pa", v: c }); i++; continue; }
+      if (c === "|") { toks.push({ t: "barra" }); i++; continue; }
+      if ("^*/+-".includes(c)) { toks.push({ t: "op", v: c }); i++; continue; }
+      if (c === ">") { toks.push({ t: "comp", v: t[i + 1] === "=" ? ">=" : ">" }); i += t[i + 1] === "=" ? 2 : 1; continue; }
+      if (c === "<") { toks.push({ t: "comp", v: t[i + 1] === "=" ? "<=" : "<" }); i += t[i + 1] === "=" ? 2 : 1; continue; }
+      if (c === "=") { toks.push({ t: "igual" }); i++; continue; }
+      throw new Error("no acepto el símbolo «" + c + "»");
+    }
+    /* multiplicación implícita (misma regla que el visual, con estado
+       de barras para que y=|x| no se rompa) */
+    const conMult = [];
+    let barraAbierta = false;
+    for (const tk of toks) {
+      const prev = conMult[conMult.length - 1];
+      const prevCierra = prev && (prev.t === "num" || prev.t === "var" || prev.t === "cte" ||
+        (prev.t === "pa" && prev.v === ")") ||
+        (prev.t === "barra" && !barraAbierta));
+      const tkAbre = tk && (tk.t === "num" || tk.t === "var" || tk.t === "cte" ||
+        tk.t === "fn" || (tk.t === "pa" && tk.v === "(") ||
+        (tk.t === "barra" && !barraAbierta));
+      if (tk.t === "barra") {
+        if (prevCierra && tkAbre) conMult.push({ t: "op", v: "*" });
+        barraAbierta = !barraAbierta;
         conMult.push(tk);
+        continue;
       }
-      return conMult;
+      if (prev && prevCierra && tkAbre) conMult.push({ t: "op", v: "*" });
+      conMult.push(tk);
     }
-  
-    function revisarCadena(toks) {
-      let pos = 0;
-      const mirar = () => toks[pos];
-      function expr() {
-        termino();
-        while (mirar() && mirar().t === "op" && (mirar().v === "+" || mirar().v === "-")) { pos++; termino(); }
-      }
-      function termino() {
-        factor();
-        while (mirar() && mirar().t === "op" && (mirar().v === "*" || mirar().v === "/")) { pos++; factor(); }
-      }
-      function factor() {
-        if (mirar() && mirar().t === "op" && (mirar().v === "-" || mirar().v === "+")) { pos++; factor(); return; }
-        potencia();
-      }
-      function potencia() {
-        atomo();
-        if (mirar() && mirar().t === "op" && mirar().v === "^") { pos++; factor(); }
-      }
-      function atomo() {
-        const tk = mirar();
-        if (!tk) throw new Error("la expresión termina antes de lo esperado");
-        if (tk.t === "num" || tk.t === "cte" || tk.t === "var") { pos++; return; }
-        if (tk.t === "fn") {
-          pos++;
-          if (!(mirar() && mirar().t === "pa" && mirar().v === "(")) throw new Error(tk.v + "(…) necesita paréntesis — ej: " + tk.v + "(x)");
-          pos++; expr();
-          if (!(mirar() && mirar().t === "pa" && mirar().v === ")")) throw new Error("falta cerrar el paréntesis de " + tk.v + "(…");
-          pos++; return;
-        }
-        if (tk.t === "pa" && tk.v === "(") {
-          pos++; expr();
-          if (!(mirar() && mirar().t === "pa" && mirar().v === ")")) throw new Error("falta cerrar un paréntesis");
-          pos++; return;
-        }
-        if (tk.t === "barra") {
-          pos++; expr();
-          if (!(mirar() && mirar().t === "barra")) throw new Error("falta la segunda barra |…|");
-          pos++; return;
-        }
-        if (tk.t === "comp") throw new Error("un comparador («" + tk.v + "») solo va en las ÁREAS (region), no en una ecuación");
-        if (tk.t === "igual") throw new Error("una ecuación solo puede llevar UN signo «=»");
-        throw new Error("no espero «" + (tk.v ?? "|") + "» ahí");
-      }
-      expr();
-      if (pos < toks.length) throw new Error("sobran símbolos al final (revisa la expresión)");
+    return conMult;
+  }
+
+  function revisarCadena(toks) {
+    let pos = 0;
+    const mirar = () => toks[pos];
+    function expr() {
+      termino();
+      while (mirar() && mirar().t === "op" && (mirar().v === "+" || mirar().v === "-")) { pos++; termino(); }
     }
-  
-    /* null = se entiende · texto = el problema (para marcar en rojo).
-       La ecuación se parte en su signo «=» y CADA lado se revisa solo
-       (igual que hace el motor del visual). */
-    function errorDeExpresion(texto, conComparador) {
-      let t = String(texto ?? "").toLowerCase().trim();
-      t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      for (const [re, s] of [[/²/g, "^2"], [/³/g, "^3"], [/⁴/g, "^4"], [/⁵/g, "^5"],
-        [/√/g, "sqrt"], [/π/g, "pi"], [/×|·/g, "*"], [/÷/g, "/"],
-        [/−|–|—/g, "-"], [/≥/g, ">="], [/≤/g, "<="]]) t = t.replace(re, s);
-      t = t.replace(/(\d)\s*,\s*(\d)/g, "$1.$2");
-      if (!t) return "está vacía";
-      const partes = t.split("=");
-      if (partes.length > 2) return "lleva más de un signo «=»";
-      for (const lado of partes) {
-        const mal = revisarLado(lado, conComparador);
-        if (mal) return mal;
-      }
-      return null;
+    function termino() {
+      factor();
+      while (mirar() && mirar().t === "op" && (mirar().v === "*" || mirar().v === "/")) { pos++; factor(); }
     }
-  
-    function revisarLado(lado, conComparador) {
-      try {
-        const toks = tokenizarCompacto(lado);
-        if (!toks.length) return "hay un lado vacío (revisa el signo «=»)";
-        const idx = toks.findIndex((tk) => tk.t === "comp");
-        if (idx >= 0 && !conComparador) {
-          return "lleva un comparador («" + toks[idx].v + "»): las desigualdades van en las ÁREAS, no aquí";
-        }
-        if (idx >= 0) {
-          revisarCadena(toks.slice(0, idx));
-          revisarCadena(toks.slice(idx + 1));
-          return null;
-        }
-        revisarCadena(toks);
+    function factor() {
+      if (mirar() && mirar().t === "op" && (mirar().v === "-" || mirar().v === "+")) { pos++; factor(); return; }
+      potencia();
+    }
+    function potencia() {
+      atomo();
+      if (mirar() && mirar().t === "op" && mirar().v === "^") { pos++; factor(); }
+    }
+    function atomo() {
+      const tk = mirar();
+      if (!tk) throw new Error("la expresión termina antes de lo esperado");
+      if (tk.t === "num" || tk.t === "cte" || tk.t === "var") { pos++; return; }
+      if (tk.t === "fn") {
+        pos++;
+        if (!(mirar() && mirar().t === "pa" && mirar().v === "(")) throw new Error(tk.v + "(…) necesita paréntesis — ej: " + tk.v + "(x)");
+        pos++; expr();
+        if (!(mirar() && mirar().t === "pa" && mirar().v === ")")) throw new Error("falta cerrar el paréntesis de " + tk.v + "(…");
+        pos++; return;
+      }
+      if (tk.t === "pa" && tk.v === "(") {
+        pos++; expr();
+        if (!(mirar() && mirar().t === "pa" && mirar().v === ")")) throw new Error("falta cerrar un paréntesis");
+        pos++; return;
+      }
+      if (tk.t === "barra") {
+        pos++; expr();
+        if (!(mirar() && mirar().t === "barra")) throw new Error("falta la segunda barra |…|");
+        pos++; return;
+      }
+      if (tk.t === "comp") throw new Error("un comparador («" + tk.v + "») solo va en las ÁREAS (region), no en una ecuación");
+      if (tk.t === "igual") throw new Error("una ecuación solo puede llevar UN signo «=»");
+      throw new Error("no espero «" + (tk.v ?? "|") + "» ahí");
+    }
+    expr();
+    if (pos < toks.length) throw new Error("sobran símbolos al final (revisa la expresión)");
+  }
+
+  /* null = se entiende · texto = el problema (para marcar en rojo).
+     La ecuación se parte en su signo «=» y CADA lado se revisa solo
+     (igual que hace el motor del visual). */
+  function errorDeExpresion(texto, conComparador) {
+    let t = String(texto ?? "").toLowerCase().trim();
+    t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    for (const [re, s] of [[/²/g, "^2"], [/³/g, "^3"], [/⁴/g, "^4"], [/⁵/g, "^5"],
+      [/√/g, "sqrt"], [/π/g, "pi"], [/×|·/g, "*"], [/÷/g, "/"],
+      [/−|–|—/g, "-"], [/≥/g, ">="], [/≤/g, "<="]]) t = t.replace(re, s);
+    t = t.replace(/(\d)\s*,\s*(\d)/g, "$1.$2");
+    if (!t) return "está vacía";
+    const partes = t.split("=");
+    if (partes.length > 2) return "lleva más de un signo «=»";
+    for (const lado of partes) {
+      const mal = revisarLado(lado, conComparador);
+      if (mal) return mal;
+    }
+    return null;
+  }
+
+  function revisarLado(lado, conComparador) {
+    try {
+      const toks = tokenizarCompacto(lado);
+      if (!toks.length) return "hay un lado vacío (revisa el signo «=»)";
+      const idx = toks.findIndex((tk) => tk.t === "comp");
+      if (idx >= 0 && !conComparador) {
+        return "lleva un comparador («" + toks[idx].v + "»): las desigualdades van en las ÁREAS, no aquí";
+      }
+      if (idx >= 0) {
+        revisarCadena(toks.slice(0, idx));
+        revisarCadena(toks.slice(idx + 1));
         return null;
-      } catch (e) {
-        return e.message;
       }
-    }
-  
-    /* ¿Trae x o y de verdad? (acotaciones, rangos y coordenadas no pueden) */
-    function traeVariables(texto) {
-      try {
-        return tokenizarCompacto(texto).some((tk) => tk.t === "var");
-      } catch (_) {
-        return false;
-      }
-    }
-  
-    /* Colores: mismo criterio del visual (hex 3/4/6/8 o nombre) */
-    const NOMBRES_COLOR = ["negro", "blanco", "gris", "rojo", "vino", "rosa", "fucsia",
-      "naranja", "amarillo", "lima", "verde", "turquesa", "cian", "celeste", "azul",
-      "morado", "violeta", "cafe", "marron"];
-    function colorOK(t) {
-      const s = String(t ?? "").toLowerCase().trim();
-      if (!s) return false;
-      if (NOMBRES_COLOR.includes(s)) return true;
-      return /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(s);
-    }
-  
-    /* ── lectura de líneas «a | b | c» cuando el contenido puede llevar
-          barras de valor absoluto (y=|x|): color y acotaciones se toman
-          del FINAL y la ecuación se queda con todo lo demás (IGUAL que
-          el visual) ── */
-    const esSegAcot = (s) => /^\s*[xy]\s*:.+$/i.test(s);
-    const esSegRango = (s) => /^([xy])\s*=\s*.+\.\..+$/.test(s);
-    const esSegRecorte = (s) => /^recorte(\s*:|\s|$)/i.test(
-      String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim());
-    function quitaColor(segs) {
-      if (segs.length < 2) return "";
-      const ultimo = segs[segs.length - 1];
-      if (colorOK(ultimo)) return segs.pop();
-      return "";
-    }
-    /* { ecuacion, color, acot, rec, colorMalo } — colorMalo = había una
-       ecuación completa seguida de un segmento que NO es color válido.
-       Los segmentos se leen del FINAL: recorte → acotaciones → color. */
-    function partirFuncion(lin) {
-      const segs = lin.split("|").map((s) => s.trim());
-      const out = { ecuacion: "", color: "", acot: "", rec: undefined, colorMalo: "" };
-      if (segs.length >= 2 && esSegRecorte(segs[segs.length - 1])) {
-        out.rec = segs.pop().replace(/^recorte\s*:?/i, "").trim();
-      }
-      if (segs.length >= 2 && esSegAcot(segs[segs.length - 1])) out.acot = segs.pop();
-      out.color = quitaColor(segs);
-      if (segs.length === 2) {
-        const mal = errorDeExpresion(segs[0], false);
-        if (!mal) out.colorMalo = segs[1];
-      }
-      out.ecuacion = segs.join("|").trim();
-      return out;
-    }
-  
-    /* Rango «x=de..a» (áreas «entre» y «region») */
-    function errorDeRango(texto, donde) {
-      const m = String(texto ?? "").trim().match(/^([xy])\s*=\s*(.+?)\.\.(.+)$/);
-      if (!m) return donde + ": el rango se escribe «x=de..a» — ej: x=0..4 (llegó «" + texto + "»)";
-      for (const lado of [m[2], m[3]]) {
-        const mal = errorDeExpresion(lado, false);
-        if (mal) return donde + ": no entiendo «" + lado + "» en el rango — " + mal;
-        if (traeVariables(lado)) return donde + ": el rango no puede llevar x ni y — usa números (ej: x=0..4 o x=0..2pi)";
-      }
+      revisarCadena(toks);
       return null;
+    } catch (e) {
+      return e.message;
     }
-  
-    /* RECORTE «x:a,b; y:c,d»: DOS valores por eje, sin variables y
-       sin repetir el mismo valor (el ancho cero no dibuja nada; si
-       llegan al revés el visual los acomoda solos). Espejo del
-       parsearRecorte del visual. */
-    const esNumPlano = (s) => /^[+-]?(\d+\.?\d*|\.\d+)$/.test(String(s).trim());
-    function errorDeRecorte(texto, donde) {
-      const t = String(texto ?? "").trim();
-      if (!t) {
-        return donde + ": el recorte está vacío — escribe «x:a,b» y/o «y:c,d» (mínimo y máximo de la porción), ej: x:0,4; y:2,8";
+  }
+
+  /* ¿Trae x o y de verdad? (acotaciones, rangos y coordenadas no pueden) */
+  function traeVariables(texto) {
+    try {
+      return tokenizarCompacto(texto).some((tk) => tk.t === "var");
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /* Colores: mismo criterio del visual (hex 3/4/6/8 o nombre) */
+  const NOMBRES_COLOR = ["negro", "blanco", "gris", "rojo", "vino", "rosa", "fucsia",
+    "naranja", "amarillo", "lima", "verde", "turquesa", "cian", "celeste", "azul",
+    "morado", "violeta", "cafe", "marron"];
+  function colorOK(t) {
+    const s = String(t ?? "").toLowerCase().trim();
+    if (!s) return false;
+    if (NOMBRES_COLOR.includes(s)) return true;
+    return /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(s);
+  }
+
+  /* ── lectura de líneas «a | b | c» cuando el contenido puede llevar
+        barras de valor absoluto (y=|x|): color y acotaciones se toman
+        del FINAL y la ecuación se queda con todo lo demás (IGUAL que
+        el visual) ── */
+  const esSegAcot = (s) => /^\s*[xy]\s*:.+$/i.test(s);
+  const esSegRango = (s) => /^([xy])\s*=\s*.+\.\..+$/.test(s);
+  const esSegRecorte = (s) => /^recorte(\s*:|\s|$)/i.test(
+    String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim());
+  function quitaColor(segs) {
+    if (segs.length < 2) return "";
+    const ultimo = segs[segs.length - 1];
+    if (colorOK(ultimo)) return segs.pop();
+    return "";
+  }
+  /* { ecuacion, color, acot, rec, colorMalo } — colorMalo = había una
+     ecuación completa seguida de un segmento que NO es color válido.
+     Los segmentos se leen del FINAL: recorte → acotaciones → color. */
+  function partirFuncion(lin) {
+    const segs = lin.split("|").map((s) => s.trim());
+    const out = { ecuacion: "", color: "", acot: "", rec: undefined, colorMalo: "" };
+    if (segs.length >= 2 && esSegRecorte(segs[segs.length - 1])) {
+      out.rec = segs.pop().replace(/^recorte\s*:?/i, "").trim();
+    }
+    if (segs.length >= 2 && esSegAcot(segs[segs.length - 1])) out.acot = segs.pop();
+    out.color = quitaColor(segs);
+    if (segs.length === 2) {
+      const mal = errorDeExpresion(segs[0], false);
+      if (!mal) out.colorMalo = segs[1];
+    }
+    out.ecuacion = segs.join("|").trim();
+    return out;
+  }
+
+  /* Rango «x=de..a» (áreas «entre» y «region») */
+  function errorDeRango(texto, donde) {
+    const m = String(texto ?? "").trim().match(/^([xy])\s*=\s*(.+?)\.\.(.+)$/);
+    if (!m) return donde + ": el rango se escribe «x=de..a» — ej: x=0..4 (llegó «" + texto + "»)";
+    for (const lado of [m[2], m[3]]) {
+      const mal = errorDeExpresion(lado, false);
+      if (mal) return donde + ": no entiendo «" + lado + "» en el rango — " + mal;
+      if (traeVariables(lado)) return donde + ": el rango no puede llevar x ni y — usa números (ej: x=0..4 o x=0..2pi)";
+    }
+    return null;
+  }
+
+  /* RECORTE «x:a,b; y:c,d»: DOS valores por eje, sin variables y
+     sin repetir el mismo valor (el ancho cero no dibuja nada; si
+     llegan al revés el visual los acomoda solos). Espejo del
+     parsearRecorte del visual. */
+  const esNumPlano = (s) => /^[+-]?(\d+\.?\d*|\.\d+)$/.test(String(s).trim());
+  function errorDeRecorte(texto, donde) {
+    const t = String(texto ?? "").trim();
+    if (!t) {
+      return donde + ": el recorte está vacío — escribe «x:a,b» y/o «y:c,d» (mínimo y máximo de la porción), ej: x:0,4; y:2,8";
+    }
+    let vistos = "";
+    for (const seg of t.split(";").map((s) => s.trim()).filter(Boolean)) {
+      const m = seg.match(/^([xy])\s*:\s*(.+)$/i);
+      if (!m) {
+        return donde + ": el recorte «" + seg + "» no se entiende — usa «x:a,b» y/o «y:c,d» (mínimo y máximo), ej: x:0,4; y:2,8";
       }
-      let vistos = "";
-      for (const seg of t.split(";").map((s) => s.trim()).filter(Boolean)) {
-        const m = seg.match(/^([xy])\s*:\s*(.+)$/i);
-        if (!m) {
-          return donde + ": el recorte «" + seg + "» no se entiende — usa «x:a,b» y/o «y:c,d» (mínimo y máximo), ej: x:0,4; y:2,8";
+      const eje = m[1].toLowerCase();
+      if (vistos.includes(eje)) return donde + " repite el recorte de " + eje;
+      vistos += eje;
+      const vals = m[2].split(",").map((s) => s.trim()).filter(Boolean);
+      if (vals.length !== 2) {
+        return donde + ": el recorte de " + eje + " necesita DOS valores (mínimo y máximo) — ej: " + eje + ":0,4";
+      }
+      for (const val of vals) {
+        const mal = errorDeExpresion(val, false);
+        if (mal) return donde + ": no entiendo «" + val + "» en el recorte — " + mal;
+        if (traeVariables(val)) {
+          return donde + ": el recorte de " + eje + " no puede llevar x ni y — escribe números (ej: " + eje + ":0,4 o " + eje + ":0,2pi)";
         }
-        const eje = m[1].toLowerCase();
-        if (vistos.includes(eje)) return donde + " repite el recorte de " + eje;
-        vistos += eje;
-        const vals = m[2].split(",").map((s) => s.trim()).filter(Boolean);
-        if (vals.length !== 2) {
-          return donde + ": el recorte de " + eje + " necesita DOS valores (mínimo y máximo) — ej: " + eje + ":0,4";
-        }
-        for (const val of vals) {
-          const mal = errorDeExpresion(val, false);
-          if (mal) return donde + ": no entiendo «" + val + "» en el recorte — " + mal;
-          if (traeVariables(val)) {
-            return donde + ": el recorte de " + eje + " no puede llevar x ni y — escribe números (ej: " + eje + ":0,4 o " + eje + ":0,2pi)";
+      }
+      if (vals[0] === vals[1] ||
+          (esNumPlano(vals[0]) && esNumPlano(vals[1]) && Number(vals[0]) === Number(vals[1]))) {
+        return donde + ": el recorte de " + eje + " repite el mismo valor — necesita el mínimo y el máximo distintos, ej: " + eje + ":0,4";
+      }
+    }
+    return null;
+  }
+
+  /* ── A PRUEBA DE ERRORES: TODO lo que el visual exige ── */
+  function validarGraficador(v) {
+    const errs = [];
+
+    /* escala: obligatoria, > 0, y que no explote la cuadrícula */
+    const escala = num(v.escala);
+    if (escala === undefined) {
+      errs.push({ k: "escala", msg: "«Escala de la cuadrícula» es obligatorio y debe ser un número mayor que 0 — ej: 1" });
+    } else if (!(escala > 0)) {
+      errs.push({ k: "escala", msg: "La escala debe ser MAYOR que 0 — ej: 1 · 2 · 0.5" });
+    } else {
+      const ax0 = num(v.rangoXmin), ax1 = num(v.rangoXmax);
+      const ay0 = num(v.rangoYmin), ay1 = num(v.rangoYmax);
+      const anchoX = ax0 !== undefined && ax1 !== undefined && ax1 > ax0 ? ax1 - ax0 : 40;
+      const altoY = ay0 !== undefined && ay1 !== undefined && ay1 > ay0 ? ay1 - ay0 : 40;
+      if (anchoX / escala > 160 || altoY / escala > 160) {
+        errs.push({ k: "escala", msg: "Con esa escala salen más de 160 líneas de cuadrícula — usa una escala mayor (ej: 2, 5 o 10) o un rango menor." });
+      }
+    }
+
+    /* rangos: si escribes los DOS, mín < máx */
+    const rx0 = num(v.rangoXmin), rx1 = num(v.rangoXmax);
+    const ry0 = num(v.rangoYmin), ry1 = num(v.rangoYmax);
+    if (rx0 !== undefined && rx1 !== undefined && !(rx1 > rx0)) {
+      errs.push({ k: "rangoXmax", msg: "El máximo de X debe ser MAYOR que el mínimo (escribiste " + rx0 + " y " + rx1 + ")." });
+    }
+    if (ry0 !== undefined && ry1 !== undefined && !(ry1 > ry0)) {
+      errs.push({ k: "rangoYmax", msg: "El máximo de Y debe ser MAYOR que el mínimo (escribiste " + ry0 + " y " + ry1 + ")." });
+    }
+
+    /* cuadrantes: solo 1, 2, 3, 4 */
+    const cTxt = limpia(v.cuadrantes);
+    if (cTxt) {
+      const partes = cTxt.split(",").map((s) => s.trim()).filter(Boolean);
+      if (!partes.length || partes.some((p) => !/^[1-4]$/.test(p))) {
+        errs.push({ k: "cuadrantes", msg: "«Cuadrantes» solo acepta 1, 2, 3 y 4 separados por comas — ej: 1,2,3,4 (vacío = los cuatro)." });
+      }
+    }
+
+    /* funciones: ecuación interpretable + color + acotaciones */
+    lineasDe(v.funciones).forEach((lin, i) => {
+      const n = " (línea " + (i + 1) + ")";
+      const p = partirFuncion(lin);
+      if (p.colorMalo) {
+        errs.push({ k: "funciones", msg: "Color no válido" + n + ": «" + p.colorMalo + "» — usa hex (#e74c3c) o nombre (rojo, azul, verde, negro, morado, celeste…)." });
+        return;
+      }
+      const ec = p.ecuacion;
+      if (!ec) {
+        errs.push({ k: "funciones", msg: "Hay una línea sin ecuación — ej: y = x^2 | rojo | x:-2,5" });
+        return;
+      }
+      const mal = errorDeExpresion(ec, false);
+      if (mal) {
+        errs.push({ k: "funciones", msg: "No entiendo la ecuación" + n + ": «" + ec + "» — " + mal + ". Ejemplos: y = x^2 · y=(x-2)^2+1 · x=y^2-4 · x^2+y^2=9" });
+        return;
+      }
+      if (p.color && !colorOK(p.color)) {
+        errs.push({ k: "funciones", msg: "Color no válido" + n + ": «" + p.color + "» — usa hex (#e74c3c) o nombre (rojo, azul, verde, negro, morado, celeste…)." });
+      }
+      if (p.rec !== undefined) {
+        const malRec = errorDeRecorte(p.rec, "El recorte de la función" + n);
+        if (malRec) errs.push({ k: "funciones", msg: malRec });
+      }
+      if (p.acot) {
+        String(p.acot).split(";").map((s) => s.trim()).filter(Boolean).forEach((seg) => {
+          const m = seg.match(/^([xy])\s*:\s*(.+)$/i);
+          if (!m) {
+            errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + seg + "» no se entiende — usa «x:a,b» o «y:c» (límites o asíntotas), ej: x:-2,5; y:3" });
+            return;
+          }
+          const vals = m[2].split(",").map((s) => s.trim()).filter(Boolean).slice(0, 2);
+          if (!vals.length) {
+            errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + seg + "» no tiene valor — ej: y:3" });
+            return;
+          }
+          for (const val of vals) {
+            const malV = errorDeExpresion(val, false);
+            if (malV) {
+              errs.push({ k: "funciones", msg: "Acotaciones" + n + ": no entiendo «" + val + "» — " + malV });
+            } else if (traeVariables(val)) {
+              errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + val + "» no puede llevar x ni y — escribe un número (ej: pi/2, -3)" });
+            }
+          }
+        });
+      }
+    });
+
+    /* áreas: «entre | curvas | x=de..a | color» o «region | def | color» */
+    lineasDe(v.areas).forEach((lin, i) => {
+      const n = " (línea " + (i + 1) + ")";
+      const partes = lin.split("|").map((s) => s.trim());
+      const tipo = partes[0].toLowerCase();
+      if (tipo !== "entre" && tipo !== "region") {
+        errs.push({ k: "areas", msg: "El área" + n + " debe empezar con «entre» o «region» — ej: entre | y=x^2 ; y=0 | x=0..4 | #2563eb44" });
+        return;
+      }
+      const color = quitaColor(partes);
+      if (tipo === "entre") {
+        let rango = "";
+        if (partes.length >= 3 && esSegRango(partes[partes.length - 1])) rango = partes.pop();
+        const curvas = partes.slice(1).join("|").split(";").map((s) => s.trim()).filter(Boolean);
+        if (!curvas.length) { errs.push({ k: "areas", msg: "El área" + n + " (entre) necesita las curvas — ej: y=x^2 ; y=0" }); return; }
+        if (curvas.length > 2) { errs.push({ k: "areas", msg: "El área" + n + " admite máximo 2 curvas separadas por «;»" }); return; }
+        for (const c of curvas) {
+          const mal = errorDeExpresion(c, false);
+          if (mal) { errs.push({ k: "areas", msg: "El área" + n + ": no entiendo «" + c + "» — " + mal }); continue; }
+          if (!/^y\s*=/.test(c)) {
+            errs.push({ k: "areas", msg: "El área" + n + ": para «entre» las curvas van despejadas en y — ej: y=x^2 (llegó «" + c + "»)" });
           }
         }
-        if (vals[0] === vals[1] ||
-            (esNumPlano(vals[0]) && esNumPlano(vals[1]) && Number(vals[0]) === Number(vals[1]))) {
-          return donde + ": el recorte de " + eje + " repite el mismo valor — necesita el mínimo y el máximo distintos, ej: " + eje + ":0,4";
+        if (rango) {
+          const malR = errorDeRango(rango, "El área" + n);
+          if (malR) errs.push({ k: "areas", msg: malR });
         }
-      }
-      return null;
-    }
-  
-    /* ── A PRUEBA DE ERRORES: TODO lo que el visual exige ── */
-    function validarGraficador(v) {
-      const errs = [];
-  
-      /* escala: obligatoria, > 0, y que no explote la cuadrícula */
-      const escala = num(v.escala);
-      if (escala === undefined) {
-        errs.push({ k: "escala", msg: "«Escala de la cuadrícula» es obligatorio y debe ser un número mayor que 0 — ej: 1" });
-      } else if (!(escala > 0)) {
-        errs.push({ k: "escala", msg: "La escala debe ser MAYOR que 0 — ej: 1 · 2 · 0.5" });
+        if (color && !colorOK(color)) {
+          errs.push({ k: "areas", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#2563eb44) o nombre (azul, verde…)." });
+        }
       } else {
-        const ax0 = num(v.rangoXmin), ax1 = num(v.rangoXmax);
-        const ay0 = num(v.rangoYmin), ay1 = num(v.rangoYmax);
-        const anchoX = ax0 !== undefined && ax1 !== undefined && ax1 > ax0 ? ax1 - ax0 : 40;
-        const altoY = ay0 !== undefined && ay1 !== undefined && ay1 > ay0 ? ay1 - ay0 : 40;
-        if (anchoX / escala > 160 || altoY / escala > 160) {
-          errs.push({ k: "escala", msg: "Con esa escala salen más de 160 líneas de cuadrícula — usa una escala mayor (ej: 2, 5 o 10) o un rango menor." });
-        }
-      }
-  
-      /* rangos: si escribes los DOS, mín < máx */
-      const rx0 = num(v.rangoXmin), rx1 = num(v.rangoXmax);
-      const ry0 = num(v.rangoYmin), ry1 = num(v.rangoYmax);
-      if (rx0 !== undefined && rx1 !== undefined && !(rx1 > rx0)) {
-        errs.push({ k: "rangoXmax", msg: "El máximo de X debe ser MAYOR que el mínimo (escribiste " + rx0 + " y " + rx1 + ")." });
-      }
-      if (ry0 !== undefined && ry1 !== undefined && !(ry1 > ry0)) {
-        errs.push({ k: "rangoYmax", msg: "El máximo de Y debe ser MAYOR que el mínimo (escribiste " + ry0 + " y " + ry1 + ")." });
-      }
-  
-      /* cuadrantes: solo 1, 2, 3, 4 */
-      const cTxt = limpia(v.cuadrantes);
-      if (cTxt) {
-        const partes = cTxt.split(",").map((s) => s.trim()).filter(Boolean);
-        if (!partes.length || partes.some((p) => !/^[1-4]$/.test(p))) {
-          errs.push({ k: "cuadrantes", msg: "«Cuadrantes» solo acepta 1, 2, 3 y 4 separados por comas — ej: 1,2,3,4 (vacío = los cuatro)." });
-        }
-      }
-  
-      /* funciones: ecuación interpretable + color + recorte + acotaciones */
-      lineasDe(v.funciones).forEach((lin, i) => {
-        const n = " (línea " + (i + 1) + ")";
-        const p = partirFuncion(lin);
-        if (p.colorMalo) {
-          errs.push({ k: "funciones", msg: "Color no válido" + n + ": «" + p.colorMalo + "» — usa hex (#e74c3c) o nombre (rojo, azul, verde, negro, morado, celeste…)." });
-          return;
-        }
-        const ec = p.ecuacion;
-        if (!ec) {
-          errs.push({ k: "funciones", msg: "Hay una línea sin ecuación — ej: y = x^2 | rojo | x:-2,5" });
-          return;
-        }
-        const mal = errorDeExpresion(ec, false);
-        if (mal) {
-          errs.push({ k: "funciones", msg: "No entiendo la ecuación" + n + ": «" + ec + "» — " + mal + ". Ejemplos: y = x^2 · y=(x-2)^2+1 · x=y^2-4 · x^2+y^2=9" });
-          return;
-        }
-        if (p.color && !colorOK(p.color)) {
-          errs.push({ k: "funciones", msg: "Color no válido" + n + ": «" + p.color + "» — usa hex (#e74c3c) o nombre (rojo, azul, verde, negro, morado, celeste…)." });
-        }
-        if (p.rec !== undefined) {
-          const malRec = errorDeRecorte(p.rec, "El recorte de la función" + n);
-          if (malRec) errs.push({ k: "funciones", msg: malRec });
-        }
-        if (p.acot) {
-          String(p.acot).split(";").map((s) => s.trim()).filter(Boolean).forEach((seg) => {
-            const m = seg.match(/^([xy])\s*:\s*(.+)$/i);
-            if (!m) {
-              errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + seg + "» no se entiende — usa «x:a,b» o «y:c» (límites o asíntotas), ej: x:-2,5; y:3" });
-              return;
-            }
-            const vals = m[2].split(",").map((s) => s.trim()).filter(Boolean).slice(0, 2);
-            if (!vals.length) {
-              errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + seg + "» no tiene valor — ej: y:3" });
-              return;
-            }
-            for (const val of vals) {
-              const malV = errorDeExpresion(val, false);
-              if (malV) {
-                errs.push({ k: "funciones", msg: "Acotaciones" + n + ": no entiendo «" + val + "» — " + malV });
-              } else if (traeVariables(val)) {
-                errs.push({ k: "funciones", msg: "Acotaciones" + n + ": «" + val + "» no puede llevar x ni y — escribe un número (ej: pi/2, -3)" });
-              }
-            }
-          });
-        }
-      });
-  
-      /* áreas: «entre | curvas | x=de..a | color» o «region | def | color» */
-      lineasDe(v.areas).forEach((lin, i) => {
-        const n = " (línea " + (i + 1) + ")";
-        const partes = lin.split("|").map((s) => s.trim());
-        const tipo = partes[0].toLowerCase();
-        if (tipo !== "entre" && tipo !== "region") {
-          errs.push({ k: "areas", msg: "El área" + n + " debe empezar con «entre» o «region» — ej: entre | y=x^2 ; y=0 | x=0..4 | #2563eb44" });
-          return;
-        }
-        const color = quitaColor(partes);
-        if (tipo === "entre") {
-          let rango = "";
-          if (partes.length >= 3 && esSegRango(partes[partes.length - 1])) rango = partes.pop();
-          const curvas = partes.slice(1).join("|").split(";").map((s) => s.trim()).filter(Boolean);
-          if (!curvas.length) { errs.push({ k: "areas", msg: "El área" + n + " (entre) necesita las curvas — ej: y=x^2 ; y=0" }); return; }
-          if (curvas.length > 2) { errs.push({ k: "areas", msg: "El área" + n + " admite máximo 2 curvas separadas por «;»" }); return; }
-          for (const c of curvas) {
-            const mal = errorDeExpresion(c, false);
-            if (mal) { errs.push({ k: "areas", msg: "El área" + n + ": no entiendo «" + c + "» — " + mal }); continue; }
-            if (!/^y\s*=/.test(c)) {
-              errs.push({ k: "areas", msg: "El área" + n + ": para «entre» las curvas van despejadas en y — ej: y=x^2 (llegó «" + c + "»)" });
-            }
-          }
-          if (rango) {
-            const malR = errorDeRango(rango, "El área" + n);
-            if (malR) errs.push({ k: "areas", msg: malR });
-          }
-          if (color && !colorOK(color)) {
-            errs.push({ k: "areas", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#2563eb44) o nombre (azul, verde…)." });
-          }
-        } else {
-          if (partes.length < 2) { errs.push({ k: "areas", msg: "El área" + n + " (region) necesita una desigualdad (y >= x^2) o un rango (x=-2..2)" }); return; }
-          let def = partes.slice(1).join("|").trim();
-          if (/^(no|!)\s+/.test(def)) def = def.replace(/^(no|!)\s+/, "");
-          if (/[<>]/.test(def)) {
-            const m = def.match(/^(.*?)(>=|<=|>|<)(.*)$/);
-            if (!m || !m[1].trim() || !m[3].trim()) {
-              errs.push({ k: "areas", msg: "El área" + n + ": desigualdad incompleta — ej: y >= x^2" });
-            } else {
-              for (const lado of [m[1], m[3]]) {
-                const mal = errorDeExpresion(lado, false);
-                if (mal) { errs.push({ k: "areas", msg: "El área" + n + ": no entiendo «" + lado.trim() + "» — " + mal }); }
-              }
-            }
-          } else if (/=/.test(def) && !/\.\./.test(def)) {
-            errs.push({ k: "areas", msg: "El área" + n + ": en «region» la igualdad no se colorea — usa una desigualdad (>=, >, <=, <) o un rango (x=a..b)" });
+        if (partes.length < 2) { errs.push({ k: "areas", msg: "El área" + n + " (region) necesita una desigualdad (y >= x^2) o un rango (x=-2..2)" }); return; }
+        let def = partes.slice(1).join("|").trim();
+        if (/^(no|!)\s+/.test(def)) def = def.replace(/^(no|!)\s+/, "");
+        if (/[<>]/.test(def)) {
+          const m = def.match(/^(.*?)(>=|<=|>|<)(.*)$/);
+          if (!m || !m[1].trim() || !m[3].trim()) {
+            errs.push({ k: "areas", msg: "El área" + n + ": desigualdad incompleta — ej: y >= x^2" });
           } else {
-            const rangos = def.split(",").map((s) => s.trim()).filter(Boolean);
-            if (!rangos.length) {
-              errs.push({ k: "areas", msg: "El área" + n + " (region) necesita una desigualdad (y >= x^2) o un rango (x=-2..2)" });
-            } else {
-              for (const r of rangos) {
-                const malR = errorDeRango(r, "El área" + n);
-                if (malR) errs.push({ k: "areas", msg: malR });
-              }
+            for (const lado of [m[1], m[3]]) {
+              const mal = errorDeExpresion(lado, false);
+              if (mal) { errs.push({ k: "areas", msg: "El área" + n + ": no entiendo «" + lado.trim() + "» — " + mal }); }
             }
           }
-          if (color && !colorOK(color)) {
-            errs.push({ k: "areas", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#2563eb44) o nombre (azul, verde…)." });
-          }
-        }
-      });
-  
-      /* puntos: «A(x,y) | color» con coordenadas numéricas */
-      lineasDe(v.puntos).forEach((lin, i) => {
-        const n = " (línea " + (i + 1) + ")";
-        const partes = lin.split("|").map((s) => s.trim());
-        const color = quitaColor(partes);
-        const m = partes.join("|").match(/^([A-Za-z])\s*\(\s*(.+?)\s*[;,]\s*(.+?)\s*\)$/);
-        if (!m) {
-          errs.push({ k: "puntos", msg: "El punto" + n + " no se entiende — formato: A(2,3) | color (UNA letra y las coordenadas x,y)" });
-          return;
-        }
-        for (const coord of [m[2], m[3]]) {
-          const mal = errorDeExpresion(coord, false);
-          if (mal) {
-            errs.push({ k: "puntos", msg: "El punto" + n + ": no entiendo la coordenada «" + coord + "» — " + mal });
-          } else if (traeVariables(coord)) {
-            errs.push({ k: "puntos", msg: "El punto" + n + ": la coordenada «" + coord + "» no puede llevar x ni y — escribe un número (ej: pi/2, -3, 1/4)" });
+        } else if (/=/.test(def) && !/\.\./.test(def)) {
+          errs.push({ k: "areas", msg: "El área" + n + ": en «region» la igualdad no se colorea — usa una desigualdad (>=, >, <=, <) o un rango (x=a..b)" });
+        } else {
+          const rangos = def.split(",").map((s) => s.trim()).filter(Boolean);
+          if (!rangos.length) {
+            errs.push({ k: "areas", msg: "El área" + n + " (region) necesita una desigualdad (y >= x^2) o un rango (x=-2..2)" });
+          } else {
+            for (const r of rangos) {
+              const malR = errorDeRango(r, "El área" + n);
+              if (malR) errs.push({ k: "areas", msg: malR });
+            }
           }
         }
         if (color && !colorOK(color)) {
-          errs.push({ k: "puntos", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#8e44ad) o nombre (morado, rojo…)." });
+          errs.push({ k: "areas", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#2563eb44) o nombre (azul, verde…)." });
         }
-      });
-  
-      /* ancho razonable */
-      const ancho = num(v.ancho);
-      if (ancho !== undefined && !(ancho >= 200 && ancho <= 1000)) {
-        errs.push({ k: "ancho", msg: "El ancho debe estar entre 200 y 1000 px — ej: 560" });
       }
-      return errs;
+    });
+
+    /* puntos: «A(x,y) | color» con coordenadas numéricas */
+    lineasDe(v.puntos).forEach((lin, i) => {
+      const n = " (línea " + (i + 1) + ")";
+      const partes = lin.split("|").map((s) => s.trim());
+      const color = quitaColor(partes);
+      const m = partes.join("|").match(/^([A-Za-z])\s*\(\s*(.+?)\s*[;,]\s*(.+?)\s*\)$/);
+      if (!m) {
+        errs.push({ k: "puntos", msg: "El punto" + n + " no se entiende — formato: A(2,3) | color (UNA letra y las coordenadas x,y)" });
+        return;
+      }
+      for (const coord of [m[2], m[3]]) {
+        const mal = errorDeExpresion(coord, false);
+        if (mal) {
+          errs.push({ k: "puntos", msg: "El punto" + n + ": no entiendo la coordenada «" + coord + "» — " + mal });
+        } else if (traeVariables(coord)) {
+          errs.push({ k: "puntos", msg: "El punto" + n + ": la coordenada «" + coord + "» no puede llevar x ni y — escribe un número (ej: pi/2, -3, 1/4)" });
+        }
+      }
+      if (color && !colorOK(color)) {
+        errs.push({ k: "puntos", msg: "Color no válido" + n + ": «" + color + "» — usa hex (#8e44ad) o nombre (morado, rojo…)." });
+      }
+    });
+
+    /* ancho razonable */
+    const ancho = num(v.ancho);
+    if (ancho !== undefined && !(ancho >= 200 && ancho <= 1000)) {
+      errs.push({ k: "ancho", msg: "El ancho debe estar entre 200 y 1000 px — ej: 560" });
     }
-  
-    /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
-    const entrada = {
-      id: "graficador-funciones-cartesianas",
-      nombre: "Plano cartesiano de funciones",
-      cat: "visuales",
-      archivo: "recursos/js/visuales/graficador-funciones-cartesianas.js",
-      imports: ["dibujarGraficadorCartesiano"],
-      funcion: "dibujarGraficadorCartesiano",
-      descripcion: "Plano con cuadrícula según escala: funciones en cualquier formato (explícitas, canónicas, cónicas e implícitas), áreas de dominio/entre curvas, puntos con letra, límites punteados y RECORTES de porción por valores de x/y.",
-      params: [
-        { k: "rangoXmin", et: "Eje X: mínimo (vacío = -20)", tipo: "num", ej: "-6" },
-        { k: "rangoXmax", et: "Eje X: máximo (vacío = 20)", tipo: "num", ej: "8" },
-        { k: "rangoYmin", et: "Eje Y: mínimo (vacío = -20)", tipo: "num", ej: "-4" },
-        { k: "rangoYmax", et: "Eje Y: máximo (vacío = 20)", tipo: "num", ej: "10" },
-        { k: "escala", et: "Escala de la cuadrícula", tipo: "num", req: true, ej: "1 · 2 · 0.5" },
-        { k: "cuadrantes", et: "Cuadrantes a mostrar (vacío = los 4)", tipo: "texto", ej: "1,2,3,4" },
-        { k: "funciones", et: "Funciones / ecuaciones — una por línea: ecuación | color | acotaciones | recorte", tipo: "lineas",
-          ej: "y = x^2 | rojo | x:-2,5; y:3 | recorte x:-2,5\ny = (x-2)^2+1 | azul\nx^2+y^2=9 | verde | recorte x:-3,3; y:0,3\nx=y^2-4" },
-        { k: "areas", et: "Áreas a colorear — una por línea", tipo: "lineas",
-          ej: "entre | y=x^2 ; y=4-x | x=0..4 | #2563eb44\nregion | y >= x^2 | #dc262633\nregion | x=0..4 | #16a34a33  (dominio)\nregion | no y > 0 | #94a3b822  (no dominio)" },
-        { k: "puntos", et: "Puntos — una por línea: Letra(x,y) | color", tipo: "lineas",
-          ej: "A(2,3) | #8e44ad\nB(-1,0.5)\nV(2,1) | morado" },
-        { k: "etiquetas", et: "Etiquetar cada gráfica con su ecuación", tipo: "sino", def: true },
-        { k: "ancho", et: "Ancho del plano (px)", tipo: "num", def: 560, ej: "560" },
-      ],
-      aOpciones: (v) => ({
-        rango: {
-          xMin: num(v.rangoXmin),
-          xMax: num(v.rangoXmax),
-          yMin: num(v.rangoYmin),
-          yMax: num(v.rangoYmax),
-        },
-        escala: num(v.escala),
-        cuadrantes: listaCuadrantes(v.cuadrantes),
-        funciones: lineasDe(v.funciones),
-        areas: lineasDe(v.areas),
-        puntos: lineasDe(v.puntos),
-        etiquetas: bool(v.etiquetas, true),
-        ancho: num(v.ancho),
-      }),
-      /* ── A PRUEBA DE ERRORES: revisor espejo del motor del visual ── */
-      validar: validarGraficador,
-    };
-    /* Reemplaza o agrega: si ya está pegado el BLOQUE 35 viejo, esta
-       versión ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
-    const i = REGISTRO.findIndex((r) => r.id === "graficador-funciones-cartesianas");
-    if (i >= 0) REGISTRO[i] = entrada;
-    else REGISTRO.push(entrada);
-  })();
-  /* ═══════════════ fin BLOQUE 35 · «graficador-funciones-cartesianas» ═══════════════ */
+    return errs;
+  }
+
+  /* ══ Entrada del REGISTRO (se reemplaza sola si ya existía) ══ */
+  const entrada = {
+    id: "graficador-funciones-cartesianas",
+    nombre: "Plano cartesiano de funciones",
+    cat: "visuales",
+    archivo: "recursos/js/visuales/graficador-funciones-cartesianas.js",
+    imports: ["dibujarGraficadorCartesiano"],
+    funcion: "dibujarGraficadorCartesiano",
+    descripcion: "Plano con cuadrícula según escala: funciones en cualquier formato (explícitas, canónicas, cónicas e implícitas), áreas de dominio/entre curvas, puntos con letra, límites punteados y RECORTES de porción por valores de x/y.",
+    params: [
+      { k: "rangoXmin", et: "Eje X: mínimo (vacío = -20)", tipo: "num", ej: "-6" },
+      { k: "rangoXmax", et: "Eje X: máximo (vacío = 20)", tipo: "num", ej: "8" },
+      { k: "rangoYmin", et: "Eje Y: mínimo (vacío = -20)", tipo: "num", ej: "-4" },
+      { k: "rangoYmax", et: "Eje Y: máximo (vacío = 20)", tipo: "num", ej: "10" },
+      { k: "escala", et: "Escala de la cuadrícula", tipo: "num", req: true, ej: "1 · 2 · 0.5" },
+      { k: "cuadrantes", et: "Cuadrantes a mostrar (vacío = los 4)", tipo: "texto", ej: "1,2,3,4" },
+      { k: "funciones", et: "Funciones / ecuaciones — una por línea: ecuación | color | acotaciones | recorte", tipo: "lineas",
+        ej: "y = x^2 | rojo | x:-2,5; y:3 | recorte x:-2,5\ny = (x-2)^2+1 | azul\nx^2+y^2=9 | verde | recorte x:-3,3; y:0,3\nx=y^2-4" },
+      { k: "areas", et: "Áreas a colorear — una por línea", tipo: "lineas",
+        ej: "entre | y=x^2 ; y=4-x | x=0..4 | #2563eb44\nregion | y >= x^2 | #dc262633\nregion | x=0..4 | #16a34a33  (dominio)\nregion | no y > 0 | #94a3b822  (no dominio)" },
+      { k: "puntos", et: "Puntos — una por línea: Letra(x,y) | color", tipo: "lineas",
+        ej: "A(2,3) | #8e44ad\nB(-1,0.5)\nV(2,1) | morado" },
+      { k: "etiquetas", et: "Etiquetar cada gráfica con su ecuación", tipo: "sino", def: true },
+      { k: "ancho", et: "Ancho del plano (px)", tipo: "num", def: 560, ej: "560" },
+    ],
+    aOpciones: (v) => ({
+      rango: {
+        xMin: num(v.rangoXmin),
+        xMax: num(v.rangoXmax),
+        yMin: num(v.rangoYmin),
+        yMax: num(v.rangoYmax),
+      },
+      escala: num(v.escala),
+      cuadrantes: listaCuadrantes(v.cuadrantes),
+      funciones: lineasDe(v.funciones),
+      areas: lineasDe(v.areas),
+      puntos: lineasDe(v.puntos),
+      etiquetas: bool(v.etiquetas, true),
+      ancho: num(v.ancho),
+    }),
+    /* ── A PRUEBA DE ERRORES: revisor espejo del motor del visual ── */
+    validar: validarGraficador,
+  };
+  /* Reemplaza o agrega: si ya está pegado el BLOQUE 35 viejo, esta
+     versión ACTUALIZA su entrada (mismo id) en vez de duplicarla. */
+  const i = REGISTRO.findIndex((r) => r.id === "graficador-funciones-cartesianas");
+  if (i >= 0) REGISTRO[i] = entrada;
+  else REGISTRO.push(entrada);
+})();
+/* ═══════════════ fin BLOQUE 35 · «graficador-funciones-cartesianas» ═══════════════ */
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 36 · «tarjetaElementoQuimico» — Tarjeta química del elemento
    [visuales] · v1.1 (masa aproximada con DOS decimales)
@@ -6226,7 +6473,6 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═════════════════ fin BLOQUE 36 · «tarjetaElementoQuimico» ═══════════ */
-
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 37 · «tablaPeriodica» — Tabla periódica interactiva   [utils]
    Util: js/utils/ciencias/tablaPeriodica.js
@@ -6386,7 +6632,7 @@ function abrirModalCodigo() {
     id: "calculadoraCientifica",
     nombre: "calculadoraCientifica — Calculadora científica",
     cat: "utils",
-    archivo: "utils/calculadoraCientifica.js",
+    archivo: "utils/ciencias/calculadoraCientifica.js",
     imports: ["calculadoraCientifica"],
     funcion: "calculadoraCientifica",
     descripcion: "Calculadora científica interactiva tipo FX-991: LCD de dos filas (expresión + 7 segmentos), capas SHIFT/ALPHA/hyp, fracciones, trigonometría, logaritmos, π-e, factorial, Ans, variables, CALC, integral y d/dx. Permite DESHABILITAR teclas o funciones concretas (se atenúan y también se bloquea el teclado físico).",
@@ -6412,7 +6658,6 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═════════════════ fin BLOQUE 38 · «calculadoraCientifica» ═══════════ */
-
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 39 · «formateadorEcuacionesQuimicas» — Ecuaciones químicas
    [visuales]
@@ -6546,7 +6791,6 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═════════════════ fin BLOQUE 39 · «formateadorEcuacionesQuimicas» ═══ */
-
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 40 · «creadorFigurasGeometricas» — Creador de figuras geométricas (v2)
    [visuales]
@@ -6775,7 +7019,7 @@ function abrirModalCodigo() {
     id: "creadorFigurasGeometricas",
     nombre: "creadorFigurasGeometricas — Figuras geométricas",
     cat: "visuales",
-    archivo: "recursos/js/visuales/matematicas/creadorFigurasGeometricas.js",
+    archivo: "recursos/js/visuales/ciencias/creadorFigurasGeometricas.js",
     imports: ["generarFigurasGeometricas"],
     funcion: "generarFigurasGeometricas",
     descripcion: "Creador visual de figuras geométricas con acabado profesional y trazadas a escala: polígonos regulares (3–100 lados) e irregulares (polígono cíclico con la lista de lados), círculos, elipses, prismas rectos e inclinados, pirámides, poliedros regulares platónicos (caras 4·6·8·12·20), cilindros, conos, conos truncados y esferas con proyección isométrica, aristas ocultas discontinuas, sombreado Lambert, degradados y sombra en el suelo. ROTACIÓN ELEGIBLE: vistaGiro/vistaElev de la escena y giro/elev propios por figura. Auto-ajuste del viewBox: la figura nunca sale cortada. Cotas con flechas (lado, apotema, altura, radio, diámetro, radioMayor/Menor, generatriz, inclinación β, áreas y volumen) y composiciones verticales u horizontales. Temas: clasico, laboratorio, neon.",
@@ -6850,7 +7094,6 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═══════════════════ fin BLOQUE 40 · «creadorFigurasGeometricas» ═════ */
-
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 41 · «oracionesIngles» — Revisor de oraciones (inglés/español)
    [utils] · v2
@@ -6952,7 +7195,7 @@ function abrirModalCodigo() {
       { k: "estructuraEsperada", et: "Estructura esperada (tiempo gramatical y/o patrón con +; el corrector la valida; vacío = solo ortografía/gramática)", tipo: "area", ej: "subject + verb + adverb of frequency · Past Simple · pasado simple" },
       { k: "idioma", et: "Idioma que se evalúa", tipo: "opcion", ops: ["en", "es"], def: "en" },
       { k: "usarApiExterna", et: "Revisor externo LanguageTool (requiere internet; si falla usa el local)", tipo: "opcion", ops: ["no", "sí"], def: "no" },
-      { k: "colorTarjeta", et: "Color de la tarjeta en HEX o rgb() (opcional; defecto #7c3aed)", tipo: "texto", def: "#7c3aed", ej: "#7c3aed · #0ea5e9" },
+      { k: "colorTarjeta", et: "Color de la tarjeta (selector RGB; opcional — defecto #7c3aed)", tipo: "color", def: "#7c3aed", ej: "#7c3aed · #0ea5e9" },
     ],
     aOpciones: (v) => ({
       indicacion: limpia(v.indicacion) || "Escribe las oraciones solicitadas.",
@@ -6982,7 +7225,6 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═════════════════ fin BLOQUE 41 · «oracionesIngles» ═════════════════ */
-
 
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 42 · «botonEnviar» — Botón Enviar del examen   [utils]
@@ -7045,7 +7287,7 @@ function abrirModalCodigo() {
       { k: "texto", et: "Rótulo del botón", tipo: "texto", def: "Enviar examen" },
       { k: "titulo", et: "Título del examen para el reporte (opcional; defecto: el título de la pieza)", tipo: "texto" },
       { k: "confirmar", et: "Pedir confirmación al tocar (el temporizador nunca confirma)", tipo: "sino", def: true },
-      { k: "colorTarjeta", et: "Color del botón en HEX o rgb() (opcional; defecto #16a34a)", tipo: "texto", def: "#16a34a", ej: "#16a34a · #7c3aed" },
+      { k: "colorTarjeta", et: "Color del botón (selector RGB; opcional — defecto #16a34a)", tipo: "color", def: "#16a34a", ej: "#16a34a · #7c3aed" },
     ],
     /* ctx trae el perfil DEMO y la clase de la vista previa: sin ellos
        el util se levanta los pantalones y NO pinta nada. Mismo patrón
@@ -7163,7 +7405,7 @@ function abrirModalCodigo() {
       { k: "tiempo", et: "Tiempo para el examen (minutos o «1h 30m», «mm:ss»…)", tipo: "texto", req: true, def: "45", ej: "45 · 90m · 1h 30m · 1:30 · 1:00:00" },
       { k: "texto", et: "Rótulo del reloj", tipo: "texto", def: "Tiempo restante" },
       { k: "id", et: "id estable del reloj (opcional, recomendado: no reinicia al recargar)", tipo: "texto", ej: "tiempo-examen-1" },
-      { k: "colorTarjeta", et: "Color del reloj en HEX o rgb() (opcional; defecto #0ea5e9)", tipo: "texto", def: "#0ea5e9", ej: "#0ea5e9 · #f59e0b" },
+      { k: "colorTarjeta", et: "Color del reloj (selector RGB; opcional — defecto #0ea5e9)", tipo: "color", def: "#0ea5e9", ej: "#0ea5e9 · #f59e0b" },
     ],
     /* ctx trae el perfil DEMO y la clase de la vista previa: sin ellos
        el util se levanta los pantalones y NO pinta nada. Mismo patrón
@@ -7252,7 +7494,7 @@ function abrirModalCodigo() {
       { k: "titulo", et: "Título de la tarjeta", tipo: "texto", def: "Traductor inglés → español" },
       { k: "indicacion", et: "Indicación del docente (franja de color; opcional)", tipo: "area", ej: "Traduce el párrafo de la lectura antes de la próxima clase." },
       { k: "direccion", et: "Dirección de la traducción", tipo: "opcion", ops: ["en-es", "es-en"], def: "en-es" },
-      { k: "colorTarjeta", et: "Color de la tarjeta en HEX o rgb() (opcional; defecto #2563eb)", tipo: "texto", def: "#2563eb", ej: "#2563eb · #7c3aed" },
+      { k: "colorTarjeta", et: "Color de la tarjeta (selector RGB; opcional — defecto #2563eb)", tipo: "color", def: "#2563eb", ej: "#2563eb · #7c3aed" },
     ],
     aOpciones: (v) => ({
       titulo: limpia(v.titulo) || "Traductor inglés → español",
@@ -7276,7 +7518,6 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═══════════════════ fin BLOQUE 44 · «traductorEnEs» ═══════════════════ */
-
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 45 · «cuadriculaVocabulario» — Cuadrícula de vocabulario  [utils]
    Visual: js/utils/cuadriculaVocabulario.js
@@ -7397,7 +7638,6 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═══════════ fin BLOQUE 45 · «cuadriculaVocabulario» ═══════════ */
-
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 46 · «constructorOraciones» — Construye la oración  [utils]
    Util: js/utils/constructorOraciones.js
@@ -7976,7 +8216,6 @@ function abrirModalCodigo() {
 })();
 /* ═══════════════════ fin BLOQUE 49 · «board» ═══════════════════ */
 
-
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 50 · «simulador» — Caja de frases al azar   [utils]
    Util: js/utils/simulador.js
@@ -8113,7 +8352,6 @@ function abrirModalCodigo() {
   else REGISTRO.push(entrada);
 })();
 /* ═══════════════════ fin BLOQUE 50 · «simulador» ═══════════════════ */
-
 /* ══════════════════════════════════════════════════════════════════════
    BLOQUE 51 · «clasificar» — Tabla de clasificación   [utils]
    Util: js/utils/clasificar.js
