@@ -571,7 +571,7 @@ async function montar(perfil, contenedor, clase) {
     tipo: "examen",
     perfil: perfil,
     clase: clase,
-    contenedor: pon(l6, 0, 0, 820, 361)
+    contenedor: pon(l6, 0, 30, 820, 361)
   });
 
   // ════════════════════════════════════════════════════════════
